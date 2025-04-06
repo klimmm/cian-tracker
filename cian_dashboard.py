@@ -8,6 +8,12 @@ import time
 import threading
 from queue import Queue, Empty
 from table_config import get_table_config, sort_table_data, load_data
+from dash import Dash, html
+import os
+
+app = Dash(__name__)
+server = app.server  # Needed for deployment
+
 
 # Initialize the Dash app with compact styling
 app = dash.Dash(
@@ -525,5 +531,7 @@ def update_table_sorting(sort_by):
     return sort_table_data(sort_by)
 
 
+
 if __name__ == "__main__":
-    app.run_server(debug=True, host="0.0.0.0", port=8050)
+    port = int(os.environ.get("PORT", 8050))
+    app.run_server(debug=True, host="0.0.0.0", port=port)
