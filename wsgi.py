@@ -1,30 +1,11 @@
-import os
 import sys
-import logging
 from pathlib import Path
 
-# Ensure logs directory exists
-Path("logs").mkdir(exist_ok=True)
+from main import server
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("logs/wsgi.log"),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger("WSGI")
+current_dir = str(Path(__file__).parent.absolute())
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
-# Import the app
-try:
-    from cian_dashboard import app
-    logger.info("Successfully imported Dash app")
-except Exception as e:
-    logger.error(f"Error importing app: {e}")
-    raise
-
-# For Gunicorn
-application = app.server
-app = application
+if __name__ == "__main__":
+    server.run()
