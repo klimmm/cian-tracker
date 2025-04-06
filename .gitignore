@@ -88,3 +88,6 @@ chromedriver
 # OS specific
 .DS_Store
 Thumbs.db
+cian_apartments-Copy1.csv
+cian.csv
+auto_update_and_push.py
