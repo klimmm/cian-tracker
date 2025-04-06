@@ -37,20 +37,22 @@ visible_columns = [
 
 # Function to load data
 def load_data():
-    csv_file = "cian_apartments.csv"
-
-    if not os.path.exists(csv_file):
-        return pd.DataFrame(), "No data available"
+    csv = "cian_apartments.csv"
 
     try:
-        # Get file modification time
-        mod_time = os.path.getmtime(csv_file)
-        update_time = datetime.fromtimestamp(mod_time).strftime("%Y-%m-%d %H:%M:%S")
-
-        # Load data from CSV
-        df = pd.read_csv(csv_file, encoding="utf-8")
-
-        # Ensure proper data types for sorting and filtering
+        # Load data from URL
+        df = pd.read_csv(csv, encoding="utf-8", comment="#")
+        
+        with open("cian_apartments.csv", "r", encoding="utf-8") as f:
+            first_line = f.readline().strip()
+        
+        update_time = "Unknown"
+        metadata_parts = first_line.replace("# ", "").split(",")
+        for part in metadata_parts:
+            if part.startswith("last_updated="):
+                update_time = part.split("=")[1].strip()
+        
+        # Rest of your processing code...
         if "offer_id" in df.columns:
             df["offer_id"] = df["offer_id"].astype(str)
 
@@ -127,8 +129,6 @@ def load_data():
     except Exception as e:
         print(f"Error loading data: {e}")
         return pd.DataFrame(), f"Error: {e}"
-
-
 # Define the column configurations and sorting functions
 def get_table_config():
     """

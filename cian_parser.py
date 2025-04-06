@@ -255,7 +255,7 @@ class CianParser:
         self.existing_df = None
         if os.path.exists(csv_filename):
             try:
-                self.existing_df = pd.read_csv(csv_filename, encoding="utf-8")
+                self.existing_df = pd.read_csv(csv_filename, encoding="utf-8", comment="#")
                 for _, row in self.existing_df.iterrows():
                     id = str(row.get("offer_id", ""))
                     if id:
@@ -633,14 +633,14 @@ class CianParser:
             offer_id = apt.get("offer_id", "")
             price_change_value = apt.get("price_change_value")
 
-            logger.warning(
+            logger.debug(
                 f"Offer {offer_id}: Processing with price_change_value='{price_change_value}'"
             )
 
             # CASE 1: If price_change_value is "new" - mark as new
             if price_change_value == "new":
                 apt["price_change_formatted"] = "new"
-                logger.warning(
+                logger.debug(
                     f"Offer {offer_id}: Marked as new (price_change_value is 'new')"
                 )
                 count_new += 1
@@ -657,14 +657,14 @@ class CianParser:
                         apt["price_change_formatted"] = (
                             f"-{int(abs(price_diff)):,}".replace(",", " ") + " ₽/мес."
                         )
-                    logger.warning(
+                    logger.debug(
                         f"Offer {offer_id}: Formatted to '{apt['price_change_formatted']}'"
                     )
                     count_formatted += 1
                 except (ValueError, TypeError) as e:
                     # Not a valid number, default to new
                     apt["price_change_formatted"] = "new"
-                    logger.warning(
+                    logger.debug(
                         f"Offer {offer_id}: Error converting '{price_change_value}' to number: {e}"
                     )
                     count_new += 1
@@ -672,7 +672,7 @@ class CianParser:
             # CASE 3: No price_change_value - mark as new
             else:
                 apt["price_change_formatted"] = "new"
-                logger.warning(
+                logger.debug(
                     f"Offer {offer_id}: No price_change_value, marking as new"
                 )
                 count_new += 1
@@ -755,12 +755,12 @@ class CianParser:
 
                         # Check if the value is NaN or infinite
                         if np.isnan(existing_distance) or np.isinf(existing_distance):
-                            logger.info(
+                            logger.warning(
                                 f"Found invalid distance (NaN/Inf) for {data['offer_id']}, will recalculate"
                             )
                         else:
                             data["distance"] = existing_distance
-                            logger.debug(
+                            logger.warning(
                                 f"Preserved existing distance for {data['offer_id']}: {existing_distance} km"
                             )
                     except (ValueError, TypeError):
@@ -817,10 +817,9 @@ class CianParser:
             merged_df = merged_df.sort_values("updated_time", ascending=False)
         self.apartments = merged_df.to_dict("records")
         return self.apartments
-
+    
     def save_to_csv(self, filename="cian_apartments.csv"):
         try:
-            # self.merge_with_existing_data()
             if not self.apartments:
                 logger.warning("No data to save")
                 return
@@ -844,17 +843,16 @@ class CianParser:
                 "description",
             ]
             df = pd.DataFrame(self.apartments)
-
+    
             cols = [c for c in cols if c in df.columns]
             for c in df.columns:
                 if c not in cols and c != "image_urls":
                     cols.append(c)
-
+    
             df_save = df[cols].copy()
-
+    
             # Modified serialization function to handle arrays properly
             for c in df_save.columns:
-
                 def serialize(x):
                     try:
                         if isinstance(x, np.ndarray):
@@ -869,16 +867,25 @@ class CianParser:
                             return str(x)
                     except Exception as e:
                         return str(x)
-
+    
                 df_save[c] = df_save[c].apply(serialize)
-
-            df_save.to_csv(filename, index=False, encoding="utf-8")
-            logger.info(f"Saved to {filename}: {len(df)} entries")
+    
+            # Create a temporary file with metadata
+            with open(filename + ".tmp", "w", encoding="utf-8") as f:
+                # Write metadata as a comment line
+                update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                record_count = len(df_save)
+                f.write(f"# last_updated={update_time},record_count={record_count}\n")
+                
+                # Write the actual data without index
+                df_save.to_csv(f, index=False, encoding="utf-8")
+                
+            # Replace the original file with the temp file
+            os.replace(filename + ".tmp", filename)
+            logger.info(f"Saved to {filename}: {len(df)} entries with metadata")
         except Exception as e:
             logger.error(f"CSV save error: {e}")
-            logger.warning(
-                traceback.format_exc()
-            )  # Add this for more detailed error info
+            logger.warning(traceback.format_exc())  # Add this for more detailed error info
 
     def add_distances(self, reference_address="Москва, переулок Большой Саввинский, 3"):
         """Calculate distances for apartments that don't have distance values"""
