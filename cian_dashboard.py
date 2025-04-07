@@ -18,7 +18,7 @@ COLUMNS_CONFIG = {
         "price_change_formatted"
     ],
     "visible": [
-       "title", "updated_time", "price_change_formatted", "price", "distance", "cian_estimation", "address", "metro_station"
+       "address", "distance", "updated_time", "price_change_formatted", "price", "title", "cian_estimation", "metro_station"
     ],
     "headers": {
         "offer_id": "ID", "distance": "расст.", "price_change_formatted": "изм. цены",
@@ -63,9 +63,9 @@ def load_data(cache=[]):
             df["offer_id"] = df["offer_id"].astype(str)
             
             # Create offer links
-            if "title" in df.columns:
-                df["title"] = df.apply(
-                    lambda row: f"[{row['title']}](https://www.cian.ru/rent/flat/{row['offer_id']}/)", 
+            if "address" in df.columns:
+                df["address"] = df.apply(
+                    lambda row: f"[{row['address']}](https://www.cian.ru/rent/flat/{row['offer_id']}/)", 
                     axis=1
                 )
             

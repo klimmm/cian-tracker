@@ -864,7 +864,7 @@ if __name__ == "__main__":
     apartments = scraper.scrape(
         search_url=base_url,
         max_pages=20,
-        max_distance_km=3
+        max_distance_km=5
     )
     
     print(f"Total apartments processed: {len(apartments)}")
