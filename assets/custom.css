@@ -15,3 +15,32 @@
     display: none !important;
     max-height: '1px'
 }
+
+
+.price-tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.price-tooltip .tooltiptext {
+    visibility: hidden;
+    width: auto;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 4px;
+    padding: 3px 6px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.price-tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}

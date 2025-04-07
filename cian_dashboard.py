@@ -14,11 +14,11 @@ COLUMNS_CONFIG = {
     "display": [
         "offer_id", "title", "updated_time", "updated_time_sort", "price", "price_sort",
         "cian_estimation", "cian_estimation_sort", "price_difference", "price_difference_sort",
-        "address", "metro_station", "offer_link", "distance", "price_change_value", 
+        "address", "metro_station", "offer_link", "distance", "distance_sort", "price_change_value", 
         "price_change_formatted"
     ],
     "visible": [
-        "title", "updated_time", "price", "distance", "address",  "price_change_formatted",  "cian_estimation", "metro_station"
+       "title", "updated_time", "price", "distance", "address", "cian_estimation", "price_change_formatted", "metro_station"
     ],
     "headers": {
         "offer_id": "ID", "distance": "расст.", "price_change_formatted": "изм.цены",
@@ -85,22 +85,26 @@ def load_data(cache=[]):
         # Process price change
         if "price_change_value" in df.columns:
             df["price_change_sort"] = pd.to_numeric(df["price_change_value"], errors="coerce")
-            
-            # Format price changes with up/down arrows
+                
+            # First update your format_price_change function to just show arrows
             def format_price_change(value):
                 if pd.isna(value):
                     return "—"
                 try:
                     value = float(value)
-                    if value < 0:
-                        return f"<span style='color:green;'>⬇️</span> {abs(value):,.0f} ₽/мес."
-                    elif value > 0:
-                        return f"<span style='color:red;'>⬆️</span> {value:,.0f} ₽/мес."
-                    else:
+                    if value == 0:
                         return "—"
+                    elif value < 0:
+                        tooltip_text = f"Уменьшилась на {abs(value):,.0f} ₽/мес."
+                        return f"<div class='price-tooltip'><span style='color:green;'>⬇️</span><span class='tooltiptext'>{tooltip_text}</span></div>"
+                    else:
+                        tooltip_text = f"Увеличилась на {value:,.0f} ₽/мес."
+                        return f"<div class='price-tooltip'><span style='color:red;'>⬆️</span><span class='tooltiptext'>{tooltip_text}</span></div>"
                 except Exception as e:
                     logger.error(f"Price format error: {e}")
                     return "—"
+                        
+
             
             df["price_change_formatted"] = df["price_change_sort"].apply(format_price_change)
         
@@ -152,7 +156,30 @@ def get_table_config(price_threshold=None, distance_threshold=None):
     # Filter available columns
     display_cols = [col for col in COLUMNS_CONFIG["display"] if col in df.columns]
     visible_cols = [col for col in COLUMNS_CONFIG["visible"] if col in df.columns]
-    hidden_cols = [col for col in display_cols if col.endswith("_sort")]
+    
+    # Make sure sort columns are included in the data but hidden in display
+    sort_cols = ["price_sort", "distance_sort", "updated_time_sort", 
+                "cian_estimation_sort", "price_difference_sort"]
+    hidden_cols = [col for col in sort_cols if col in df.columns]
+    
+    # Log for debugging
+    if not df.empty:
+        sample_row = df.iloc[0]
+        logger.info(f"Sample row - Price: {sample_row.get('price', 'N/A')}, "
+                  f"Price sort: {sample_row.get('price_sort', 'N/A')}, "
+                  f"Distance: {sample_row.get('distance', 'N/A')}, "
+                  f"Distance sort: {sample_row.get('distance_sort', 'N/A')}")
+    # Отладочная информация
+    if not df.empty:
+        logger.info(f"Columns in the dataframe: {df.columns.tolist()}")
+        logger.info(f"Sample distance_sort values: {df['distance_sort'].head(5).tolist() if 'distance_sort' in df.columns else 'Column not found!'}")
+        # Проверим, какие строки должны быть выделены
+        if 'distance_sort' in df.columns:
+            highlighted_rows = df[df['distance_sort'] < 1.5].shape[0]
+            logger.info(f"Number of rows with distance_sort < 1.5: {highlighted_rows}")
+    
+
+
     
     # Generate column definitions
     columns = []
@@ -261,11 +288,11 @@ styles = {
         "fontFamily": "Arial, sans-serif",
     },
     "table_header": {
-        "backgroundColor": "#007BFF",
+        "backgroundColor": "#4682B4",  # Steel blue - приглушенный синий
         "color": "white",
         "fontWeight": "normal",
         "textAlign": "left",
-        "padding": "2px",
+        "padding": "4px",
         "fontSize": "11px",
         "height": "18px",
         "borderBottom": "1px solid #ddd",
@@ -283,58 +310,18 @@ styles = {
     }
 }
 
-# Column-specific styling
 column_styles = [
-    # Address column
+    # Более умеренный зеленый фон для строк с расстоянием <= 1.5 км
     {
-        "if": {"column_id": "address"},
-        "minWidth": "150px",
-        "width": "200px",
-        "maxWidth": "300px",
-        "whiteSpace": "normal",
-        "textOverflow": "initial",
-        "overflow": "visible",
-        "height": "auto",
-    },
-    # Negative price differences
-    {
-        "if": {
-            "column_id": "price_difference",
-            "filter_query": "{price_difference_sort} < 0",
-        },
-        "color": "green",
-        "fontWeight": "bold",
-    },
-    # Title column
-    {"if": {"column_id": "title"}, "width": "200px", "minWidth": "150px"},
-    # Distance column
-    {"if": {"column_id": "distance"}, "maxWidth": "30px", "width": "30px"},
-    # Price column
-    {"if": {"column_id": "price"}, "fontWeight": "bold"},
-    # Price change styles
-    {
-        "if": {
-            "column_id": "price_change_formatted",
-            "filter_query": "{price_change_formatted} contains '⬇️'"
-        },
-        "color": "black",
-        "fontWeight": "normal",
-    },
-    {
-        "if": {
-            "column_id": "price_change_formatted",
-            "filter_query": "{price_change_formatted} contains '⬆️'"
-        },
-        "color": "black",
-        "fontWeight": "normal",
-    },
-    # Row striping
-    {"if": {"row_index": "odd"}, "backgroundColor": "rgb(248, 248, 248)"},
+        "if": {"filter_query": "{distance_sort} < 1.5"},
+        "backgroundColor": "#e6f5e6"  # Очень мягкий, спокойный зеленый
+    }
 ]
-
 # App layout
 app.layout = html.Div([
     # Header
+
+    
     html.H2("", style=styles["header"]),
     
     # Update time
@@ -365,7 +352,7 @@ app.layout = html.Div([
         dcc.Input(
             id='distance-threshold',
             type='number',
-            value=3.0,
+            value=3,
             step=0.5,
             style={**styles["input"], "width": "30px"}
         ),
@@ -391,7 +378,14 @@ app.layout = html.Div([
 )
 def update_table(price_threshold, distance_threshold):
     """Update the DataTable based on filters"""
-    columns, data, _, hidden_columns = get_table_config(price_threshold, distance_threshold)
+    columns, data, display_cols, hidden_columns = get_table_config(price_threshold, distance_threshold)
+    
+    # Add debug info for a few rows
+    if data:
+        logger.info(f"Table has {len(data)} rows")
+        for i in range(min(3, len(data))):
+            row = data[i]
+            logger.info(f"Row {i}: price_sort={row.get('price_sort')}, distance_sort={row.get('distance_sort')}")
     
     return dash_table.DataTable(
         id="apartment-table",
@@ -411,13 +405,12 @@ def update_table(price_threshold, distance_threshold):
         page_size=100,
         page_action="native",
         markdown_options={"html": True},
-        style_as_list_view=True,
+        style_as_list_view=False,  # Changed to false to allow cell borders to be visible
         css=[{
             "selector": ".dash-cell-value",
             "rule": "line-height: 15px; display: block; white-space: normal;"
         }],
     )
-
 @callback(
     Output("apartment-table", "data"),
     Input("apartment-table", "sort_by"),
