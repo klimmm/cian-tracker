@@ -329,9 +329,9 @@ column_styles = [
     },
     
     # Обычные стили колонок
-    {"if": {"column_id": "title"}, "width": "200px"},
+    {"if": {"column_id": "title"}, "width": "200px", "minWidth": "200px"},
     {"if": {"column_id": "updated_time"}, "width": "80px", "minWidth": "80px"},
-    {"if": {"column_id": "address"}, "width": "180px", "maxWidth": "300px"},
+    {"if": {"column_id": "address"}, "width": "180px", "minWidth": "180px"},
     {"if": {"column_id": "distance"}, "width": "60px", "minWidth": "60px"},
     {"if": {"column_id": "price"}, "fontWeight": "bold", "width": "80px", "minWidth": "80px"}
 ]
