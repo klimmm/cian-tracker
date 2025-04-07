@@ -18,7 +18,7 @@ COLUMNS_CONFIG = {
         "price_change_formatted"
     ],
     "visible": [
-       "title", "updated_time", "price_change_formatted", "price", "cian_estimation", "distance", "address", "metro_station"
+       "title", "updated_time", "price_change_formatted", "price", "distance", "cian_estimation", "address", "metro_station"
     ],
     "headers": {
         "offer_id": "ID", "distance": "расст.", "price_change_formatted": "изм. цены",

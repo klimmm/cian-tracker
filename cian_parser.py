@@ -444,9 +444,9 @@ class CianScraper:
                         apt["price_change"] = f"From {ex_price_val} to {cur_price_val} ({price_diff:+.0f} ₽)"
                         apt["price_change_value"] = price_diff
                     full_updates.append(apt)
-                    '''elif est_empty:
-                        # Missing estimation - update only estimation
-                        estimation_updates.append(apt)'''
+                elif est_empty:
+                    # Missing estimation - update only estimation
+                    estimation_updates.append(apt)
                 else:
                     # No changes needed but keep the apartment
                     keep_as_is.append(apt)
