@@ -120,8 +120,7 @@ class CianScraper:
                 for i, row in self.existing_df.iterrows():
                     offer_id = row.get("offer_id", "N/A")
                     raw_val = row.get("price_change_value", "N/A")
-                    formatted = row.get("price_change_formatted", "N/A")
-                    logger.info(f"[CSV {offer_id}] price_change_value = {raw_val} --> formatted = {formatted}")
+                    #logger.debug(f"[CSV {offer_id}] price_change_value = {raw_val} --> formatted = {formatted}")
             except Exception as e:
                 logger.error(f"Error loading data: {e}")
                 self.existing_data = {}
@@ -444,9 +443,9 @@ class CianScraper:
                         apt["price_change"] = f"From {ex_price_val} to {cur_price_val} ({price_diff:+.0f} ₽)"
                         apt["price_change_value"] = price_diff
                     full_updates.append(apt)
-                elif est_empty:
-                    # Missing estimation - update only estimation
-                    estimation_updates.append(apt)
+                    '''elif est_empty:
+                        # Missing estimation - update only estimation
+                        estimation_updates.append(apt)'''
                 else:
                     # No changes needed but keep the apartment
                     keep_as_is.append(apt)
@@ -752,25 +751,45 @@ class CianScraper:
         if "updated_time" in df.columns:
             now = datetime.now()
             df["updated_time_dt"] = pd.to_datetime(df["updated_time"], errors="coerce")
-            df["days_active"] = df["updated_time_dt"].apply(
-                lambda x: (now - x).days if pd.notna(x) else None
+            # Convert to Int64 dtype which supports both integers and NaN values
+            df["days_active"] = pd.to_numeric(
+                df["updated_time_dt"].apply(
+                    lambda x: (now - x).days if pd.notna(x) else None
+                ), 
+                downcast='integer'
             )
             df = df.drop(columns=["updated_time_dt"], errors="ignore")
+            logger.warning(f"days active unique values {df['days_active'].unique()}")
+        '''if "price_change_value" in df.columns:
+            def format_price_change(x):
+                try:
+                    # If x is exactly string "new" or a NaN that originally had formatted = "new"
+                    if x == "new":
+                        return "new"
+                    if pd.isna(x):
+                        return "new"  # <- preserve consistency with CSV interpretation
+            
+                    if isinstance(x, str):
+                        x = float(x)
+            
+                    if x >= 0:
+                        return f"{int(x):,}".replace(",", " ") + " ₽/мес."
+                    else:
+                        return f"-{int(abs(x)):,}".replace(",", " ") + " ₽/мес."
+                except Exception as e:
+                    logger.error(f"Error formatting price change '{x}': {e}")
+                    return ""
+            df["price_change_formatted"] = df["price_change_value"].apply(format_price_change)'''
         
-        df["price_change_formatted"] = df["price_change_value"].apply(format_price_change)
         
         # Log each mapping for inspection
         for i, row in df.iterrows():
             offer_id = row.get("offer_id", "N/A")
             raw_value = row.get("price_change_value", "N/A")
-            formatted = row.get("price_change_formatted", "N/A")
-            logger.info(f"[{offer_id}] price_change_value = {raw_value} --> formatted = {formatted}")
+            #logger.debug(f"[{offer_id}] price_change_value = {raw_value} --> formatted = {formatted}")
 
-
-        
         # Add flag for apartments outside distance filter
         if "outside_distance" in df.columns:
-
             non_numeric = df[~df["outside_distance"].apply(lambda x: isinstance(x, (int, float)))]
             logger.warning(f"Non-numeric 'outside_distance' entries: {non_numeric[['offer_id', 'outside_distance']].to_dict('records')}")
             outside_count = pd.to_numeric(df["outside_distance"], errors="coerce").fillna(0).astype(int).sum()
@@ -831,27 +850,6 @@ class CianScraper:
             logger.info(f"Saved to {json_filename}")
         except Exception as e:
             logger.error(f"JSON save error: {e}")
-
-def format_price_change(x):
-    try:
-        # If x is exactly string "new" or a NaN that originally had formatted = "new"
-        if x == "new":
-            return "new"
-        if pd.isna(x):
-            return "new"  # <- preserve consistency with CSV interpretation
-
-        if isinstance(x, str):
-            x = float(x)
-
-        if x >= 0:
-            return f"{int(x):,}".replace(",", " ") + " ₽/мес."
-        else:
-            return f"-{int(abs(x)):,}".replace(",", " ") + " ₽/мес."
-    except Exception as e:
-        logger.error(f"Error formatting price change '{x}': {e}")
-        return ""
-
-
 
 
 if __name__ == "__main__":

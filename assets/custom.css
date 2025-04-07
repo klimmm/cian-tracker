@@ -16,31 +16,120 @@
     max-height: '1px'
 }
 
-
-.price-tooltip {
-    position: relative;
-    display: inline-block;
+/* Make table columns auto-width */
+.dash-spreadsheet-container .dash-spreadsheet-inner table {
+    table-layout: auto !important;
+    width: 100% !important;
 }
 
-.price-tooltip .tooltiptext {
-    visibility: hidden;
-    width: auto;
-    background-color: #555;
-    color: #fff;
-    text-align: center;
-    border-radius: 4px;
-    padding: 3px 6px;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%;
-    left: 0;
-    opacity: 0;
-    transition: opacity 0.3s;
-    font-size: 10px;
-    white-space: nowrap;
+/* Default to auto width for all cells */
+.dash-spreadsheet-container .dash-spreadsheet-inner td,
+.dash-spreadsheet-container .dash-spreadsheet-inner th {
+    width: auto !important;
 }
 
-.price-tooltip:hover .tooltiptext {
-    visibility: visible;
-    opacity: 1;
+/* Ensure text doesn't wrap but shows ellipsis */
+.dash-cell-value {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+/* Completely disable all hover effects on table cells */
+.dash-cell:hover,
+.dash-cell:hover *,
+.dash-header:hover,
+.dash-header:hover * {
+    background-color: inherit !important;
+    color: inherit !important;
+    box-shadow: none !important;
+    z-index: auto !important;
+    position: static !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    transform: none !important;
+    transition: none !important;
+}
+
+/* Base styles for both inputs */
+input[type="number"]#price-threshold,
+input[type="number"]#distance-threshold {
+    padding: 2px 14px 2px 4px !important;
+    text-align: left !important;
+    height: 18px !important;
+    line-height: 18px !important;
+    font-size: 9px !important;
+    font-family: Arial, sans-serif !important;
+    border-radius: 2px !important;
+    border: 1px solid #ddd !important;
+    box-sizing: border-box !important;
+    margin-right: 5px !important;
+    margin-left: 2px !important;
+}
+
+/* Price input - wider */
+input[type="number"]#price-threshold {
+    width: 65px !important;
+}
+
+/* Distance input - narrower */
+input[type="number"]#distance-threshold {
+    width: 35px !important;
+}
+
+/* Spinner buttons */
+input[type="number"]#price-threshold::-webkit-inner-spin-button,
+input[type="number"]#distance-threshold::-webkit-inner-spin-button {
+    height: 18px !important;
+    width: 14px !important;
+    position: absolute !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    opacity: 1 !important;
+}
+
+/* Labels */
+label.dash-label {
+    font-size: 9px !important;
+    font-family: Arial, sans-serif !important;
+    font-weight: normal !important;
+    margin: 0 3px 0 0 !important;
+    padding: 0 !important;
+    color: #333 !important;
+}
+
+/* Filter container */
+#filters-container {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin: 3px 0 !important;
+    padding: 4px 5px !important;
+    border-bottom: 1px solid #ddd !important;
+    background-color: #f8f8f8 !important;
+}
+
+/* For touch devices */
+@media (pointer: coarse) {
+    input[type="number"]#price-threshold,
+    input[type="number"]#distance-threshold {
+        height: 24px !important;
+        font-size: 9px !important;
+    }
+    
+    input[type="number"]#price-threshold::-webkit-inner-spin-button,
+    input[type="number"]#distance-threshold::-webkit-inner-spin-button {
+        height: 24px !important;
+    }
+}
+
+/* Firefox support */
+@-moz-document url-prefix() {
+    input[type="number"]#price-threshold,
+    input[type="number"]#distance-threshold {
+        height: 18px !important;
+        font-size: 9px !important;
+        padding-right: 4px !important;
+    }
 }
