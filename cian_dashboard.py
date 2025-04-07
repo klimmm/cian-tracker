@@ -18,12 +18,12 @@ COLUMNS_CONFIG = {
         "price_change_formatted"
     ],
     "visible": [
-       "title", "updated_time", "price", "distance", "address", "cian_estimation", "price_change_formatted", "metro_station"
+       "title", "updated_time", "price_change_formatted", "price", "cian_estimation", "distance", "address", "metro_station"
     ],
     "headers": {
-        "offer_id": "ID", "distance": "расст.", "price_change_formatted": "изм.цены",
-        "title": "квартира", "updated_time": "обновлено", "days_active": "Days",
-        "price": "цена", "cian_estimation": "оценка ЦИАН", "price_difference": "разн.",
+        "offer_id": "ID", "distance": "расст.", "price_change_formatted": "изм. цены",
+        "title": "квартира", "updated_time": "обновл.", "days_active": "Days",
+        "price": "тек. цена", "cian_estimation": "оценка ЦИАН", "price_difference": "разн.",
         "address": "адрес", "metro_station": "метро", "offer_link": "Link"
     },
     "sort_map": {
@@ -89,23 +89,29 @@ def load_data(cache=[]):
             # First update your format_price_change function to just show arrows
             def format_price_change(value):
                 if pd.isna(value):
-                    return "—"
+                    formatted = '--'
+                    return f"<div style='text-align:center'><span style='color:black;'>{formatted}</span></div>"
                 try:
                     value = float(value)
                     if value == 0:
-                        return "—"
-                    elif value < 0:
-                        tooltip_text = f"Уменьшилась на {abs(value):,.0f} ₽/мес."
-                        return f"<div class='price-tooltip'><span style='color:green;'>⬇️</span><span class='tooltiptext'>{tooltip_text}</span></div>"
+                        return "<div style='text-align:center'>—</div>"
+                    
+                    # Format abbreviation for large numbers
+                    abs_value = abs(value)
+                    if abs_value >= 10000:
+                        formatted = f"{abs_value/1000:.0f}K"
                     else:
-                        tooltip_text = f"Увеличилась на {value:,.0f} ₽/мес."
-                        return f"<div class='price-tooltip'><span style='color:red;'>⬆️</span><span class='tooltiptext'>{tooltip_text}</span></div>"
+                        formatted = f"{abs_value:.0f}"
+                        
+                    if value < 0:
+                        return f"<div style='text-align:center'><span style='color:green;'>↓{formatted}</span></div>"
+                    else:
+                        return f"<div style='text-align:center'><span style='color:red;'>↑{formatted}</span></div>"
                 except Exception as e:
                     logger.error(f"Price format error: {e}")
-                    return "—"
-                        
-
+                    return "<div style='text-align:center'>—</div>"
             
+                        
             df["price_change_formatted"] = df["price_change_sort"].apply(format_price_change)
         
         # Process price columns
@@ -277,7 +283,7 @@ styles = {
         "overflowX": "auto"
     },
     "table_cell": {
-        "textAlign": "left",
+        "textAlign": "center",
         "padding": "3px 4px",
         "minWidth": "50px",
         "width": "auto",
@@ -315,6 +321,11 @@ column_styles = [
     {
         "if": {"filter_query": "{distance_sort} < 1.5"},
         "backgroundColor": "#e6f5e6"  # Очень мягкий, спокойный зеленый
+    },
+    # Center alignment for price_change_formatted column
+    {
+        "if": {"column_id": "price_change_formatted"},
+        "textAlign": "center"
     }
 ]
 # App layout
