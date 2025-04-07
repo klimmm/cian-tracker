@@ -33,6 +33,8 @@ visible_columns = [
     "metro_station",
     "offer_link",
 ]
+ 
+
 
 
 # Function to load data
@@ -65,8 +67,28 @@ def load_data():
             df["distance"] = df["distance_sort"].apply(
                 lambda x: f"{x:.2f} km" if pd.notnull(x) else ""
             )
-        if "price_change_formatted" in df.columns:
+        if "price_change_value" in df.columns:
             df["price_change_sort"] = pd.to_numeric(df["price_change_value"], errors="coerce")
+            
+            def format_price_change(value):
+                if pd.isna(value):
+                    return "—"
+                try:
+                    value = float(value)
+                    if value < 0:
+                        return f"↓ {abs(value):,.0f} ₽/мес."  # Unicode arrow
+                    elif value > 0:
+                        return f"↑ {value:,.0f} ₽/мес."
+                    else:
+                        return "—"
+                except Exception as e:
+                    print("Formatting error:", e)
+                    return "—"
+
+            
+            df["price_change_formatted"] = df["price_change_sort"].apply(format_price_change)
+
+        
         # Define Russian month mapping
         months = {
             1: "янв",
@@ -151,11 +173,13 @@ def get_table_config():
             columns.append({"name": "расст.", "id": "distance", "type": "numeric"})
         elif col == "price_change_formatted":
             columns.append(
-                {"name": "изм.цены", "id": "price_change_formatted", "type": "numeric"}
+                {
+                    "name": "изм.цены",
+                    "id": "price_change_formatted",
+                    "type": "text",  # ✅ Must be text to show emoji
+                }
             )
 
-
-        
         elif col == "title":
             columns.append({"name": "квартира", "id": "title", "type": "text"})
         elif col == "updated_time":
