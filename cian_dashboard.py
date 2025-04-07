@@ -326,8 +326,17 @@ column_styles = [
     {
         "if": {"column_id": "price_change_formatted"},
         "textAlign": "center"
-    }
+    },
+    
+    # Обычные стили колонок
+    {"if": {"column_id": "title"}, "width": "200px"},
+    {"if": {"column_id": "updated_time"}, "width": "80px", "minWidth": "80px"},
+    {"if": {"column_id": "address"}, "width": "180px", "maxWidth": "300px"},
+    {"if": {"column_id": "distance"}, "width": "60px", "minWidth": "60px"},
+    {"if": {"column_id": "price"}, "fontWeight": "bold", "width": "80px", "minWidth": "80px"}
 ]
+
+
 # App layout
 app.layout = html.Div([
     # Header
