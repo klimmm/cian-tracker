@@ -18,12 +18,12 @@ COLUMNS_CONFIG = {
         "price_change_formatted"
     ],
     "visible": [
-       "address", "distance", "price", "updated_time", "price_change_formatted", "title", "cian_estimation", "metro_station"
+       "address", "distance", "price", "cian_estimation", "updated_time", "price_change_formatted", "title",  "metro_station"
     ],
     "headers": {
         "offer_id": "ID", "distance": "расст.", "price_change_formatted": "изм. цены",
-        "title": "квартира", "updated_time": "обновл.", "days_active": "Days",
-        "price": "тек. цена", "cian_estimation": "оценка ЦИАН", "price_difference": "разн.",
+        "title": "описание", "updated_time": "обновл.", "days_active": "Days",
+        "price": "тек. цена", "cian_estimation": "ЦИАН", "price_difference": "разн.",
         "address": "адрес", "metro_station": "метро", "offer_link": "Link"
     },
     "sort_map": {
@@ -290,7 +290,7 @@ styles = {
         "maxWidth": "200px",
         "overflow": "hidden",
         "textOverflow": "ellipsis",
-        "fontSize": "10px",
+        "fontSize": "9px",
         "fontFamily": "Arial, sans-serif",
     },
     "table_header": {
@@ -329,11 +329,14 @@ column_styles = [
     },
     
     # Обычные стили колонок
-    {"if": {"column_id": "title"}, "width": "200px", "minWidth": "200px"},
-    {"if": {"column_id": "updated_time"}, "width": "80px", "minWidth": "80px"},
-    {"if": {"column_id": "address"}, "width": "180px", "minWidth": "180px"},
-    {"if": {"column_id": "distance"}, "width": "60px", "minWidth": "60px"},
-    {"if": {"column_id": "price"}, "fontWeight": "bold", "width": "80px", "minWidth": "80px"}
+    {"if": {"column_id": "title"}, "width": "170px", "minWidth": "170px"},
+    {"if": {"column_id": "updated_time"}, "width": "60px", "minWidth": "60px"},
+    {"if": {"column_id": "address"}, "width": "150px", "minWidth": "150px"},
+    {"if": {"column_id": "distance"}, "width": "50px", "minWidth": "50px"},
+    {"if": {"column_id": "price"}, "fontWeight": "bold", "width": "70px", "minWidth": "70px"},
+    {"if": {"column_id": "cian_estimation"}, "width": "65px", "minWidth": "65px"},
+    {"if": {"column_id": "price_change_formatted"}, "width": "70px", "minWidth": "70px"},
+    {"if": {"column_id": "metro_station"}, "width": "70px", "minWidth": "70px"},
 ]
 
 
