@@ -55,8 +55,8 @@ input[type="number"]#price-threshold,
 input[type="number"]#distance-threshold {
     padding: 2px 14px 2px 4px !important;
     text-align: left !important;
-    height: 18px !important;
-    line-height: 18px !important;
+    height: 15px !important;
+    line-height: 15px !important;
     font-size: 9px !important;
     font-family: Arial, sans-serif !important;
     border-radius: 2px !important;
@@ -79,7 +79,7 @@ input[type="number"]#distance-threshold {
 /* Spinner buttons */
 input[type="number"]#price-threshold::-webkit-inner-spin-button,
 input[type="number"]#distance-threshold::-webkit-inner-spin-button {
-    height: 18px !important;
+    height: 15px !important;
     width: 14px !important;
     position: absolute !important;
     right: 0 !important;
@@ -114,13 +114,13 @@ label.dash-label {
 @media (pointer: coarse) {
     input[type="number"]#price-threshold,
     input[type="number"]#distance-threshold {
-        height: 24px !important;
+        height: 22px !important;
         font-size: 9px !important;
     }
     
     input[type="number"]#price-threshold::-webkit-inner-spin-button,
     input[type="number"]#distance-threshold::-webkit-inner-spin-button {
-        height: 24px !important;
+        height: 22px !important;
     }
 }
 
@@ -128,7 +128,7 @@ label.dash-label {
 @-moz-document url-prefix() {
     input[type="number"]#price-threshold,
     input[type="number"]#distance-threshold {
-        height: 18px !important;
+        height: 15px !important;
         font-size: 9px !important;
         padding-right: 4px !important;
     }

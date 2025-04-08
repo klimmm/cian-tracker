@@ -50,10 +50,10 @@ STYLE = {
     "header_cell": {"fontFamily": FONT, "backgroundColor": "#4682B4", "color": "white", "fontSize": "9px"},
     "filter": {"display": "none"},
     "data": {"lineHeight": "14px"},
-    "input": {"marginRight": "5px", "width": "110px"},
-    "input_number": {"width": "110px"},
+    "input": {"marginRight": "5px", "width": "110px", "height": "15px"},
+    "input_number": {"width": "110px", "height": "15px"},
     "label": {"fontSize": "11px", "marginRight": "3px", "display": "block"},
-    "button_base": {"display": "inline-block", "padding": "3px 8px", "fontSize": "10px", 
+    "button_base": {"display": "inline-block", "padding": "3px 8px", "fontSize": "9px", 
                   "border": "1px solid #ccc", "margin": "0 5px", "cursor": "pointer"},
 }
 
@@ -78,7 +78,7 @@ COLUMN_STYLES = [
     {"if": {"filter_query": '{distance_sort} < 1.5 && {status} ne "non active"'}, "backgroundColor": "#d9edf7"},
     {"if": {"filter_query": '{calculated_price_diff} < -5000 && {status} ne "non active"'}, "backgroundColor": "#fef3d5"},
     {"if": {"filter_query": '{updated_time_sort} > "' + (pd.Timestamp.now() - pd.Timedelta(hours=24)).isoformat() + '"'}, 
-     "backgroundColor": "#dff0d8", "fontWeight": "bold"},  # Clear green background for today's updates
+     "backgroundColor": "#e6f3e0", "fontWeight": "normal"},  # Clear green background for today's updates
     {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
     {"if": {"column_id": "price"}, "fontWeight": "bold", "textAlign": "center"},
     {"if": {"column_id": "address"}, "textAlign": "left"},
@@ -217,12 +217,12 @@ def filter_and_sort_data(df, price_thresh=None, dist_thresh=None, filters=None, 
     return df
 
 # Initialize the app
-app = dash.Dash(__name__, title="Cian Listings", meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}], suppress_callback_exceptions=True)
+app = dash.Dash(__name__, title="", meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}], suppress_callback_exceptions=True)
 server = app.server
 
 # App layout
 app.layout = html.Div([
-    html.H2("Cian Listings", style=STYLE["header"]),
+    html.H2("", style=STYLE["header"]),
     html.Div(html.Span(id="last-update-time", style=STYLE["update_time"])),
     dcc.Interval(id="interval-component", interval=2 * 60 * 1000, n_intervals=0),
     
@@ -245,8 +245,9 @@ app.layout = html.Div([
         html.Div([
             html.Button("Ближайшие", id="btn-nearest", style={**BUTTON_STYLES['nearest'], "opacity": "0.6"}),
             html.Button("Цена ниже оценки", id="btn-below-estimate", style={**BUTTON_STYLES['below_estimate'], "opacity": "0.6"}),
+
+            html.Button("Сегодня", id="btn-updated-today", style={**BUTTON_STYLES['updated_today'], "opacity": "0.6"}),
             html.Button("Неактивные", id="btn-inactive", style={**BUTTON_STYLES['inactive'], "opacity": "0.6"}),
-            html.Button("За сутки", id="btn-updated-today", style={**BUTTON_STYLES['updated_today'], "opacity": "0.6"})
         ], style={"margin": "5px", "marginTop": "8px", "textAlign": "left", "width": "100%", "maxWidth": "600px"}),
     ], style={"margin": "5px", "textAlign": "left", "width": "100%"}),
     
