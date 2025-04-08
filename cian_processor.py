@@ -12,14 +12,19 @@ logger = logging.getLogger("CianProcessor")
 
 def extract_price_value(price_str):
     """Extract numeric value from price string"""
-    if not price_str:
+    if price_str is None:
         return None
-    if isinstance(price_str, (int, float)):
+        
+    # If already numeric, just return it
+    if isinstance(price_str, (int, float)) and not np.isnan(price_str):
         return float(price_str)
-    digits = re.sub(r"[^\d]", "", str(price_str))
+        
+    # Handle string values
     try:
+        # Remove all non-digit characters
+        digits = re.sub(r"[^\d]", "", str(price_str))
         return float(digits) if digits else None
-    except ValueError:
+    except (ValueError, TypeError):
         return None
 
 
@@ -32,16 +37,13 @@ class CianDataProcessor:
         
         # ALWAYS load existing data, regardless of whether apartments are passed
         self.load_existing_data(csv_filename)
+        
     def process_and_save_data(self, skip_distance_calculation=False):
         """Main method to process all data and save results"""
         logger.info("Starting data processing...")
         self.add_price_difference()
         self.add_days_from_last_update()
-        self.merge_with_existing_data()
         
-        if not skip_distance_calculation:
-            self.add_distances()
-            
         self.sort_by_updated_time(descending=True)
         self.save_to_csv(self.csv_filename)
         self.save_to_json("cian_apartments.json")
@@ -55,42 +57,102 @@ class CianDataProcessor:
         if os.path.exists(csv_filename):
             try:
                 self.existing_df = pd.read_csv(csv_filename, encoding="utf-8", comment="#")
+                logger.info(f"Loaded CSV with columns: {self.existing_df.columns.tolist()}")
+                
                 for _, row in self.existing_df.iterrows():
                     id = str(row.get("offer_id", ""))
                     if id:
                         self.existing_data[id] = row.to_dict()
-                logger.info(f" data processor - Loaded {len(self.existing_data)} existing entries")
+                logger.info(f"Data processor - Loaded {len(self.existing_data)} existing entries")
             except Exception as e:
                 logger.error(f"Error loading data: {e}")
+                logger.error(traceback.format_exc())
                 self.existing_data = {}
                 self.existing_df = pd.DataFrame()
         else:
+            logger.warning(f"CSV file {csv_filename} does not exist")
             self.existing_data = {}
             self.existing_df = pd.DataFrame()
         return self.existing_data
+        
     def add_price_difference(self):
         """Calculate price difference between listing price and Cian's estimation"""
         logger.info("Adding price difference calculations...")
+        
+        # Count for logging
+        processed_count = 0
+        created_count = 0
+        error_count = 0
+        
+        # Log column existence before processing
+        if self.apartments:
+            columns_before = list(self.apartments[0].keys()) if self.apartments else []
+            logger.info(f"Columns before processing: {columns_before}")
+        
         for apt in self.apartments:
             try:
+                # Extract price value
                 pv = extract_price_value(apt.get("price", ""))
-                # Create cian_estimation_value from cian_estimation
-                ev = extract_price_value(apt.get("cian_estimation", ""))
-                if ev is not None:
+                
+                # Create cian_estimation_value from cian_estimation if needed
+                ev = None
+                
+                # Check if we already have cian_estimation_value (from previous processing)
+                if "cian_estimation_value" in apt and apt["cian_estimation_value"] is not None:
+                    # Use existing value but ensure it's numeric
+                    try:
+                        ev = float(apt["cian_estimation_value"])
+                        processed_count += 1
+                    except (ValueError, TypeError):
+                        # If it's not convertible to float, extract it again
+                        original_value = apt["cian_estimation_value"]
+                        ev = extract_price_value(original_value)
+                        apt["cian_estimation_value"] = ev
+                        logger.warning(f"Fixed non-numeric cian_estimation_value: '{original_value}' -> {ev}")
+                        created_count += 1
+                
+                # If we don't have cian_estimation_value, extract it from cian_estimation
+                elif "cian_estimation" in apt:
+                    cian_est = apt.get("cian_estimation", "")
+                    ev = extract_price_value(cian_est)
                     apt["cian_estimation_value"] = ev
-                    # Remove the formatted cian_estimation field
-                    if "cian_estimation" in apt:
-                        del apt["cian_estimation"]
                     
+                    # Log what we're doing for infoging
+                    logger.info(f"Created cian_estimation_value={ev} from cian_estimation='{cian_est}'")
+                    created_count += 1
+                
+                # Always ensure cian_estimation_value exists (even if null)
+                if "cian_estimation_value" not in apt:
+                    apt["cian_estimation_value"] = None
+                
+                # Calculate price difference if possible
                 if pv is not None and ev is not None:
                     diff = ev - pv
                     apt["price_difference_value"] = diff
-                    # No longer create price_difference (formatted version)
+                    logger.info(f"Calculated price_difference_value={diff} from price={pv} and cian_estimation_value={ev}")
                 else:
                     apt["price_difference_value"] = None
+                    
             except Exception as e:
                 logger.error(f"Error calculating price diff: {e}")
+                logger.error(traceback.format_exc())
+                # Ensure these fields exist even in case of error
+                apt["cian_estimation_value"] = None
                 apt["price_difference_value"] = None
+                error_count += 1
+        
+        # Log stats and check the results
+        logger.info(f"Price difference calculation complete: {processed_count} processed, "
+                    f"{created_count} created, {error_count} errors")
+        
+        # Verify columns after processing
+        if self.apartments:
+            sample_apt = self.apartments[0]
+            columns_after = list(sample_apt.keys())
+            logger.info(f"Columns after processing: {columns_after}")
+            logger.info(f"cian_estimation_value exists in first apartment: {'cian_estimation_value' in sample_apt}")
+            logger.info(f"Sample cian_estimation_value: {sample_apt.get('cian_estimation_value')}")
+        
         return self.apartments
 
     def add_days_from_last_update(self):
@@ -125,65 +187,6 @@ class CianDataProcessor:
         )
         return self.apartments
 
-    def merge_with_existing_data(self):
-        """
-        Merge newly scraped data with existing data to ensure no apartments are lost
-        """
-        logger.info("Merging with existing data...")
-        
-        # If no existing data, nothing to merge
-        if not hasattr(self, "existing_df") or self.existing_df is None or self.existing_df.empty:
-            logger.info("No existing data to merge")
-            return self.apartments
-            
-        # If no new data but we have existing data, use existing data
-        if not self.apartments:
-            logger.info("No new apartments, using existing data")
-            self.apartments = self.existing_df.to_dict("records")
-            return self.apartments
-        
-        # Convert new data to DataFrame for easier merging
-        current_df = pd.DataFrame(self.apartments)
-        
-        # Create merged DataFrame starting with existing data
-        merged_df = self.existing_df.copy()
-        
-        # Ensure offer_id is string type for consistent comparison
-        for df in [current_df, merged_df]:
-            if "offer_id" in df.columns:
-                df["offer_id"] = df["offer_id"].astype(str)
-
-        for _, row in current_df.iterrows():
-            id = row.get("offer_id", "")
-            if not id:
-                continue
-                
-            idx = merged_df[merged_df["offer_id"] == id].index
-            if len(idx) > 0:
-                # Check if this is a full update or partial update
-                cols_with_data = [col for col in row.index if pd.notna(row[col]) and row[col] != ""]
-                
-                # If it's a partial update (like just cian_estimation), only update those fields
-                for col in cols_with_data:
-                    if col in merged_df.columns:
-                        merged_df.loc[idx[0], col] = row[col]
-            else:
-                # New apartment
-                merged_df = pd.concat([merged_df, pd.DataFrame([row])], ignore_index=True)
-
-        # Cleanup and sort the data
-        merged_df = merged_df.drop_duplicates(subset=["offer_id"], keep="first")
-        if "updated_time" in merged_df.columns:
-            merged_df["updated_time"] = pd.to_datetime(
-                merged_df["updated_time"],
-                format="%Y-%m-%d %H:%M:%S",
-                errors="coerce"
-            )
-            merged_df = merged_df.sort_values("updated_time", ascending=False)
-        
-        self.apartments = merged_df.to_dict("records")
-        logger.info(f"Merged data contains {len(self.apartments)} apartments")
-        return self.apartments
 
     def add_distances(self, reference_address="Москва, переулок Большой Саввинский, 3"):
         """
@@ -202,13 +205,14 @@ class CianDataProcessor:
         try:
             # Get reference coordinates once (outside the loop)
             reference_coords = get_coordinates(reference_address)
-            logger.debug(f"Reference coordinates for distance calculation: {reference_coords}")
+            logger.info(f"Reference coordinates for distance calculation: {reference_coords}")
             
             # Process each apartment
             for apt in self.apartments:
                 # Check existing distance value
                 distance = apt.get("distance")
-                logger.warning(f" distance {distance}")
+                logger.info(f"Processing apartment with distance {distance}")
+                
                 # Case 1: Distance exists and might be valid
                 if distance is not None and distance != "":
                     try:
@@ -217,12 +221,10 @@ class CianDataProcessor:
                             distance_val = float(distance)
                         else:
                             distance_val = distance
-                        logger.debug(f" distance_val {distance_val}")
+                        
                         # Check if the value is valid (not NaN or infinite)
                         if not np.isnan(distance_val) and not np.isinf(distance_val):
                             # Valid distance - preserve it
-                            logger.debug(f"preserved distance_val {distance_val}")
-                                
                             apt["distance"] = distance_val  # Store as float
                             preserved_count += 1
                             continue
@@ -238,7 +240,7 @@ class CianDataProcessor:
                     # Get the address
                     address = apt.get("address", "")
                     if not address:
-                        logger.debug(f"Missing address for apartment {apt.get('offer_id', 'unknown')}")
+                        logger.info(f"Missing address for apartment {apt.get('offer_id', 'unknown')}")
                         error_count += 1
                         continue
     
@@ -288,7 +290,8 @@ class CianDataProcessor:
             if not self.apartments:
                 logger.warning("No data to save")
                 return
-            # Define columns to save
+                
+            # Define columns to save - explicitly include cian_estimation_value
             cols = [
                 "offer_id",
                 "offer_url",
@@ -296,8 +299,8 @@ class CianDataProcessor:
                 "updated_time",
                 "days_active",
                 "price",
-                "price_difference",
-                "price_difference_value",
+                "cian_estimation_value",  # Explicitly include this
+                "price_difference_value", # Explicitly include this
                 "price_info",
                 "address",
                 "metro_station",
@@ -305,15 +308,34 @@ class CianDataProcessor:
                 "district",
                 "description",
             ]
+            
             df = pd.DataFrame(self.apartments)
-    
+            
+            # Log columns in the DataFrame before saving
+            logger.info(f"Columns in DataFrame before saving: {df.columns.tolist()}")
+            logger.info(f"cian_estimation_value in DataFrame: {'cian_estimation_value' in df.columns}")
+            
+            # If cian_estimation_value doesn't exist, create it with None values
+            if 'cian_estimation_value' not in df.columns:
+                logger.warning("cian_estimation_value missing in DataFrame, creating it with NaN values")
+                df['cian_estimation_value'] = np.nan
+            
+            # Count non-null values
+            if 'cian_estimation_value' in df.columns:
+                non_null = df['cian_estimation_value'].notna().sum()
+                logger.info(f"cian_estimation_value: {non_null}/{len(df)} non-null values")
+                # Log some sample values
+                sample_values = df['cian_estimation_value'].head(5).tolist()
+                logger.info(f"Sample cian_estimation_value: {sample_values}")
+
+            # Add any columns in df that aren't in cols list
             cols = [c for c in cols if c in df.columns]
             for c in df.columns:
                 if c not in cols and c != "image_urls":
                     cols.append(c)
-    
+
             df_save = df[cols].copy()
-    
+
             # Modified serialization function to handle arrays properly
             for c in df_save.columns:
                 def serialize(x):
@@ -330,9 +352,9 @@ class CianDataProcessor:
                             return str(x)
                     except Exception as e:
                         return str(x)
-    
+
                 df_save[c] = df_save[c].apply(serialize)
-    
+
             # Create a temporary file with metadata
             with open(filename + ".tmp", "w", encoding="utf-8") as f:
                 # Write metadata as a comment line
@@ -343,28 +365,44 @@ class CianDataProcessor:
                 # Write the actual data without index
                 df_save.to_csv(f, index=False, encoding="utf-8")
                 
+            # Check the temp file to ensure cian_estimation_value was written
+            try:
+                df_check = pd.read_csv(filename + ".tmp", comment="#", encoding="utf-8")
+                logger.info(f"Columns in temp CSV: {df_check.columns.tolist()}")
+                logger.info(f"cian_estimation_value in temp CSV: {'cian_estimation_value' in df_check.columns}")
+            except Exception as e:
+                logger.error(f"Error checking temp CSV: {e}")
+                
             # Replace the original file with the temp file
             os.replace(filename + ".tmp", filename)
             logger.info(f"Saved to {filename}: {len(df)} entries with metadata")
         except Exception as e:
             logger.error(f"CSV save error: {e}")
-            logger.warning(traceback.format_exc()) 
+            logger.error(traceback.format_exc())
 
     def save_to_json(self, filename="cian_apartments.json"):
         """Save processed data to JSON file"""
         if not self.apartments:
             logger.warning("No data to save")
             return
+        
+        # Ensure all apartments have cian_estimation_value
         for apt in self.apartments:
+            if "cian_estimation_value" not in apt:
+                apt["cian_estimation_value"] = None
+                
+            # Convert timestamps
             for k, v in apt.items():
                 if isinstance(v, pd.Timestamp):
                     apt[k] = v.strftime("%Y-%m-%d %H:%M:%S")
+                    
         try:
             with open(filename, "w", encoding="utf-8") as f:
                 json.dump(self.apartments, f, ensure_ascii=False, indent=4)
             logger.info(f"Saved to {filename}")
         except Exception as e:
             logger.error(f"JSON save error: {e}")
+            logger.error(traceback.format_exc())
 
 
 if __name__ == "__main__":
@@ -375,7 +413,7 @@ if __name__ == "__main__":
     processor.load_existing_data()
     
     # Add or update specific calculations
-    processor.add_distances()  
+    processor.add_price_difference()  # Make sure this runs first
     processor.add_days_from_last_update()
     
     # Save the reprocessed data

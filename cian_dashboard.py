@@ -2,7 +2,8 @@ import os, logging, numpy as np, pandas as pd
 import dash
 from dash import dcc, html, dash_table, callback
 from dash.dependencies import Input, Output, State
-
+import traceback
+import re
 # Logging setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ COLUMN_STYLES = [
     {"if": {"filter_query": '{status} contains "non active"'}, "backgroundColor": "#f4f4f4", "color": "#888"},
     {"if": {"filter_query": '{distance_sort} < 1.5 && {status} ne "non active"'}, "backgroundColor": "#d9edf7"},
     {"if": {"filter_query": '{calculated_price_diff} < -5000 && {status} ne "non active"'}, "backgroundColor": "#fef3d5"},
-    {"if": {"filter_query": '{price_difference_sort} < -1000 && {status} ne "non active"'}, "backgroundColor": "#fdf0cc"},
+    #{"if": {"filter_query": '{price_difference_sort} < -1000 && {status} ne "non active"'}, "backgroundColor": "#fdf0cc"},
     {"if": {"filter_query": '{updated_time_sort} > "' + (pd.Timestamp.now() - pd.Timedelta(hours=24)).isoformat() + '"'}, "fontWeight": "bold"},
     {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
     {"if": {"column_id": "price"}, "fontWeight": "bold"},
@@ -82,7 +83,6 @@ HEADER_STYLES = [
     {"if": {"column_id": "title"}, "textAlign": "left"},
 ]
 
-
 def load_data():
     try:
         path = "cian_apartments.csv"
@@ -90,43 +90,60 @@ def load_data():
         with open(path, encoding="utf-8") as f:
             first_line = f.readline()
             update_time = first_line.split("last_updated=")[1].split(",")[0].strip() if "last_updated=" in first_line else "Unknown"
-
         df["offer_id"] = df.get("offer_id", "").astype(str)
         df["address"] = df.apply(lambda r: f"[{r['address']}]({CONFIG['base_url']}{r['offer_id']}/)" if "address" in r else "", axis=1)
         df["offer_link"] = df["offer_id"].apply(lambda x: f"[View]({CONFIG['base_url']}{x}/)")
         df["distance_sort"] = pd.to_numeric(df.get("distance"), errors="coerce")
         df["distance"] = df["distance_sort"].apply(lambda x: f"{x:.2f} km" if pd.notnull(x) else "")
-
+        # Format price change
         df["price_change_sort"] = pd.to_numeric(df.get("price_change_value", 0), errors="coerce").fillna(0).astype(int)
         df["price_change_formatted"] = df.get("price_change_value", 0).apply(format_price_changes)
-
-        # Process price column - it's still a formatted string in input data
+        # Process price column (still formatted in input)
         df["price_sort"] = pd.to_numeric(df["price"].astype(str).str.extract(r"(\d+[\s\d]*)")[0].str.replace(" ", ""), errors="coerce")
         
-        # Process cian_estimation from cian_estimation_value
+        # Format cian_estimation from cian_estimation_value
         df["cian_estimation_sort"] = pd.to_numeric(df.get("cian_estimation_value"), errors="coerce")
-        df["cian_estimation"] = df["cian_estimation_sort"].apply(lambda x: format_price(x) if pd.notnull(x) else "--")
-        
-        # Process price_difference from price_difference_value
+        df["cian_estimation"] = df["cian_estimation_sort"].apply(lambda x: "--" if pd.isnull(x) or x == 0 else format_price(x))        
+        # Format price_difference from price_difference_value
         df["price_difference_sort"] = pd.to_numeric(df.get("price_difference_value"), errors="coerce")
         df["price_difference"] = df["price_difference_sort"].apply(lambda x: format_price(x) if pd.notnull(x) else "")
-
+        
+        # Log information before calculating price_diff
+        logger.debug("Checking price_sort and cian_estimation_sort before calculation")
+        logger.debug(f"price_sort column info: {df['price_sort'].describe()}")
+        logger.debug(f"cian_estimation_sort column info: {df['cian_estimation_sort'].describe()}")
+        
+        # Log some sample rows to check data
+        sample_rows = df.sample(min(5, len(df)))
+        for idx, row in sample_rows.iterrows():
+            logger.debug(f"Sample row {idx}: price_sort={row.get('price_sort')}, cian_estimation_sort={row.get('cian_estimation_sort')}")
+        
+        # Check for NaN values
+        logger.debug(f"NaN values in price_sort: {df['price_sort'].isna().sum()}")
+        logger.debug(f"NaN values in cian_estimation_sort: {df['cian_estimation_sort'].isna().sum()}")
+        
         # Calculate price difference for color highlighting
         df["calculated_price_diff"] = df["price_sort"] - df["cian_estimation_sort"]
+        
+        # Log results after calculation
+        logger.debug(f"calculated_price_diff column info: {df['calculated_price_diff'].describe()}")
+        logger.debug(f"NaN values in calculated_price_diff: {df['calculated_price_diff'].isna().sum()}")
         
         # Process timestamps
         df["updated_time_sort"] = pd.to_datetime(df["updated_time"], errors="coerce")
         df["updated_time"] = df["updated_time_sort"].apply(lambda x: f"{x.day} {CONFIG['months'][x.month]}, {x.hour:02}:{x.minute:02}" if pd.notnull(x) else "")
+        # Handle sorting
+        df['sort_key'] = df['status'].apply(lambda x: 1 if x == 'active' else 2)
+        df = df.sort_values(['sort_key', 'updated_time_sort'], ascending=[True, False]).drop(columns='sort_key')
+        
         df["unpublished_date_sort"] = pd.to_datetime(df.get("unpublished_date"), errors="coerce")
+        
         df["unpublished_date"] = df["unpublished_date_sort"].apply(lambda x: f"{x.day} {CONFIG['months'][x.month]}, {x.hour:02}:{x.minute:02}" if pd.notnull(x) else "--")
-
         df["days_active"] = pd.to_numeric(df.get("days_active"), errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0).astype(int)
-
         return df.sort_values("updated_time_sort", ascending=False), update_time
     except Exception as e:
         logger.error(f"Error loading data: {e}")
         return pd.DataFrame(), f"Error: {e}"
-
 def format_price_changes(price_change_value):
     """Format price changes in a human-readable format with HTML styling"""
     # Handle "new" special case

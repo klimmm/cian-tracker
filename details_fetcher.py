@@ -70,13 +70,18 @@ class CianDetailFetcher:
                     query_selector = "[data-testid='valuation_estimationPrice'] .a10a3f92e9--price--w7ha0 span"
                     page_elements = driver.find_elements(By.CSS_SELECTOR, query_selector)
                     
+                    estimation_found = False
                     for page_element in page_elements:
                         element_text = page_element.text.strip()
                         if element_text:
                             result['cian_estimation'] = element_text
+                            estimation_found = True
                             return result
                     
-                    # No estimation found but page loaded successfully
+                    # No estimation found but page loaded successfully - ADD THIS LINE:
+                    if not estimation_found:
+                        result['cian_estimation'] = 'N/A'  # or None, or '' - whatever makes sense for your app
+                    
                     return result
                 
                 elif update_type == 'unpublished':
