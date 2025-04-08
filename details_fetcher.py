@@ -14,115 +14,130 @@ from utils import parse_updated_time
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('CianScraper')
 
-
 class CianDetailFetcher:
     """Responsible for fetching detailed information about apartment listings"""
     
     def __init__(self, chrome_options):
         self.chrome_options = chrome_options
     
-    def fetch_details(self, apt):
-        """Fetch additional details for an apartment"""
-        if 'offer_url' not in apt:
-            return apt
-                
-        url = apt['offer_url']
-        logger.info(f'Getting details: {url}')
-            
-        # Try to get estimation price with retries
-        for attempt in range(1, 4):
+    def fetch_page_data(self, update_item):
+        """
+        Unified method to fetch data from a Cian listing page
+        
+        Args:
+            update_item (dict): Contains all information needed for the update:
+                - url (str): The page URL
+                - update_type (str): 'estimation' or 'unpublished'
+                - item_id (str): Identifier for the listing
+        
+        Returns:
+            dict: Update data containing the requested information
+        """
+        url = update_item.get('url')
+        update_type = update_item.get('update_type')
+        item_id = update_item.get('item_id')
+        
+        if not url or not update_type or not item_id:
+            return {'item_id': item_id, 'success': False, 'error': 'Invalid update item'}
+        
+        logger.info(f'Fetching {update_type} data for ID {item_id}: {url}')
+        
+        max_retries = 3
+        base_delay = 2
+        
+        for attempt in range(1, max_retries + 1):
             driver = None
             try:
+                # Setup and navigate
                 driver = webdriver.Chrome(options=self.chrome_options)
                 driver.get(url)
                 time.sleep(1)
-                    
+                
                 # Scroll to load lazy content
                 positions = [0.5] if attempt == 1 else [0.2, 0.5, 0.8]
                 for pos in positions:
                     driver.execute_script(f'window.scrollTo(0, document.body.scrollHeight*{pos});')
                     time.sleep(1)
-                        
-                # Find price estimation element
-                selector = "[data-testid='valuation_estimationPrice'] .a10a3f92e9--price--w7ha0 span"
-                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                
+                result = {
+                    'item_id': item_id,
+                    'update_type': update_type,
+                    'success': True
+                }
+                
+                # Extract information based on update_type
+                if update_type == 'estimation':
+                    query_selector = "[data-testid='valuation_estimationPrice'] .a10a3f92e9--price--w7ha0 span"
+                    page_elements = driver.find_elements(By.CSS_SELECTOR, query_selector)
                     
-                for el in elements:
-                    text = el.text.strip()
-                    if text:
-                        apt['cian_estimation'] = text
-                        return apt
-                        
-            except Exception as e:
-                logger.error(f'Error on attempt {attempt}: {e}')
-            finally:
-                if driver:
-                    try:
-                        driver.quit()
-                    except Exception:
-                        pass
-            
-        return apt
-    
-    def check_single_unpublished(self, id, url, existing_data):
-        """Check if a listing has been unpublished"""
-        logger.info(f'Checking unpublished status for ID {id}')
-            
-        max_retries = 3
-        base_delay = 2
-            
-        for attempt in range(1, max_retries + 1):
-            driver = None
-            try:
-                driver = webdriver.Chrome(options=self.chrome_options)
-                driver.get(url)
-                time.sleep(1)
+                    for page_element in page_elements:
+                        element_text = page_element.text.strip()
+                        if element_text:
+                            result['cian_estimation'] = element_text
+                            return result
                     
-                # Check for unpublished indication
-                unpublished_divs = driver.find_elements(By.XPATH, 
-                    "//div[@data-name='OfferUnpublished' and contains(text(), 'Объявление снято с публикации')]")
+                    # No estimation found but page loaded successfully
+                    return result
+                
+                elif update_type == 'unpublished':
+                    query_selector = "//div[@data-name='OfferUnpublished' and contains(text(), 'Объявление снято с публикации')]"
+                    page_elements = driver.find_elements(By.XPATH, query_selector)
                     
-                if unpublished_divs:
-                    # Get the update date
-                    date_spans = driver.find_elements(By.XPATH, "//span[contains(text(), 'Обновлено:')]")
+                    if page_elements:
+                        # Get the update date
+                        date_query_selector = "//span[contains(text(), 'Обновлено:')]"
+                        date_elements = driver.find_elements(By.XPATH, date_query_selector)
                         
-                    unpublished_date = '--'
-                    if date_spans:
-                        date_text = date_spans[0].text
-                        if 'Обновлено:' in date_text:
-                            unpublished_date = parse_updated_time(
-                                date_text.replace('Обновлено:', '').strip()
-                            )
+                        status_date = '--'
+                        if date_elements:
+                            element_text = date_elements[0].text
+                            if 'Обновлено:' in element_text:
+                                status_date = parse_updated_time(
+                                    element_text.replace('Обновлено:', '').strip()
+                                )
                         
-                    # Create data with unpublished status
-                    data = existing_data[id].copy()
-                    data['status'] = 'non active'
-                    data['unpublished_date'] = unpublished_date
-                        
-                    logger.info(f'Listing {id} is unpublished, date: {unpublished_date}')
-                    return data
-                        
-                return None
-                        
+                        result['is_unpublished'] = True
+                        result['unpublished_date'] = status_date
+                        return result
+                    else:
+                        # Not unpublished
+                        result['is_unpublished'] = False
+                        return result
+                
             except Exception as e:
                 if attempt < max_retries:
                     # Exponential backoff
                     delay = base_delay * (2 ** (attempt - 1))
-                    logger.warning(f'Attempt {attempt}/{max_retries} failed for ID {id}: {e}')
+                    logger.warning(f'Attempt {attempt}/{max_retries} failed for URL {url}: {e}')
                     time.sleep(delay)
                 else:
-                    # On final failure, mark as non-active
-                    if id in existing_data:
-                        data = existing_data[id].copy()
-                        data['status'] = 'non active'
-                        data['unpublished_date'] = f"-- (connection error on {datetime.now().strftime('%Y-%m-%d')})"
-                        return data
+                    logger.error(f'All attempts failed for URL {url}: {e}')
+                    
+                    # Handle final failure with consistent format
+                    result = {
+                        'item_id': item_id,
+                        'update_type': update_type,
+                        'success': False,
+                        'error': str(e)
+                    }
+                    
+                    # Add specific data for unpublished type
+                    if update_type == 'unpublished':
+                        result['is_unpublished'] = True 
+                        result['unpublished_date'] = f"-- (connection error on {datetime.now().strftime('%Y-%m-%d')})"
+                    
+                    return result
             finally:
                 if driver:
                     try:
                         driver.quit()
                     except Exception:
                         pass
-            
-        return None
-
+    
+        # All attempts failed without explicit exception handling
+        return {
+            'item_id': item_id,
+            'update_type': update_type,
+            'success': False,
+            'error': 'Maximum retry attempts reached'
+        }

@@ -42,7 +42,6 @@ class CianDataProcessor:
         if not skip_distance_calculation:
             self.add_distances()
             
-        self.format_price_changes()
         self.sort_by_updated_time(descending=True)
         self.save_to_csv(self.csv_filename)
         self.save_to_json("cian_apartments.json")
@@ -69,25 +68,29 @@ class CianDataProcessor:
             self.existing_data = {}
             self.existing_df = pd.DataFrame()
         return self.existing_data
-
     def add_price_difference(self):
         """Calculate price difference between listing price and Cian's estimation"""
         logger.info("Adding price difference calculations...")
         for apt in self.apartments:
             try:
                 pv = extract_price_value(apt.get("price", ""))
+                # Create cian_estimation_value from cian_estimation
                 ev = extract_price_value(apt.get("cian_estimation", ""))
+                if ev is not None:
+                    apt["cian_estimation_value"] = ev
+                    # Remove the formatted cian_estimation field
+                    if "cian_estimation" in apt:
+                        del apt["cian_estimation"]
+                    
                 if pv is not None and ev is not None:
                     diff = ev - pv
                     apt["price_difference_value"] = diff
-                    apt["price_difference"] = self.format_price(diff)
+                    # No longer create price_difference (formatted version)
                 else:
                     apt["price_difference_value"] = None
-                    apt["price_difference"] = ""
             except Exception as e:
                 logger.error(f"Error calculating price diff: {e}")
                 apt["price_difference_value"] = None
-                apt["price_difference"] = ""
         return self.apartments
 
     def add_days_from_last_update(self):
@@ -272,65 +275,6 @@ class CianDataProcessor:
             logger.error(traceback.format_exc())
         
         return self.apartments
-        
-    def format_price_changes(self):
-        """Format price changes in a human-readable format"""
-        logger.info(f"Formatting price changes for {len(self.apartments)} apartments")
-        count_new = 0
-        count_formatted = 0
-
-        for apt in self.apartments:
-            offer_id = apt.get("offer_id", "")
-            price_change_value = apt.get("price_change_value")
-
-            logger.debug(
-                f"Offer {offer_id}: Processing with price_change_value='{price_change_value}'"
-            )
-
-            # CASE 1: If price_change_value is "new" - mark as new
-            if price_change_value == "new":
-                apt["price_change_formatted"] = "new"
-                logger.debug(
-                    f"Offer {offer_id}: Marked as new (price_change_value is 'new')"
-                )
-                count_new += 1
-
-            # CASE 2: If price_change_value is numeric - format it
-            elif price_change_value is not None:
-                try:
-                    price_diff = float(price_change_value)
-                    if price_diff >= 0:
-                        apt["price_change_formatted"] = (
-                            f"{int(price_diff):,}".replace(",", " ") + " ₽/мес."
-                        )
-                    else:
-                        apt["price_change_formatted"] = (
-                            f"-{int(abs(price_diff)):,}".replace(",", " ") + " ₽/мес."
-                        )
-                    logger.debug(
-                        f"Offer {offer_id}: Formatted to '{apt['price_change_formatted']}'"
-                    )
-                    count_formatted += 1
-                except (ValueError, TypeError) as e:
-                    # Not a valid number, default to new
-                    apt["price_change_formatted"] = "new"
-                    logger.debug(
-                        f"Offer {offer_id}: Error converting '{price_change_value}' to number: {e}"
-                    )
-                    count_new += 1
-
-            # CASE 3: No price_change_value - mark as new
-            else:
-                apt["price_change_formatted"] = "new"
-                logger.debug(
-                    f"Offer {offer_id}: No price_change_value, marking as new"
-                )
-                count_new += 1
-
-        logger.info(
-            f"Price change formatting complete: {count_new} new, {count_formatted} with price changes"
-        )
-        return self.apartments
 
     def format_price(self, value):
         """Format price value to human-readable string"""
@@ -350,10 +294,8 @@ class CianDataProcessor:
                 "offer_url",
                 "title",
                 "updated_time",
-                "price_change",
                 "days_active",
                 "price",
-                "cian_estimation",
                 "price_difference",
                 "price_difference_value",
                 "price_info",
