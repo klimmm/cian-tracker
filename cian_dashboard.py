@@ -70,14 +70,15 @@ BUTTON_STYLES = {
     'nearest': {"backgroundColor": "#d9edf7", **STYLE["button_base"]},
     'below_estimate': {"backgroundColor": "#fef3d5", **STYLE["button_base"]},
     'inactive': {"backgroundColor": "#f4f4f4", **STYLE["button_base"]},
-    'updated_today': {"fontWeight": "bold", **STYLE["button_base"]}
+    'updated_today': {"backgroundColor": "#dff0d8", **STYLE["button_base"]}  # Green background instead of just bold
 }
 
 COLUMN_STYLES = [
     {"if": {"filter_query": '{status} contains "non active"'}, "backgroundColor": "#f4f4f4", "color": "#888"},
     {"if": {"filter_query": '{distance_sort} < 1.5 && {status} ne "non active"'}, "backgroundColor": "#d9edf7"},
     {"if": {"filter_query": '{calculated_price_diff} < -5000 && {status} ne "non active"'}, "backgroundColor": "#fef3d5"},
-    {"if": {"filter_query": '{updated_time_sort} > "' + (pd.Timestamp.now() - pd.Timedelta(hours=24)).isoformat() + '"'}, "fontWeight": "bold"},
+    {"if": {"filter_query": '{updated_time_sort} > "' + (pd.Timestamp.now() - pd.Timedelta(hours=24)).isoformat() + '"'}, 
+     "backgroundColor": "#dff0d8", "fontWeight": "bold"},  # Clear green background for today's updates
     {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
     {"if": {"column_id": "price"}, "fontWeight": "bold", "textAlign": "center"},
     {"if": {"column_id": "address"}, "textAlign": "left"},
@@ -245,7 +246,7 @@ app.layout = html.Div([
             html.Button("Ближайшие", id="btn-nearest", style={**BUTTON_STYLES['nearest'], "opacity": "0.6"}),
             html.Button("Цена ниже оценки", id="btn-below-estimate", style={**BUTTON_STYLES['below_estimate'], "opacity": "0.6"}),
             html.Button("Неактивные", id="btn-inactive", style={**BUTTON_STYLES['inactive'], "opacity": "0.6"}),
-            html.Button("Обновлено сегодня", id="btn-updated-today", style={**BUTTON_STYLES['updated_today'], "opacity": "0.6"})
+            html.Button("За сутки", id="btn-updated-today", style={**BUTTON_STYLES['updated_today'], "opacity": "0.6"})
         ], style={"margin": "5px", "marginTop": "8px", "textAlign": "left", "width": "100%", "maxWidth": "600px"}),
     ], style={"margin": "5px", "textAlign": "left", "width": "100%"}),
     
