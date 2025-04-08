@@ -88,6 +88,7 @@ class CianScraper:
         self.url_base = "https://www.cian.ru"
         self.driver = None
         self.apartments = []
+        self.unpublished_data = []
         self.csv_filename = csv_filename
         self.reference_address = reference_address
         
@@ -115,17 +116,10 @@ class CianScraper:
                         self.existing_data[offer_id] = row.to_dict()
                 
                 logger.info(f"Loaded {len(self.existing_data)} existing entries")
-        
-                # 🔍 LOG price_change_value and price_change_formatted BEFORE any processing
-                for i, row in self.existing_df.iterrows():
-                    offer_id = row.get("offer_id", "N/A")
-                    raw_val = row.get("price_change_value", "N/A")
-                    #logger.debug(f"[CSV {offer_id}] price_change_value = {raw_val} --> formatted = {formatted}")
             except Exception as e:
                 logger.error(f"Error loading data: {e}")
                 self.existing_data = {}
                 self.existing_df = pd.DataFrame()
-
 
     def scrape(self, search_url, max_pages=5, max_distance_km=3, time_filter=None):
         """Main method to scrape and process apartments data from Cian"""
@@ -136,6 +130,8 @@ class CianScraper:
         
         # Phase 1: Collect basic data from search pages
         all_apts = self._collect_listings(url, max_pages)
+        collected_ids = {apt["offer_id"] for apt in all_apts if "offer_id" in apt}
+        
         if not all_apts:
             logger.warning("No apartments found!")
             return []
@@ -145,11 +141,13 @@ class CianScraper:
         within_distance, outside_distance = self._filter_by_distance(all_apts, max_distance_km)
         
         # Phase 3: Determine update strategy and process updates
-        # Note: keep_as_is includes both unchanged apartments within distance and all apartments outside distance
         full_updates, estimation_updates, keep_as_is = self._classify_updates(within_distance, outside_distance)
         self._process_updates(full_updates, estimation_updates, keep_as_is)
         
-        # Phase 4: Final processing and saving
+        # Phase 4: Check for unpublished listings
+        self._check_for_unpublished_listings(collected_ids)
+        
+        # Phase 5: Final processing and saving
         self._finalize_data()
         
         return self.apartments
@@ -217,6 +215,10 @@ class CianScraper:
                     if id in self.existing_data and "distance" in self.existing_data[id]:
                         data["distance"] = self.existing_data[id]["distance"]
                     
+                    # Set default status as active
+                    data["status"] = "active"
+                    data["unpublished_date"] = "--"
+                    
                     seen_ids.add(id)
                     all_apts.append(data)
                 
@@ -225,13 +227,14 @@ class CianScraper:
                     logger.info(f"Reached max pages ({max_pages})")
                     break
                     
-                if not self._go_to_next_page():
+                # Navigate to next page with URL modification
+                if not self._go_to_next_page(page):
                     break
                     
                 page += 1
-        
-        logger.info(f"Collected {len(all_apts)} apartments from {page} pages")
-        return all_apts
+            
+            logger.info(f"Collected {len(all_apts)} apartments from {page} pages")
+            return all_apts
 
     def _parse_card(self, card):
         """Parse a single apartment card from search results"""
@@ -291,58 +294,42 @@ class CianScraper:
             logger.error(f"Error parsing card: {e}")
             return None
 
-    def _go_to_next_page(self):
-        """Navigate to the next page of search results"""
-        current_url = self.driver.current_url
-        
+    def _go_to_next_page(self, current_page):
+        """Navigate to the next page by modifying the URL parameter"""
         try:
-            # Check if we're on the last page
-            disabled_buttons = self.driver.find_elements(
-                By.XPATH,
-                "//button[contains(@class, '_93444fe79c--button--KVooB') and @disabled]/span[text()='Дальше']/.."
-            )
-            if disabled_buttons:
-                return False
-    
-            # Find and click the next button
-            next_btn = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((
-                    By.XPATH,
-                    "//a[contains(@class, '_93444fe79c--button--KVooB')]/span[text()='Дальше']/.."
-                ))
-            )
-    
-            # Try to click with retries
-            for attempt in range(3):
-                try:
-                    self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", next_btn)
-                    time.sleep(1)
-                    self.driver.execute_script("arguments[0].click();", next_btn)
-                    
-                    # Wait for URL change
-                    start_time = time.time()
-                    while time.time() - start_time < 10:
-                        if self.driver.current_url != current_url:
-                            break
-                        time.sleep(0.5)
-                    else:
-                        continue
-                    
-                    break
-                except Exception as e:
-                    if attempt == 2:
-                        raise
-                    time.sleep(1)
-    
+            # Get current URL
+            current_url = self.driver.current_url
+            
+            # Create URL for the next page
+            next_page = current_page + 1
+            if "p=" in current_url:
+                # Replace existing page parameter
+                next_url = re.sub(r'p=\d+', f'p={next_page}', current_url)
+            else:
+                # Add page parameter if it doesn't exist
+                separator = "&" if "?" in current_url else "?"
+                next_url = f"{current_url}{separator}p={next_page}"
+            
+            # Navigate to the new URL
+            logger.info(f"Navigating to page {next_page}: {next_url}")
+            self.driver.get(next_url)
+            
             # Wait for page to load
-            time.sleep(3)
+            time.sleep(2)
             WebDriverWait(self.driver, 15).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-name='CardComponent']"))
             )
+            
+            # Check if we have results (to detect last page)
+            cards = self.driver.find_elements(By.CSS_SELECTOR, "article[data-name='CardComponent']")
+            if not cards:
+                logger.info(f"No results on page {next_page}, reached end of listing")
+                return False
+                
             return True
-    
+            
         except Exception as e:
-            logger.error(f"Error navigating: {e}")
+            logger.error(f"Error navigating to page {next_page}: {e}")
             return False
 
     def _process_distances(self, apartments):
@@ -443,9 +430,6 @@ class CianScraper:
                         apt["price_change"] = f"From {ex_price_val} to {cur_price_val} ({price_diff:+.0f} ₽)"
                         apt["price_change_value"] = price_diff
                     full_updates.append(apt)
-                    '''elif est_empty:
-                        # Missing estimation - update only estimation
-                        estimation_updates.append(apt)'''
                 else:
                     # No changes needed but keep the apartment
                     keep_as_is.append(apt)
@@ -549,6 +533,128 @@ class CianScraper:
         
         return apt
 
+    def _check_for_unpublished_listings(self, collected_ids):
+        """Check which existing listings are now unpublished"""
+        if not self.existing_data:
+            logger.info("No existing data to check for unpublished listings")
+            return
+            
+        # Find IDs that were in existing data but not in current results
+        existing_ids = set(self.existing_data.keys())
+        missing_ids = existing_ids - collected_ids
+        
+        if not missing_ids:
+            logger.info("No missing listings to check")
+            return
+            
+        logger.info(f"Found {len(missing_ids)} previously listed but now missing IDs. Checking if unpublished...")
+        self.unpublished_data = self._check_unpublished_listings(missing_ids)
+        
+        if self.unpublished_data:
+            # Store unpublished IDs for reference during merging
+            self.unpublished_ids = {item["offer_id"] for item in self.unpublished_data if "offer_id" in item}
+            
+            # Add unpublished data to self.apartments - this is the ONLY place we add them
+            for item in self.unpublished_data:
+                self.apartments.append(item)
+                
+            logger.info(f"Added {len(self.unpublished_data)} unpublished listings to results")
+
+    def _check_unpublished_listings(self, missing_ids):
+        """Check if missing listings have been unpublished"""
+        unpublished_data = []
+        
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {}
+            # Submit tasks for all missing IDs
+            for id in missing_ids:
+                if id not in self.existing_data or "offer_url" not in self.existing_data[id]:
+                    continue
+                url = self.existing_data[id]["offer_url"]
+                futures[executor.submit(self._check_single_unpublished, id, url)] = id
+                
+            # Process results as they complete
+            for future in futures:
+                try:
+                    result = future.result()
+                    if result:
+                        unpublished_data.append(result)
+                except Exception as e:
+                    logger.error(f"Error checking unpublished status: {e}")
+                    
+        logger.info(f"Found {len(unpublished_data)} unpublished listings out of {len(missing_ids)} missing IDs")
+        return unpublished_data
+        
+    def _check_single_unpublished(self, id, url):
+        """Check if a single listing has been unpublished with retry mechanism"""
+        logger.info(f"Checking unpublished status for ID {id}: {url}")
+        
+        max_retries = 3
+        base_delay = 2  # Base delay in seconds
+        
+        for attempt in range(1, max_retries + 1):
+            driver = None
+            try:
+                driver = webdriver.Chrome(options=self.chrome_options)
+                driver.get(url)
+                time.sleep(1)
+                
+                # Check if listing is unpublished
+                unpublished_divs = driver.find_elements(By.XPATH, 
+                    "//div[@data-name='OfferUnpublished' and contains(text(), 'Объявление снято с публикации')]")
+                
+                if unpublished_divs:
+                    # Get the update date
+                    date_spans = driver.find_elements(
+                        By.XPATH, 
+                        "//span[contains(text(), 'Обновлено:')]"
+                    )
+                    
+                    unpublished_date = "--"
+                    if date_spans:
+                        date_text = date_spans[0].text
+                        if "Обновлено:" in date_text:
+                            unpublished_date = date_text.replace("Обновлено:", "").strip()
+                            # Convert to standard format
+                            unpublished_date = parse_updated_time(unpublished_date)
+                    
+                    # Create data entry with unpublished status
+                    data = self.existing_data[id].copy()
+                    data["status"] = "non active"
+                    data["unpublished_date"] = unpublished_date
+                    
+                    logger.info(f"Listing {id} is unpublished, date: {unpublished_date}")
+                    return data
+                else:
+                    logger.info(f"Listing {id} is missing but not marked as unpublished")
+                    return None
+                    
+            except Exception as e:
+                if attempt < max_retries:
+                    # Calculate delay with exponential backoff
+                    delay = base_delay * (2 ** (attempt - 1))
+                    logger.warning(f"Attempt {attempt}/{max_retries} failed for ID {id}: {e}")
+                    logger.info(f"Retrying in {delay} seconds...")
+                    time.sleep(delay)
+                else:
+                    logger.error(f"All {max_retries} attempts failed for ID {id}: {e}")
+                    # On final attempt failure, mark as non-active with a note about connection issues
+                    if id in self.existing_data:
+                        data = self.existing_data[id].copy()
+                        data["status"] = "non active"
+                        data["unpublished_date"] = f"-- (connection error on {datetime.now().strftime('%Y-%m-%d')})"
+                        logger.info(f"Marking {id} as non-active due to persistent connection errors")
+                        return data
+                    return None
+            finally:
+                if driver:
+                    try:
+                        driver.quit()
+                    except Exception:
+                        pass
+        
+        return None
+
     def _finalize_data(self):
         """Perform final data processing and save results"""
         logger.info("Finalizing data...")
@@ -568,6 +674,42 @@ class CianScraper:
             # Convert to DataFrame, handling serialization of complex objects
             apt_dicts = []
             for apt in self.apartments:
+                # Ensure status field is set (default to "active" if not set or empty)
+                if "status" not in apt or not apt["status"]:
+                    apt["status"] = "active"
+                    
+                # Ensure unpublished_date is set (default to "--" if not set or empty)
+                if "unpublished_date" not in apt or not apt["unpublished_date"]:
+                    apt["unpublished_date"] = "--"
+                    
+                # Ensure price_change_formatted is set if price_change_value is present
+                if "price_change_value" in apt and apt.get("price_change_value") not in ["", None]:
+                    # If it's a new listing, set appropriate format
+                    if apt.get("price_change_value") == "new":
+                        apt["price_change_formatted"] = "new"
+                        apt["price_change"] = ""
+                    # If it's a numeric value, format it
+                    elif isinstance(apt.get("price_change_value"), (int, float)) or str(apt.get("price_change_value")).replace(".", "", 1).isdigit():
+                        try:
+                            price_diff = float(apt.get("price_change_value"))
+                            if not apt.get("price_change") or apt.get("price_change") == "nan":
+                                # Format price change text if not already set
+                                # We don't have original prices, so use a simpler format
+                                apt["price_change"] = f"Изменение цены: {price_diff:+,.0f} ₽".replace(",", " ")
+                                
+                            if not apt.get("price_change_formatted") or apt.get("price_change_formatted") == "nan":
+                                # Format the display value
+                                if price_diff >= 0:
+                                    apt["price_change_formatted"] = f"{int(price_diff):,}".replace(",", " ") + " ₽/мес."
+                                else:
+                                    apt["price_change_formatted"] = f"-{int(abs(price_diff)):,}".replace(",", " ") + " ₽/мес."
+                        except:
+                            # If conversion fails, set empty strings
+                            if not apt.get("price_change") or apt.get("price_change") == "nan":
+                                apt["price_change"] = ""
+                            if not apt.get("price_change_formatted") or apt.get("price_change_formatted") == "nan":
+                                apt["price_change_formatted"] = ""
+                
                 # Pre-process complex types before creating DataFrame
                 apt_dict = {}
                 for k, v in apt.items():
@@ -583,48 +725,45 @@ class CianScraper:
             current_df = pd.DataFrame(apt_dicts)
             logger.info(f"Created DataFrame with {len(current_df)} rows and {len(current_df.columns)} columns")
             
-            # Log unique IDs in the current data
-            if "offer_id" in current_df.columns:
-                logger.info(f"Current data contains {current_df['offer_id'].nunique()} unique apartment IDs")
-                
             # Ensure consistent ID format
             if "offer_id" in current_df.columns:
                 current_df["offer_id"] = current_df["offer_id"].astype(str)
                 
             # Merge with existing data
             if self.existing_df is not None and not self.existing_df.empty:
-                # Log existing IDs before merging
-                logger.info(f"Existing data contains {self.existing_df['offer_id'].nunique()} unique apartment IDs")
-                
-                # Find which IDs are new
-                if "offer_id" in current_df.columns and "offer_id" in self.existing_df.columns:
-                    current_ids = set(current_df["offer_id"].unique())
-                    existing_ids = set(self.existing_df["offer_id"].unique())
-                    new_ids = current_ids - existing_ids
-                    common_ids = current_ids.intersection(existing_ids)
-                    logger.info(f"Found {len(new_ids)} new IDs and {len(common_ids)} existing IDs in current data")
-                
-                # Merge the dataframes
                 merged_df = self._merge_dataframes(current_df, self.existing_df)
             else:
                 merged_df = current_df
                 
-            # Log ID counts after merging
-            if "offer_id" in merged_df.columns:
-                logger.info(f"After merging, data contains {merged_df['offer_id'].nunique()} unique apartment IDs")
-                
             # Perform calculations
             merged_df = self._calculate_fields(merged_df)
             
-            # Sort by update time
+            # Final check to ensure all required fields have values
+            for field in ["status", "unpublished_date"]:
+                if field in merged_df.columns:
+                    # Fill empty values with defaults
+                    if field == "status":
+                        merged_df[field] = merged_df[field].fillna("active").replace("", "active")
+                    elif field == "unpublished_date":
+                        merged_df[field] = merged_df[field].fillna("--").replace("", "--")
+            
+            # Sort by status (active first) and then by update time
             if "updated_time" in merged_df.columns:
                 merged_df["updated_time"] = pd.to_datetime(
                     merged_df["updated_time"],
                     format="%Y-%m-%d %H:%M:%S",
                     errors="coerce"
                 )
-                merged_df = merged_df.sort_values("updated_time", ascending=False)
+                # Create a sort key (1 for active, 2 for non-active)
+                merged_df["sort_key"] = merged_df["status"].apply(
+                    lambda x: 1 if x == "active" else 2
+                )
+                merged_df = merged_df.sort_values(["sort_key", "updated_time"], ascending=[True, False])
+                merged_df = merged_df.drop(columns=["sort_key"])
                 
+            # Remove duplicates
+            merged_df = merged_df.drop_duplicates(subset=["offer_id"], keep="first")
+            
             # Save results
             self.apartments = merged_df.to_dict("records")
             self._save_data()
@@ -638,50 +777,87 @@ class CianScraper:
             return self.apartments or []
 
     def _merge_dataframes(self, current_df, existing_df):
-        """Merge current and existing data"""
+        """Merge current and existing data, preserving existing values unless specific conditions are met"""
         logger.info("Merging with existing data...")
         
         # Ensure consistent ID format
         existing_df["offer_id"] = existing_df["offer_id"].astype(str)
-        
-        # Log column types to debug
-        logger.info(f"Current dataframe columns: {current_df.columns.tolist()}")
-        logger.info(f"Existing dataframe columns: {existing_df.columns.tolist()}")
-        
-        # Check for problematic columns (array-like data)
-        for col in current_df.columns:
-            try:
-                # Check if any values in this column are lists, dicts, or other complex types
-                sample = current_df[col].dropna().head(1)
-                if len(sample) > 0:
-                    sample_val = sample.iloc[0]
-                    if isinstance(sample_val, (list, dict, np.ndarray)):
-                        logger.warning(f"Column '{col}' contains complex data type: {type(sample_val)}")
-            except Exception as e:
-                logger.error(f"Error checking column '{col}': {e}")
+        current_df["offer_id"] = current_df["offer_id"].astype(str)
         
         # Create output dataframe starting with existing data
         merged_df = existing_df.copy()
         
-        # Process current data
-        for idx, row in current_df.iterrows():
+        # Ensure required columns exist with appropriate datatypes
+        if "price_change" not in merged_df.columns:
+            merged_df["price_change"] = ""
+        if "price_change_formatted" not in merged_df.columns:
+            merged_df["price_change_formatted"] = ""
+        if "price_change_value" not in merged_df.columns:
+            merged_df["price_change_value"] = ""
+        
+        # Convert price_change fields to object dtype to avoid compatibility issues
+        merged_df["price_change"] = merged_df["price_change"].astype(object)
+        merged_df["price_change_formatted"] = merged_df["price_change_formatted"].astype(object)
+        
+        # Stats for logging
+        stats = {
+            "total_ids": len(set(current_df["offer_id"])),
+            "preserved": 0,
+            "price_updated": 0,
+            "estimation_updated": 0,
+            "new_added": 0,
+            "unpublished_preserved": 0
+        }
+        
+        # Extract unpublished listings from current_df
+        unpublished_entries = current_df[current_df["status"] == "non active"]
+        unpublished_ids = set(unpublished_entries["offer_id"])
+        
+        if unpublished_ids:
+            logger.info(f"Found {len(unpublished_ids)} unpublished listings in current data")
+            
+            # Update or add each unpublished listing to merged_df
+            for _, unpub_row in unpublished_entries.iterrows():
+                id = unpub_row["offer_id"]
+                # Find if this ID exists in merged_df
+                match_idx = merged_df[merged_df["offer_id"] == id].index
+                
+                if len(match_idx) > 0:
+                    # Update existing entry with unpublished status
+                    logger.info(f"Updating status for {id} to non active with date {unpub_row.get('unpublished_date', '--')}")
+                    merged_df.loc[match_idx[0], "status"] = "non active"
+                    merged_df.loc[match_idx[0], "unpublished_date"] = unpub_row.get("unpublished_date", "--")
+                else:
+                    # Add new entry
+                    logger.info(f"Adding new unpublished listing {id}")
+                    merged_df = pd.concat([merged_df, pd.DataFrame([unpub_row.to_dict()])], ignore_index=True)
+                    
+            stats["unpublished_preserved"] = len(unpublished_ids)
+        
+        # Process current data (excluding unpublished listings which we've already handled)
+        for idx, row in current_df[~current_df["offer_id"].isin(unpublished_ids)].iterrows():
             try:
-                id = row.get("offer_id", "")
+                id = str(row.get("offer_id", ""))
                 if not id:
                     logger.warning(f"Row at index {idx} has no offer_id, skipping")
                     continue
-                    
+                
                 # Find matching record in merged_df
                 match_idx = merged_df[merged_df["offer_id"] == id].index
                 
                 if len(match_idx) > 0:
                     match_row = merged_df.loc[match_idx[0]]
+                    
+                    # Compare prices
                     ex_price_val = extract_price_value(match_row.get("price", ""))
                     cur_price_val = extract_price_value(row.get("price", ""))
-                
-                    # Check if price changed
-                    price_changed = ex_price_val != cur_price_val
-                
+                    price_changed = False
+                    
+                    # Check price change only if both values are valid
+                    if ex_price_val is not None and cur_price_val is not None:
+                        price_changed = ex_price_val != cur_price_val
+                        logger.info(f"Checking price change for {id}: {ex_price_val} -> {cur_price_val}, changed: {price_changed}")
+                    
                     # Check if estimation was missing before and is now present
                     old_est = match_row.get("cian_estimation", "")
                     new_est = row.get("cian_estimation", "")
@@ -693,31 +869,129 @@ class CianScraper:
                     new_est_present = (
                         new_est and isinstance(new_est, str) and new_est.strip().lower() not in ["", "nan"]
                     )
-                
                     estimation_filled = old_est_empty and new_est_present
-                
+                    
+                    # Make decision about updating
                     if price_changed or estimation_filled:
-                        logger.info(f"Updating {id} — price_changed={price_changed}, estimation_filled={estimation_filled}")
+                        update_msg = []
+                        
+                        # Create a list of fields to update
+                        fields_to_update = []
+                        
+                        # Handle price change
+                        if price_changed:
+                            update_msg.append(f"price changed from {ex_price_val} to {cur_price_val}")
+                            stats["price_updated"] += 1
+                            
+                            # Calculate price difference
+                            price_diff = cur_price_val - ex_price_val
+                            
+                            # Format the price change values
+                            price_change_text = f"From {ex_price_val:,.0f} to {cur_price_val:,.0f} ({price_diff:+,.0f} ₽)"
+                            price_change_text = price_change_text.replace(",", " ")
+                            
+                            if price_diff >= 0:
+                                formatted = f"{int(price_diff):,}".replace(",", " ") + " ₽/мес."
+                            else:
+                                formatted = f"-{int(abs(price_diff)):,}".replace(",", " ") + " ₽/мес."
+                            
+                            # Store these for later use
+                            price_change_fields = {
+                                "price_change": price_change_text,
+                                "price_change_value": float(price_diff),
+                                "price_change_formatted": formatted
+                            }
+                            
+                            logger.info(f"  • Will update price_change to '{price_change_text}'")
+                            logger.info(f"  • Will update price_change_value to {price_diff}")
+                            logger.info(f"  • Will update price_change_formatted to '{formatted}'")
+                        
+                        # Handle estimation update
+                        if estimation_filled:
+                            update_msg.append(f"estimation added: {new_est}")
+                            stats["estimation_updated"] += 1
+                        
+                        logger.info(f"Updating {id} — {', '.join(update_msg)}")
+                        
+                        # Update values in merged_df, excluding price_change fields which we'll handle separately
+                        exclude_fields = {"price_change", "price_change_value", "price_change_formatted", "status", "unpublished_date"}
+                        
                         for col in row.index:
-                            if col in merged_df.columns:
-                                merged_df.loc[match_idx[0], col] = row[col]
+                            if col in merged_df.columns and col not in exclude_fields:
+                                old_val = merged_df.loc[match_idx[0], col]
+                                new_val = row[col]
+                                
+                                # Skip empty values for numeric columns to avoid dtype warning
+                                if isinstance(old_val, (int, float)) and (new_val == "" or pd.isna(new_val)):
+                                    logger.debug(f"  • {id}: Skipping empty value for numeric column {col}")
+                                    continue
+                                    
+                                if str(old_val) != str(new_val):  # Convert to string for comparison
+                                    logger.info(f"  • {id}: Updated {col} from '{old_val}' to '{new_val}'")
+                                    merged_df.loc[match_idx[0], col] = new_val
+                        
+                        # Now update price_change fields if there was a price change
+                        if price_changed:
+                            for field, value in price_change_fields.items():
+                                merged_df.loc[match_idx[0], field] = value
+                                logger.info(f"  • {id}: Finally set {field} to '{value}'")
                     else:
-                        logger.debug(f"No update needed for {id}")
-                        continue
-
-
+                        # No changes needed - preserve existing data
+                        logger.debug(f"No update needed for {id} - preserving existing data")
+                        stats["preserved"] += 1
                 else:
+                    # Add new record - make sure it has price_change fields
+                    row_dict = row.to_dict()
+                    
+                    # Set price_change_value to "new" for new listings
+                    if "price_change_value" not in row_dict or not row_dict["price_change_value"]:
+                        row_dict["price_change_value"] = "new"
+                    if "price_change_formatted" not in row_dict or not row_dict["price_change_formatted"]:
+                        row_dict["price_change_formatted"] = "new"
+                        
                     # Add new record
-                    logger.debug(f"Adding new record {id}")
-                    # Convert row to dict and back to Series to handle complex types
-                    row_dict = {k: v for k, v in row.items()}
+                    logger.info(f"Adding new record {id}")
                     merged_df = pd.concat([merged_df, pd.DataFrame([row_dict])], ignore_index=True)
+                    stats["new_added"] += 1
+                    
             except Exception as e:
                 logger.error(f"Error merging row with id {row.get('offer_id', 'unknown')}: {e}")
                 logger.error(traceback.format_exc())
-                
+        
+        # Double-check all unpublished listings are correctly marked
+        if unpublished_ids:
+            for id in unpublished_ids:
+                idx = merged_df[merged_df['offer_id'] == id].index
+                if len(idx) > 0:
+                    current_status = merged_df.loc[idx[0], 'status']
+                    if current_status != 'non active':
+                        logger.warning(f"Fixing status for {id}: was {current_status}, setting to non active")
+                        
+                        # Find the original unpublished entry to get the date
+                        unpub_row = unpublished_entries[unpublished_entries['offer_id'] == id]
+                        if len(unpub_row) > 0:
+                            unpub_date = unpub_row.iloc[0].get('unpublished_date', '--')
+                        else:
+                            unpub_date = '--'
+                            
+                        merged_df.loc[idx[0], 'status'] = 'non active'
+                        merged_df.loc[idx[0], 'unpublished_date'] = unpub_date
+        
         # Remove duplicates
+        pre_dedup_count = len(merged_df)
         merged_df = merged_df.drop_duplicates(subset=["offer_id"], keep="first")
+        post_dedup_count = len(merged_df)
+        if pre_dedup_count != post_dedup_count:
+            logger.warning(f"Removed {pre_dedup_count - post_dedup_count} duplicate entries")
+        
+        # Log summary statistics
+        logger.info("Merge statistics:")
+        logger.info(f"  • Total IDs processed: {stats['total_ids']}")
+        logger.info(f"  • Preserved without changes: {stats['preserved']}")
+        logger.info(f"  • Updated due to price change: {stats['price_updated']}")
+        logger.info(f"  • Updated with new estimation: {stats['estimation_updated']}")
+        logger.info(f"  • New listings added: {stats['new_added']}")
+        logger.info(f"  • Unpublished listings preserved: {stats['unpublished_preserved']}")
         logger.info(f"Merged data contains {len(merged_df)} apartments")
         
         return merged_df
@@ -760,34 +1034,13 @@ class CianScraper:
             )
             df = df.drop(columns=["updated_time_dt"], errors="ignore")
             logger.warning(f"days active unique values {df['days_active'].unique()}")
-        '''if "price_change_value" in df.columns:
-            def format_price_change(x):
-                try:
-                    # If x is exactly string "new" or a NaN that originally had formatted = "new"
-                    if x == "new":
-                        return "new"
-                    if pd.isna(x):
-                        return "new"  # <- preserve consistency with CSV interpretation
-            
-                    if isinstance(x, str):
-                        x = float(x)
-            
-                    if x >= 0:
-                        return f"{int(x):,}".replace(",", " ") + " ₽/мес."
-                    else:
-                        return f"-{int(abs(x)):,}".replace(",", " ") + " ₽/мес."
-                except Exception as e:
-                    logger.error(f"Error formatting price change '{x}': {e}")
-                    return ""
-            df["price_change_formatted"] = df["price_change_value"].apply(format_price_change)'''
-        
-        
-        # Log each mapping for inspection
-        for i, row in df.iterrows():
-            offer_id = row.get("offer_id", "N/A")
-            raw_value = row.get("price_change_value", "N/A")
-            #logger.debug(f"[{offer_id}] price_change_value = {raw_value} --> formatted = {formatted}")
 
+        # Ensure status columns are present
+        if "status" not in df.columns:
+            df["status"] = "active"
+        if "unpublished_date" not in df.columns:
+            df["unpublished_date"] = "--"
+            
         # Add flag for apartments outside distance filter
         if "outside_distance" in df.columns:
             non_numeric = df[~df["outside_distance"].apply(lambda x: isinstance(x, (int, float)))]
@@ -795,11 +1048,9 @@ class CianScraper:
             outside_count = pd.to_numeric(df["outside_distance"], errors="coerce").fillna(0).astype(int).sum()
             if outside_count > 0:
                 logger.info(f"Dataset includes {outside_count} apartments outside distance filter")
-            # We can optionally remove this column if not needed in final output
-            # df = df.drop(columns=["outside_distance"], errors="ignore")
         
         return df
-
+                    
     def _save_data(self):
         """Save data to CSV and JSON files"""
         if not self.apartments:
@@ -814,7 +1065,7 @@ class CianScraper:
             "offer_id", "offer_url", "title", "updated_time", "price_change",
             "days_active", "price", "cian_estimation", "price_difference",
             "price_difference_value", "price_info", "address", "metro_station",
-            "neighborhood", "district", "description"
+            "neighborhood", "district", "description", "status", "unpublished_date"
         ]
         
         cols = [c for c in priority_cols if c in df.columns]
@@ -842,14 +1093,29 @@ class CianScraper:
         except Exception as e:
             logger.error(f"CSV save error: {e}")
         
-        # Save to JSON
+        # Save to JSON - convert Timestamp objects to strings
         try:
             json_filename = "cian_apartments.json"
+            json_data = []
+            
+            for apt in self.apartments:
+                apt_dict = {}
+                for k, v in apt.items():
+                    if isinstance(v, pd.Timestamp):
+                        apt_dict[k] = v.strftime("%Y-%m-%d %H:%M:%S")
+                    elif isinstance(v, (np.int64, np.float64)):
+                        apt_dict[k] = float(v) if isinstance(v, np.float64) else int(v)
+                    else:
+                        apt_dict[k] = v
+                json_data.append(apt_dict)
+            
             with open(json_filename, "w", encoding="utf-8") as f:
-                json.dump(self.apartments, f, ensure_ascii=False, indent=4)
+                json.dump(json_data, f, ensure_ascii=False, indent=4)
             logger.info(f"Saved to {json_filename}")
         except Exception as e:
             logger.error(f"JSON save error: {e}")
+
+
 
 
 if __name__ == "__main__":

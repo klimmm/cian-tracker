@@ -14,15 +14,19 @@ CONFIG = {
     'columns': {
         'display': ['offer_id', 'title', 'updated_time', 'updated_time_sort', 'price', 'price_sort',
                    'cian_estimation', 'cian_estimation_sort', 'price_difference', 'price_difference_sort',
-                   'address', 'metro_station', 'offer_link', 'distance', 'days_active', 'distance_sort', 
-                   'price_change_value', 'price_change_formatted'],
+                   'calculated_price_diff', 'address', 'metro_station', 'offer_link', 'distance', 'days_active', 'distance_sort', 
+                   'price_change_value', 'price_change_formatted', 'status', 'unpublished_date', 'unpublished_date_sort'],
         'visible': ['address', 'distance', 'price', 'cian_estimation', 'updated_time', 
-                    'price_change_formatted', 'title', 'metro_station'],
+                    'price_change_formatted', 'title', 'metro_station', 
+                    #'status',
+                    'unpublished_date'
+                   ],
         'headers': {
             'offer_id': 'ID', 'distance': 'Расст.', 'price_change_formatted': 'Изм.',
             'title': 'Описание', 'updated_time': 'Обновлено', 'price': 'Цена',
             'cian_estimation': 'Оценка', 'price_difference': 'Разница', 
-            'address': 'Адрес', 'metro_station': 'Метро', 'offer_link': 'Ссылка'
+            'address': 'Адрес', 'metro_station': 'Метро', 'offer_link': 'Ссылка',
+            'status': 'Статус', 'unpublished_date': 'Снято'
         },
         'sort_map': {'updated_time': 'updated_time_sort', 
                      'price': 'price_sort', 
@@ -35,7 +39,7 @@ CONFIG = {
                7:'июл', 8:'авг', 9:'сен', 10:'окт', 11:'ноя', 12:'дек'},
     'base_url': 'https://www.cian.ru/rent/flat/',
     'hidden_cols': ['price_sort', 'distance_sort', 'updated_time_sort', 
-                   'cian_estimation_sort', 'price_difference_sort'],
+                   'cian_estimation_sort', 'price_difference_sort', 'unpublished_date_sort'],
 }
 
 # Define styles
@@ -58,23 +62,39 @@ STYLES = {
 
 # Column and header styles
 COLUMN_STYLES = [
-    {'if': {'filter_query': '{distance_sort} < 1.5'}, 'backgroundColor': '#e6f5e6'},
+    # Non-active listings styling (this must be first to take precedence)
+    {'if': {'filter_query': '{status} contains "non active"'}, 'backgroundColor': '#e0e0e0', 'color': '#888888'},
+    
+    # Close proximity styling - but not for non-active listings
+    {'if': {
+        'filter_query': '{distance_sort} < 1.5 && {status} ne "non active"'
+    }, 'backgroundColor': '#e6f0f5'},
+    
+    # Price is significantly below Cian estimation - but not for non-active listings
+    {'if': {
+        'filter_query': '{calculated_price_diff} < -5000 && {status} ne "non active"'
+    }, 'backgroundColor': '#fff8e6'},
+    
+    # Alternative price difference - but not for non-active listings
+    {'if': {
+        'filter_query': '{price_difference_sort} < -1000 && {status} ne "non active"'
+    }, 'backgroundColor': '#fff8e6'},
+    
+    # Recently updated listings - styling applies to all listings
+    {'if': {'filter_query': '{updated_time_sort} > "' + (pd.Timestamp.now() - pd.Timedelta(hours=24)).isoformat() + '"'}, 
+     'fontWeight': 'bold'},
+    
+    # Styling for specific columns
     {'if': {'column_id': 'price_change_formatted'}, 'textAlign': 'center'},
-    {'if': {'column_id': 'price'}, 'fontWeight': 'bold'}
+    {'if': {'column_id': 'price'}, 'fontWeight': 'bold'},
 ]
 
 HEADER_STYLES = [{'if': {'column_id': c}, 'textAlign': 'center'} 
-                for c in ['distance', 'updated_time', 'price', 'cian_estimation', 
-                         'price_change_formatted', 'metro_station']]
-
-# Global cache
-_DATA_CACHE = {}
+                for c in ['distance', 'updated_time', 'unpublished_date', 'price', 'cian_estimation', 
+                         'price_change_formatted', 'metro_station', 'status']]
 
 def load_data():
-    """Load and process data from CSV with caching"""
-    if _DATA_CACHE:
-        return _DATA_CACHE.get('df'), _DATA_CACHE.get('update_time')
-    
+    """Load and process data from CSV without caching"""
     try:
         csv_path = 'cian_apartments.csv'
         df = pd.read_csv(csv_path, encoding='utf-8', comment='#')
@@ -116,13 +136,27 @@ def load_data():
                                    .str.replace(' ', '')
                                    .astype(float, errors='ignore'))
         
+        # Explicitly calculate price difference if it doesn't exist or for more accuracy
+        if 'price_sort' in df.columns and 'cian_estimation_sort' in df.columns:
+            df['calculated_price_diff'] = df['price_sort'] - df['cian_estimation_sort']
+        
         if 'cian_estimation' in df.columns:
             df['cian_estimation'] = df['cian_estimation'].apply(lambda v: '--' if pd.isna(v) else v)
         
         if 'updated_time' in df.columns:
-            df['updated_time_sort'] = pd.to_datetime(df['updated_time'], errors='coerce')
+            # Specify the format explicitly to avoid warnings
+            # Adjust the format string to match your actual date format
+            df['updated_time_sort'] = pd.to_datetime(df['updated_time'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
             df['updated_time'] = df['updated_time_sort'].apply(
                 lambda x: f"{x.day} {CONFIG['months'][x.month]}, {x.hour:02d}:{x.minute:02d}" if pd.notnull(x) else "")
+        
+        if 'unpublished_date' in df.columns:
+            # Specify the format explicitly to avoid warnings
+            # Adjust the format string to match your actual date format  
+            df['unpublished_date_sort'] = pd.to_datetime(df['unpublished_date'], format='%Y-%m-%d %H:%M:%S', errors='coerce')
+            # Then apply formatting with '--' for null values in one step
+            df['unpublished_date'] = df['unpublished_date_sort'].apply(
+                lambda x: f"{x.day} {CONFIG['months'][x.month]}, {x.hour:02d}:{x.minute:02d}" if pd.notnull(x) else "--")
         
         if 'days_active' in df.columns:
             df['days_active'] = pd.to_numeric(df['days_active'].fillna(0), errors='coerce').astype(int)
@@ -130,10 +164,6 @@ def load_data():
         # Default sort
         if 'updated_time_sort' in df.columns:
             df = df.sort_values('updated_time_sort', ascending=False)
-        
-        # Update cache
-        _DATA_CACHE['df'] = df
-        _DATA_CACHE['update_time'] = update_time
         
         return df, update_time
     
@@ -177,13 +207,59 @@ app.layout = html.Div([
              style={'margin': '5px 0', 'padding': '3px'}),
     dcc.Interval(id='interval-component', interval=2*60*1000, n_intervals=0),
     
-    # Filters container
+    # Filters container with legend in the same row
     html.Div([
-        html.Label('Макс. цена (₽):', className='dash-label'),
-        dcc.Input(id='price-threshold', type='number', value=80000, step=5000, min=10000, max=500000),
-        html.Label('Макс. расстояние (км):', className='dash-label'),
-        dcc.Input(id='distance-threshold', type='number', value=3, step=0.5, min=0.5, max=10),
-    ], id='filters-container'),
+        # Input filters
+        html.Div([
+            html.Label('Макс. цена (₽):', className='dash-label'),
+            dcc.Input(id='price-threshold', type='number', value=80000, step=5000, min=10000, max=500000),
+            html.Label('Макс. расстояние (км):', className='dash-label'),
+            dcc.Input(id='distance-threshold', type='number', value=3, step=0.5, min=0.5, max=10),
+        ], style={'display': 'inline-block', 'marginRight': '15px', 'verticalAlign': 'middle'}),
+        
+        # Color legend in same row
+        html.Div([
+            html.Div(style={
+                'display': 'inline-block', 
+                'backgroundColor': '#e6f0f5', 
+                'padding': '3px 8px', 
+                'margin': '0 5px',
+                'borderRadius': '3px',
+                'fontSize': '10px',
+                'border': '1px solid #ccc'
+            }, children="Близко к адресу"),
+            
+            html.Div(style={
+                'display': 'inline-block', 
+                'backgroundColor': '#fff8e6', 
+                'padding': '3px 8px', 
+                'margin': '0 5px',
+                'borderRadius': '3px',
+                'fontSize': '10px',
+                'border': '1px solid #ccc'
+            }, children="Цена ниже оценки"),
+            
+            html.Div(style={
+                'display': 'inline-block', 
+                'backgroundColor': '#e0e0e0', 
+                'padding': '3px 8px', 
+                'margin': '0 5px',
+                'borderRadius': '3px',
+                'fontSize': '10px',
+                'border': '1px solid #ccc'
+            }, children="Неактивные"),
+            
+            html.Div(style={
+                'display': 'inline-block', 
+                'fontWeight': 'bold',
+                'padding': '3px 8px', 
+                'margin': '0 5px',
+                'borderRadius': '3px',
+                'fontSize': '10px',
+                'border': '1px solid #ccc'
+            }, children="Обновлено сегодня"),
+        ], style={'display': 'inline-block', 'verticalAlign': 'middle'})
+    ], id='filters-container', style={'margin': '5px', 'whiteSpace': 'nowrap', 'overflow': 'auto'}),
     
     dcc.Loading(
         id='loading-main', type='default',
