@@ -1,12 +1,9 @@
-import os, logging, numpy as np, pandas as pd
+import os
+import numpy as np
+import pandas as pd
 import dash
 from dash import dcc, html, dash_table, callback
 from dash.dependencies import Input, Output, State
-import traceback
-import re
-# Logging setup
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
 
 # Configuration
 CONFIG = {
@@ -42,7 +39,7 @@ CONFIG = {
     ],
 }
 
-# Styles
+# Unified styles
 FONT = "Arial,sans-serif"
 STYLE = {
     "container": {"fontFamily": FONT, "padding": "5px", "maxWidth": "100%"},
@@ -56,213 +53,207 @@ STYLE = {
     "input": {"marginRight": "5px", "width": "110px"},
     "input_number": {"width": "110px"},
     "label": {"fontSize": "11px", "marginRight": "3px", "display": "block"},
+    "button_base": {"display": "inline-block", "padding": "3px 8px", "fontSize": "10px", 
+                  "border": "1px solid #ccc", "margin": "0 5px", "cursor": "pointer"},
+}
+
+STYLE["button_base"] = {
+    "display": "inline-block", 
+    "padding": "3px 8px", 
+    "fontSize": "10px", 
+    "border": "1px solid #ccc", 
+    "margin": "0 5px 5px 0",  # Added bottom margin and reduced right margin
+    "cursor": "pointer"
+}
+
+BUTTON_STYLES = {
+    'nearest': {"backgroundColor": "#d9edf7", **STYLE["button_base"]},
+    'below_estimate': {"backgroundColor": "#fef3d5", **STYLE["button_base"]},
+    'inactive': {"backgroundColor": "#f4f4f4", **STYLE["button_base"]},
+    'updated_today': {"fontWeight": "bold", **STYLE["button_base"]}
 }
 
 COLUMN_STYLES = [
     {"if": {"filter_query": '{status} contains "non active"'}, "backgroundColor": "#f4f4f4", "color": "#888"},
     {"if": {"filter_query": '{distance_sort} < 1.5 && {status} ne "non active"'}, "backgroundColor": "#d9edf7"},
     {"if": {"filter_query": '{calculated_price_diff} < -5000 && {status} ne "non active"'}, "backgroundColor": "#fef3d5"},
-    #{"if": {"filter_query": '{price_difference_sort} < -1000 && {status} ne "non active"'}, "backgroundColor": "#fdf0cc"},
     {"if": {"filter_query": '{updated_time_sort} > "' + (pd.Timestamp.now() - pd.Timedelta(hours=24)).isoformat() + '"'}, "fontWeight": "bold"},
     {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
-    {"if": {"column_id": "price"}, "fontWeight": "bold"},
+    {"if": {"column_id": "price"}, "fontWeight": "bold", "textAlign": "center"},
     {"if": {"column_id": "address"}, "textAlign": "left"},
     {"if": {"column_id": "title"}, "textAlign": "left"},
 ]
 
 HEADER_STYLES = [
-    {"if": {"column_id": "distance"}, "textAlign": "center"},
-    {"if": {"column_id": "updated_time"}, "textAlign": "center"},
-    {"if": {"column_id": "unpublished_date"}, "textAlign": "center"},
-    {"if": {"column_id": "price"}, "textAlign": "center"},
-    {"if": {"column_id": "cian_estimation"}, "textAlign": "center"},
-    {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
-    {"if": {"column_id": "metro_station"}, "textAlign": "center"},
-    {"if": {"column_id": "status"}, "textAlign": "center"},
-    {"if": {"column_id": "address"}, "textAlign": "left"},
-    {"if": {"column_id": "title"}, "textAlign": "left"},
+    {"if": {"column_id": col}, "textAlign": "center"} 
+    for col in ["distance", "updated_time", "unpublished_date", "price", "cian_estimation", 
+               "price_change_formatted", "metro_station", "status"]
+] + [
+    {"if": {"column_id": col}, "textAlign": "left"} 
+    for col in ["address", "title"]
 ]
 
-def load_data():
+def format_text(value, formatter, default=""):
+    """Generic formatter with default handling"""
+    if value is None or pd.isna(value):
+        return default
+    return formatter(value)
+
+def format_price_changes(value):
+    """Format price changes with HTML styling"""
+    if value == "new":
+        return "<div style='text-align:center;'><span>—</span></div>"  # Changed 'new' to '—'
+    
+    try:
+        value = int(pd.to_numeric(value, errors='coerce').fillna(0))
+    except:
+        value = 0
+    
+    if value == 0:
+        return "<div style='text-align:center;'><span>—</span></div>"
+    
+    color = 'green' if value < 0 else 'red'
+    arrow = '↓' if value < 0 else '↑'
+    display = f"{abs(value)//1000}K" if abs(value) >= 1000 else str(abs(value))
+    
+    return f"<div style='text-align:center;'><span style='color:{color};'>{arrow}{display}</span></div>"
+
+def format_price(value):
+    """Format price value"""
+    if value == 0:
+        return "--"
+    return f"{'{:,}'.format(int(value)).replace(',', ' ')} ₽/мес."
+
+def format_date(dt):
+    """Format datetime with Russian month names"""
+    return f"{dt.day} {CONFIG['months'][dt.month]}, {dt.hour:02}:{dt.minute:02}"
+
+def load_and_process_data():
+    """Load and process data in a single function"""
     try:
         path = "cian_apartments.csv"
         df = pd.read_csv(path, encoding="utf-8", comment="#")
+        
+        # Extract update time from file
         with open(path, encoding="utf-8") as f:
             first_line = f.readline()
             update_time = first_line.split("last_updated=")[1].split(",")[0].strip() if "last_updated=" in first_line else "Unknown"
-        df["offer_id"] = df.get("offer_id", "").astype(str)
-        df["address"] = df.apply(lambda r: f"[{r['address']}]({CONFIG['base_url']}{r['offer_id']}/)" if "address" in r else "", axis=1)
+        
+        # Process all columns in one pass
+        df["offer_id"] = df["offer_id"].astype(str)
+        df["address"] = df.apply(lambda r: f"[{r['address']}]({CONFIG['base_url']}{r['offer_id']}/)", axis=1)
         df["offer_link"] = df["offer_id"].apply(lambda x: f"[View]({CONFIG['base_url']}{x}/)")
-        df["distance_sort"] = pd.to_numeric(df.get("distance"), errors="coerce")
+        
+        # Process numeric fields
+        df["distance_sort"] = pd.to_numeric(df["distance"], errors="coerce")
         df["distance"] = df["distance_sort"].apply(lambda x: f"{x:.2f} km" if pd.notnull(x) else "")
-        # Format price change
-        df["price_change_sort"] = pd.to_numeric(df.get("price_change_value", 0), errors="coerce").fillna(0).astype(int)
-        df["price_change_formatted"] = df.get("price_change_value", 0).apply(format_price_changes)
-        # Process price column (still formatted in input)
-        df["price_sort"] = pd.to_numeric(df["price"].astype(str).str.extract(r"(\d+[\s\d]*)")[0].str.replace(" ", ""), errors="coerce")
         
-        # Format cian_estimation from cian_estimation_value
-        df["cian_estimation_sort"] = pd.to_numeric(df.get("cian_estimation_value"), errors="coerce")
-        df["cian_estimation"] = df["cian_estimation_sort"].apply(lambda x: "--" if pd.isnull(x) or x == 0 else format_price(x))        
-        # Format price_difference from price_difference_value
-        df["price_difference_sort"] = pd.to_numeric(df.get("price_difference_value"), errors="coerce")
-        df["price_difference"] = df["price_difference_sort"].apply(lambda x: format_price(x) if pd.notnull(x) else "")
+        # Price fields
+        df["price_sort"] = pd.to_numeric(df["price"].str.extract(r"(\d+[\s\d]*)")[0].str.replace(" ", ""), errors="coerce")
+        df["price_change_sort"] = pd.to_numeric(df["price_change_value"], errors="coerce").fillna(0).astype(int)
+        df["price_change_formatted"] = df["price_change_value"].apply(format_price_changes)
         
-        # Log information before calculating price_diff
-        logger.debug("Checking price_sort and cian_estimation_sort before calculation")
-        logger.debug(f"price_sort column info: {df['price_sort'].describe()}")
-        logger.debug(f"cian_estimation_sort column info: {df['cian_estimation_sort'].describe()}")
+        # Estimation fields
+        df["cian_estimation_sort"] = pd.to_numeric(df["cian_estimation_value"], errors="coerce")
+        df["cian_estimation"] = df["cian_estimation_sort"].apply(lambda x: format_text(x, format_price, "--"))
         
-        # Log some sample rows to check data
-        sample_rows = df.sample(min(5, len(df)))
-        for idx, row in sample_rows.iterrows():
-            logger.debug(f"Sample row {idx}: price_sort={row.get('price_sort')}, cian_estimation_sort={row.get('cian_estimation_sort')}")
+        df["price_difference_sort"] = pd.to_numeric(df["price_difference_value"], errors="coerce")
+        df["price_difference"] = df["price_difference_sort"].apply(lambda x: format_text(x, format_price, ""))
         
-        # Check for NaN values
-        logger.debug(f"NaN values in price_sort: {df['price_sort'].isna().sum()}")
-        logger.debug(f"NaN values in cian_estimation_sort: {df['cian_estimation_sort'].isna().sum()}")
-        
-        # Calculate price difference for color highlighting
+        # Calculate price difference for highlighting
         df["calculated_price_diff"] = df["price_sort"] - df["cian_estimation_sort"]
         
-        # Log results after calculation
-        logger.debug(f"calculated_price_diff column info: {df['calculated_price_diff'].describe()}")
-        logger.debug(f"NaN values in calculated_price_diff: {df['calculated_price_diff'].isna().sum()}")
-        
-        # Process timestamps
+        # Process date-time fields
         df["updated_time_sort"] = pd.to_datetime(df["updated_time"], errors="coerce")
-        df["updated_time"] = df["updated_time_sort"].apply(lambda x: f"{x.day} {CONFIG['months'][x.month]}, {x.hour:02}:{x.minute:02}" if pd.notnull(x) else "")
-        # Handle sorting
+        df["updated_time"] = df["updated_time_sort"].apply(lambda x: format_text(x, format_date, ""))
+        
+        df["unpublished_date_sort"] = pd.to_datetime(df["unpublished_date"], errors="coerce")
+        df["unpublished_date"] = df["unpublished_date_sort"].apply(lambda x: format_text(x, format_date, "--"))
+        
+        # Other processing
+        df["days_active"] = pd.to_numeric(df["days_active"], errors="coerce").fillna(0).astype(int)
+        
+        # Default sorting
         df['sort_key'] = df['status'].apply(lambda x: 1 if x == 'active' else 2)
         df = df.sort_values(['sort_key', 'updated_time_sort'], ascending=[True, False]).drop(columns='sort_key')
         
-        df["unpublished_date_sort"] = pd.to_datetime(df.get("unpublished_date"), errors="coerce")
-        
-        df["unpublished_date"] = df["unpublished_date_sort"].apply(lambda x: f"{x.day} {CONFIG['months'][x.month]}, {x.hour:02}:{x.minute:02}" if pd.notnull(x) else "--")
-        df["days_active"] = pd.to_numeric(df.get("days_active"), errors="coerce").replace([np.inf, -np.inf], np.nan).fillna(0).astype(int)
-        return df.sort_values("updated_time_sort", ascending=False), update_time
+        return df, update_time
     except Exception as e:
-        logger.error(f"Error loading data: {e}")
         return pd.DataFrame(), f"Error: {e}"
-def format_price_changes(price_change_value):
-    """Format price changes in a human-readable format with HTML styling"""
-    # Handle "new" special case
-    if price_change_value == "new":
-        return "<div style='text-align:center;'><span>new</span></div>"
-    
-    # Convert to integer and handle NaN/None values
-    try:
-        value = pd.to_numeric(price_change_value, errors='coerce')
-        if pd.isna(value):
-            value = 0
-        value = int(value)
-    except (ValueError, TypeError):
-        value = 0
-    
-    # Format the value with HTML
-    if value == 0:
-        return "<div style='text-align:center;'><span>—</span></div>"
-    elif abs(value) >= 1000:
-        return f"<div style='text-align:center;'><span style='color:{'green' if value < 0 else 'red'};'>{'↓' if value < 0 else '↑'}{abs(value)//1000}K</span></div>"
-    else:
-        return f"<div style='text-align:center;'><span style='color:{'green' if value < 0 else 'red'};'>{'↓' if value < 0 else '↑'}{abs(value)}</span></div>"
 
-def format_price(value):
-    """Format price value to human-readable string"""
-    if value is None:
-        return ""
-    return f"{'{:,}'.format(int(value)).replace(',', ' ')} ₽/мес."
-
-
-# Modified filter_dataframe function to apply button filters
-def filter_dataframe(df, price_thresh=None, dist_thresh=None, filters=None):
-    if filters is None:
-        filters = {'nearest': False, 'below_estimate': False, 'inactive': False, 'updated_today': False}
-    
-    # Apply price and distance thresholds
-    if price_thresh: 
+def filter_and_sort_data(df, price_thresh=None, dist_thresh=None, filters=None, sort_by=None):
+    """Filter and sort data in a single function"""
+    if df.empty:
+        return df
+        
+    # Apply thresholds
+    if price_thresh:
         df = df[df["price_sort"] <= price_thresh]
-    if dist_thresh: 
+    if dist_thresh:
         df = df[df["distance_sort"] <= dist_thresh]
     
-    # Apply button filters if any are active
-    if any(filters.values()):
+    # Apply button filters
+    if filters and any(filters.values()):
         mask = pd.Series(False, index=df.index)
         
-        if filters['nearest']:
-            mask = mask | (df["distance_sort"] < 1.5)
-        
-        if filters['below_estimate']:
-            mask = mask | (df["calculated_price_diff"] < -5000)
-        
-        if filters['inactive']:
-            mask = mask | (df["status"] == "non active")
-        
-        if filters['updated_today']:
-            today = pd.Timestamp.now() - pd.Timedelta(hours=24)
-            mask = mask | (df["updated_time_sort"] > today)
+        if filters.get('nearest'):
+            mask |= (df["distance_sort"] < 1.5)
+        if filters.get('below_estimate'):
+            mask |= (df["calculated_price_diff"] < -5000)
+        if filters.get('inactive'):
+            mask |= (df["status"] == "non active")
+        if filters.get('updated_today'):
+            mask |= (df["updated_time_sort"] > (pd.Timestamp.now() - pd.Timedelta(hours=24)))
         
         df = df[mask]
     
+    # Apply sorting
+    if sort_by:
+        for item in sort_by:
+            col = CONFIG["columns"]["sort_map"].get(item["column_id"], item["column_id"])
+            df = df.sort_values(col, ascending=item["direction"] == "asc")
+    
     return df
 
-def sort_table_data(sort_by, price_thresh=None, dist_thresh=None, filters=None):
-    df, _ = load_data()
-    df = filter_dataframe(df, price_thresh, dist_thresh, filters)
-    for item in sort_by or []:
-        col = CONFIG["columns"]["sort_map"].get(item["column_id"], item["column_id"])
-        df = df.sort_values(col, ascending=item["direction"] == "asc")
-    return df[[c for c in CONFIG["columns"]["display"] if c in df]].to_dict("records")
-
+# Initialize the app
 app = dash.Dash(__name__, title="Cian Listings", meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}], suppress_callback_exceptions=True)
 server = app.server
 
-# Modified app layout with button filters and Store
+# App layout
 app.layout = html.Div([
     html.H2("Cian Listings", style=STYLE["header"]),
     html.Div(html.Span(id="last-update-time", style=STYLE["update_time"])),
     dcc.Interval(id="interval-component", interval=2 * 60 * 1000, n_intervals=0),
     
-    # Add store to maintain filter states
+    # Filter store
     dcc.Store(id='filter-store', data={
-        'nearest': False,      # Ближайшие
-        'below_estimate': False, # Цена ниже оценки
-        'inactive': False,     # Неактивные
-        'updated_today': False # Обновлено сегодня
+        'nearest': False, 'below_estimate': False, 'inactive': False, 'updated_today': False
     }),
     
+    # Container for both inputs and buttons
     html.Div([
+        # Input filters - with specific width
         html.Div([
             html.Label('Макс. цена (₽):', className="dash-label"),
             dcc.Input(id="price-threshold", type="number", value=80000, step=5000, min=10000, max=500000, style=STYLE["input_number"]),
             html.Label('Макс. расстояние (км):', className="dash-label"),
             dcc.Input(id="distance-threshold", type="number", value=3, step=0.5, min=0.5, max=10, style=STYLE["input_number"]),
-        ], style={"display": "inline-block", "marginRight": "15px"}),
+        ], style={"margin": "5px", "textAlign": "left", "width": "100%", "maxWidth": "600px"}),
         
-        # Replace divs with buttons
+        # Button filters - with matching width to input row
         html.Div([
-            html.Button("Ближайшие", id="btn-nearest", 
-                       style={"display": "inline-block", "backgroundColor": "#d9edf7", "padding": "3px 8px", 
-                              "fontSize": "10px", "border": "1px solid #ccc", "margin": "0 5px", 
-                              "cursor": "pointer", "opacity": "0.6"}),
-            html.Button("Цена ниже оценки", id="btn-below-estimate", 
-                       style={"display": "inline-block", "backgroundColor": "#fef3d5", "padding": "3px 8px", 
-                              "fontSize": "10px", "border": "1px solid #ccc", "margin": "0 5px", 
-                              "cursor": "pointer", "opacity": "0.6"}),
-            html.Button("Неактивные", id="btn-inactive", 
-                       style={"display": "inline-block", "backgroundColor": "#f4f4f4", "padding": "3px 8px", 
-                              "fontSize": "10px", "border": "1px solid #ccc", "margin": "0 5px", 
-                              "cursor": "pointer", "opacity": "0.6"}),
-            html.Button("Обновлено сегодня", id="btn-updated-today", 
-                       style={"display": "inline-block", "fontWeight": "bold", "padding": "3px 8px", 
-                              "fontSize": "10px", "border": "1px solid #ccc", "margin": "0 5px", 
-                              "cursor": "pointer", "opacity": "0.6"})
-        ], style={"display": "inline-block"})
-    ], style={"margin": "5px", "whiteSpace": "nowrap", "overflow": "auto"}),
+            html.Button("Ближайшие", id="btn-nearest", style={**BUTTON_STYLES['nearest'], "opacity": "0.6"}),
+            html.Button("Цена ниже оценки", id="btn-below-estimate", style={**BUTTON_STYLES['below_estimate'], "opacity": "0.6"}),
+            html.Button("Неактивные", id="btn-inactive", style={**BUTTON_STYLES['inactive'], "opacity": "0.6"}),
+            html.Button("Обновлено сегодня", id="btn-updated-today", style={**BUTTON_STYLES['updated_today'], "opacity": "0.6"})
+        ], style={"margin": "5px", "marginTop": "8px", "textAlign": "left", "width": "100%", "maxWidth": "600px"}),
+    ], style={"margin": "5px", "textAlign": "left", "width": "100%"}),
+    
+    # Table container
     dcc.Loading(id="loading-main", children=[html.Div(id="table-container")], style={"margin": "5px"}),
 ], style=STYLE["container"])
 
-# Add callback to handle filter button clicks
+# Callback to handle filter button clicks
 @callback(
     Output('filter-store', 'data'),
     [Input('btn-nearest', 'n_clicks'),
@@ -277,19 +268,15 @@ def update_filters(nearest_clicks, below_est_clicks, inactive_clicks, updated_to
         return current_filters
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    filter_map = {'btn-nearest': 'nearest', 'btn-below-estimate': 'below_estimate', 
+                 'btn-inactive': 'inactive', 'btn-updated-today': 'updated_today'}
     
-    if button_id == 'btn-nearest':
-        current_filters['nearest'] = not current_filters['nearest']
-    elif button_id == 'btn-below-estimate':
-        current_filters['below_estimate'] = not current_filters['below_estimate']
-    elif button_id == 'btn-inactive':
-        current_filters['inactive'] = not current_filters['inactive']
-    elif button_id == 'btn-updated-today':
-        current_filters['updated_today'] = not current_filters['updated_today']
+    if button_id in filter_map:
+        current_filters[filter_map[button_id]] = not current_filters[filter_map[button_id]]
     
     return current_filters
 
-# Add callback to update button styles based on filter states
+# Callback to update button styles
 @callback(
     [Output('btn-nearest', 'style'),
      Output('btn-below-estimate', 'style'),
@@ -298,67 +285,58 @@ def update_filters(nearest_clicks, below_est_clicks, inactive_clicks, updated_to
     [Input('filter-store', 'data')]
 )
 def update_button_styles(filters):
-    # Base styles for buttons
-    base_styles = {
-        'nearest': {"display": "inline-block", "backgroundColor": "#d9edf7", "padding": "3px 8px", 
-                   "fontSize": "10px", "border": "1px solid #ccc", "margin": "0 5px", "cursor": "pointer"},
-        'below_estimate': {"display": "inline-block", "backgroundColor": "#fef3d5", "padding": "3px 8px", 
-                          "fontSize": "10px", "border": "1px solid #ccc", "margin": "0 5px", "cursor": "pointer"},
-        'inactive': {"display": "inline-block", "backgroundColor": "#f4f4f4", "padding": "3px 8px", 
-                    "fontSize": "10px", "border": "1px solid #ccc", "margin": "0 5px", "cursor": "pointer"},
-        'updated_today': {"display": "inline-block", "fontWeight": "bold", "padding": "3px 8px", 
-                         "fontSize": "10px", "border": "1px solid #ccc", "margin": "0 5px", "cursor": "pointer"}
-    }
-    
-    # Modify styles based on active state
-    nearest_style = base_styles['nearest'].copy()
-    nearest_style['opacity'] = 1.0 if filters['nearest'] else 0.6
-    nearest_style['boxShadow'] = '0 0 5px #4682B4' if filters['nearest'] else 'none'
-    
-    below_est_style = base_styles['below_estimate'].copy()
-    below_est_style['opacity'] = 1.0 if filters['below_estimate'] else 0.6
-    below_est_style['boxShadow'] = '0 0 5px #FFA500' if filters['below_estimate'] else 'none'
-    
-    inactive_style = base_styles['inactive'].copy()
-    inactive_style['opacity'] = 1.0 if filters['inactive'] else 0.6
-    inactive_style['boxShadow'] = '0 0 5px #888' if filters['inactive'] else 'none'
-    
-    updated_today_style = base_styles['updated_today'].copy()
-    updated_today_style['opacity'] = 1.0 if filters['updated_today'] else 0.6
-    updated_today_style['boxShadow'] = '0 0 5px #4682B4' if filters['updated_today'] else 'none'
-    
-    return nearest_style, below_est_style, inactive_style, updated_today_style
+    return [{**BUTTON_STYLES[key], 
+             "opacity": 1.0 if filters[key] else 0.6,
+             "boxShadow": '0 0 5px #4682B4' if filters[key] else 'none'} 
+            for key in ['nearest', 'below_estimate', 'inactive', 'updated_today']]
 
-# Update the table update callback to include filter state
+# Combined callback for updating table and time
 @callback(
-    Output("table-container", "children"), 
+    [Output("table-container", "children"),
+     Output("last-update-time", "children")],
     [Input("price-threshold", "value"), 
      Input("distance-threshold", "value"),
-     Input("filter-store", "data")]
+     Input("filter-store", "data"),
+     Input("interval-component", "n_intervals")]
 )
-def update_table(price_threshold, distance_threshold, filters):
-    df, _ = load_data()
-    df = filter_dataframe(df, price_threshold, distance_threshold, filters)
-    visible = [c for c in CONFIG["columns"]["visible"] if c in df]
-    hidden = [c for c in CONFIG["hidden_cols"] if c in df]
-    numeric = {"distance", "days_active", "price", "cian_estimation", "price_difference"}
-    markdown = {"price_change_formatted", "title", "address", "offer_link"}
-    columns = [{"name": CONFIG["columns"]["headers"].get(c, c), "id": c, 
-                "type": "numeric" if c in numeric else "text", 
-                "presentation": "markdown" if c in markdown else None} for c in visible]
+def update_table_and_time(price_threshold, distance_threshold, filters, _):
+    df, update_time = load_and_process_data()
+    df = filter_and_sort_data(df, price_threshold, distance_threshold, filters)
     
-    logger.info(f"Table updated: {len(df)} rows")
-    return dash_table.DataTable(
-        id="apartment-table", columns=columns,
-        data=df[[c for c in CONFIG["columns"]["display"] if c in df]].to_dict("records"),
-        sort_action="custom", sort_mode="multi", sort_by=[], hidden_columns=hidden,
-        style_table=STYLE["table"], style_cell=STYLE["cell"],
+    # Define column properties 
+    visible = CONFIG["columns"]["visible"]
+    numeric_cols = {"distance", "days_active", "price", "cian_estimation", "price_difference"}
+    markdown_cols = {"price_change_formatted", "title", "address", "offer_link"}
+    
+    columns = [{"name": CONFIG["columns"]["headers"].get(c, c), "id": c, 
+                "type": "numeric" if c in numeric_cols else "text", 
+                "presentation": "markdown" if c in markdown_cols else None} for c in visible]
+    
+    # Create the table
+    table = dash_table.DataTable(
+        id="apartment-table", 
+        columns=columns,
+        data=df[CONFIG["columns"]["display"]].to_dict("records") if not df.empty else [],
+        sort_action="custom", 
+        sort_mode="multi", 
+        sort_by=[], 
+        hidden_columns=CONFIG["hidden_cols"],
+        style_table=STYLE["table"], 
+        style_cell=STYLE["cell"],
         style_cell_conditional=[{"if": {"column_id": c["id"]}, "width": "auto"} for c in columns],
-        style_header=STYLE["header_cell"], style_header_conditional=HEADER_STYLES,
-        style_data=STYLE["data"], style_filter=STYLE["filter"], style_data_conditional=COLUMN_STYLES,
-        page_size=100, page_action="native", markdown_options={"html": True})
+        style_header=STYLE["header_cell"], 
+        style_header_conditional=HEADER_STYLES,
+        style_data=STYLE["data"], 
+        style_filter=STYLE["filter"], 
+        style_data_conditional=COLUMN_STYLES,
+        page_size=100, 
+        page_action="native", 
+        markdown_options={"html": True}
+    )
+    
+    return table, f"Last updated: {update_time}"
 
-# Update the sort callback to include filter state
+# Callback for sorting
 @callback(
     Output("apartment-table", "data"), 
     [Input("apartment-table", "sort_by"), 
@@ -367,15 +345,9 @@ def update_table(price_threshold, distance_threshold, filters):
      Input("filter-store", "data")]
 )
 def update_sort(sort_by, price_threshold, distance_threshold, filters):
-    return sort_table_data(sort_by, price_threshold, distance_threshold, filters)
-
-@callback(
-    Output("last-update-time", "children"), 
-    Input("interval-component", "n_intervals")
-)
-def update_time(_):
-    _, update_time = load_data()
-    return f"Last updated: {update_time}"
+    df, _ = load_and_process_data()
+    df = filter_and_sort_data(df, price_threshold, distance_threshold, filters, sort_by)
+    return df[CONFIG["columns"]["display"]].to_dict("records") if not df.empty else []
 
 if __name__ == "__main__":
     app.run_server(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8050)))

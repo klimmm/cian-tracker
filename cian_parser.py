@@ -127,14 +127,9 @@ class CianScraper:
                     merged['status'] = 'active'
                     merged['unpublished_date'] = '--'
                     
-                    # Update basic fields from new data
-                    for field in ['address', 'price', 'offer_url', 'title', 'updated_time', 'description']:
-                        if field in apt:
-                            merged[field] = apt[field]
-                    
                     combined_apts.append(merged)
             else:
-                apt['price_change_value'] = 'new'
+                apt['price_change_value'] = '--'
                 combined_apts.append(apt)
     
         # Add missing apartments (mark as non-active)
@@ -255,7 +250,8 @@ class CianScraper:
         logger.info(f'Successfully updated: {updated_est} estimations, {updated_unpub} unpublished dates')
         return results
 
-    def _finalize_and_save(self, apartments):
+    def _prepare_and_save_data(self, apartments, filename_suffix=""):
+        """Prepare and save data to CSV and JSON with optional filename suffix"""
         if not apartments:
             return []
     
@@ -266,17 +262,12 @@ class CianScraper:
                 apt.setdefault('unpublished_date', '--')
                 apt.setdefault('cian_estimation', None)
 
-            # Log pre-finalization stats
-            missing_est = sum(1 for apt in apartments if self._is_empty(apt.get('cian_estimation')))
-            missing_unpub = sum(1 for apt in apartments if apt.get('status') == 'non active' and 
-                               self._is_empty(apt.get('unpublished_date')))
-            missing_dist = sum(1 for apt in apartments if apt.get('distance') is None or
-                              (isinstance(apt.get('distance'), float) and 
-                               (np.isnan(apt.get('distance')) or np.isinf(apt.get('distance')))))
-            
-            logger.info(f'Pre-finalization - Still missing: {missing_est} estimations, '
-                       f'{missing_unpub} unpublished dates, {missing_dist} distances')
+            # Create a base for the output files
+            base_filename = self.csv_filename.replace('.csv', '')
+            current_csv = f"{base_filename}{filename_suffix}.csv"
+            current_json = f"{base_filename}{filename_suffix}.json"
 
+            # Convert to DataFrame and handle complex types
             df = pd.DataFrame([{k: json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict, np.ndarray)) else v 
                               for k, v in apt.items()} for apt in apartments])
             
@@ -300,7 +291,6 @@ class CianScraper:
                     if valid_mask.any():
                         df.loc[valid_mask, 'price_difference_value'] = cian_value[valid_mask] - price_value[valid_mask]
                         df.loc[valid_mask, 'cian_estimation_value'] = cian_value[valid_mask]
-                        # Important: Don't drop the original cian_estimation
             
             result = df.drop_duplicates('offer_id', keep='first').to_dict('records')
             
@@ -316,50 +306,60 @@ class CianScraper:
                 cols = [c for c in priority_cols if c in save_df.columns] + [c for c in save_df.columns if c not in priority_cols and c != 'image_urls']
                 save_df = save_df[cols]
     
-                # Format data - using map instead of applymap (fixed deprecation warning)
+                # Format data - using map instead of applymap
                 for col in save_df.columns:
                     save_df[col] = save_df[col].map(lambda x: json.dumps(x, ensure_ascii=False) if isinstance(x, (list, dict, np.ndarray)) 
                                    else x.strftime('%Y-%m-%d %H:%M:%S') if isinstance(x, pd.Timestamp) 
                                    else x)
     
-                # Log final stats
-                logger.info(f'Saving {len(save_df)} entries to {self.csv_filename}')
+                # Log stats
                 active = sum(1 for apt in result if apt.get('status') != 'non active')
                 non_active = sum(1 for apt in result if apt.get('status') == 'non active')
-                logger.info(f'Final data: {active} active, {non_active} non-active apartments')
+                logger.info(f'Saving {len(save_df)} entries to {current_csv} ({active} active, {non_active} non-active)')
     
                 # Save CSV
-                with open(self.csv_filename + '.tmp', 'w', encoding='utf-8') as f:
+                with open(current_csv + '.tmp', 'w', encoding='utf-8') as f:
                     f.write(f'# last_updated={datetime.now().strftime("%Y-%m-%d %H:%M:%S")},record_count={len(save_df)}\n')
                     save_df.to_csv(f, index=False, encoding='utf-8')
-                os.replace(self.csv_filename + '.tmp', self.csv_filename)
+                os.replace(current_csv + '.tmp', current_csv)
     
                 # Save JSON
-                with open('cian_apartments.json', 'w', encoding='utf-8') as f:
+                with open(current_json, 'w', encoding='utf-8') as f:
                     json.dump([{k: (v.strftime('%Y-%m-%d %H:%M:%S') if isinstance(v, pd.Timestamp) 
                                   else float(v) if isinstance(v, np.float64) 
                                   else int(v) if isinstance(v, np.int64) 
                                   else v) for k, v in apt.items()} for apt in result], 
                              f, ensure_ascii=False, indent=4)
-                logger.info('Data also saved to cian_apartments.json')
+                logger.info(f'Data also saved to {current_json}')
             
             return result
         except Exception as e:
-            logger.error(f'Finalization error: {e}')
+            logger.error(f'Data save error: {e}')
             return apartments
 
     def scrape(self, search_url, max_pages=5, max_distance_km=3, time_filter=None):
         logger.info(f'Starting scrape: max_pages={max_pages}, max_distance={max_distance_km}km')
         url = f'{search_url}&totime={time_filter * 60}' if time_filter else search_url
     
-        # Single flow: collect, combine, process, update, finalize
+        # Collect and combine listings
         parsed_apts = self.collector.collect_listings(url, max_pages, self.existing_data)
         logger.info(f'Collected {len(parsed_apts)} apartments from {max_pages} pages')
         
         combined_apts = self._combine_with_existing(parsed_apts)
+        
+        # Process distances
         self._process_distances(combined_apts)
+        
+        # SAVE INTERMEDIATE RESULTS - after distances but before other updates
+        logger.info("Saving intermediate data (after distance processing)")
+        intermediate_data = self._prepare_and_save_data(combined_apts, "")
+        
+        # Process remaining updates
         updated_apts = self._process_updates(combined_apts, max_distance_km)
-        self.apartments = self._finalize_and_save(updated_apts)
+        
+        # SAVE FINAL RESULTS
+        logger.info("Saving final data (after all processing)")
+        self.apartments = self._prepare_and_save_data(updated_apts, "")  # Final save with original filename
         
         return self.apartments
 
