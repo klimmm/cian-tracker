@@ -58,8 +58,24 @@ CONFIG = {
 
 
 
+from datetime import datetime, timedelta
+
+def pluralize_ru(number, forms):
+    """Подбирает правильную форму слова для русского языка.
+    forms: ['минута', 'минуты', 'минут'] или ['час', 'часа', 'часов']"""
+    n = abs(number) % 100
+    if 11 <= n <= 19:
+        return forms[2]
+    n = n % 10
+    if n == 1:
+        return forms[0]
+    elif 2 <= n <= 4:
+        return forms[1]
+    else:
+        return forms[2]
+
 def format_date(dt):
-    """Format datetime with relative strings and Russian month names"""
+    """Форматирует дату с учётом относительных выражений и склонений"""
     now = datetime.now()
     delta = now - dt
     today = now.date()
@@ -69,16 +85,17 @@ def format_date(dt):
         return "только что"
     elif delta < timedelta(hours=1):
         minutes = int(delta.total_seconds() // 60)
-        return f"{minutes} минут назад"
+        return f"{minutes} {pluralize_ru(minutes, ['минута', 'минуты', 'минут'])} назад"
     elif delta < timedelta(hours=6):
         hours = int(delta.total_seconds() // 3600)
-        return f"{hours} час{'а' if 2 <= hours <= 4 else '' if hours == 1 else 'ов'} назад"
+        return f"{hours} {pluralize_ru(hours, ['час', 'часа', 'часов'])} назад"
     elif dt.date() == today:
         return f"сегодня, {dt.hour:02}:{dt.minute:02}"
     elif dt.date() == yesterday:
         return f"вчера, {dt.hour:02}:{dt.minute:02}"
     else:
         return f"{dt.day} {CONFIG['months'][dt.month]}, {dt.hour:02}:{dt.minute:02}"
+
 
 
         
