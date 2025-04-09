@@ -9,6 +9,7 @@ import json
 import os
 import numpy as np
 import pandas as pd
+from datetime import datetime, timedelta
 
 # Configuration - Adjusted for new column structure
 # Update CONFIG to include new columns
@@ -54,6 +55,30 @@ CONFIG = {
         "price_difference_value", "unpublished_date_sort", "monthly_burden"
     ],
 }
+
+
+
+def format_date(dt):
+    """Format datetime with relative strings and Russian month names"""
+    now = datetime.now()
+    delta = now - dt
+    today = now.date()
+    yesterday = today - timedelta(days=1)
+
+    if delta < timedelta(minutes=1):
+        return "только что"
+    elif delta < timedelta(hours=1):
+        minutes = int(delta.total_seconds() // 60)
+        return f"{minutes} минут назад"
+    elif delta < timedelta(hours=6):
+        hours = int(delta.total_seconds() // 3600)
+        return f"{hours} час{'а' if 2 <= hours <= 4 else '' if hours == 1 else 'ов'} назад"
+    elif dt.date() == today:
+        return f"сегодня, {dt.hour:02}:{dt.minute:02}"
+    elif dt.date() == yesterday:
+        return f"вчера, {dt.hour:02}:{dt.minute:02}"
+    else:
+        return f"{dt.day} {CONFIG['months'][dt.month]}, {dt.hour:02}:{dt.minute:02}"
 
 
         
@@ -188,9 +213,6 @@ def format_price(value):
         return "--"
     return f"{'{:,}'.format(int(value)).replace(',', ' ')} ₽/мес."
 
-def format_date(dt):
-    """Format datetime with Russian month names"""
-    return f"{dt.day} {CONFIG['months'][dt.month]}, {dt.hour:02}:{dt.minute:02}"
 
 def format_rental_period(value):
     """Format rental period with more intuitive abbreviation"""

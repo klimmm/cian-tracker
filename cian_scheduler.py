@@ -17,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger('CianScheduler')
 
 # Define the data files that need to be committed
-DATA_FILES = ["cian_apartments.csv"]
+DATA_FILES = ["cian_apartments.csv", "cian_apartments.meta.json"]
 
 def commit_and_push(files):
     """Commit and push changes to Git repository"""
@@ -37,44 +37,44 @@ def commit_and_push(files):
     except Exception as e:
         logger.error(f"Unexpected error during Git operations: {e}")
 
-def run_scraper():
-    """Run the Cian scraper script and commit changes regardless if needed"""
-    logger.info(f"Starting scraper job at {datetime.now()}")
+def run_scraper(script_name):
+    """Run a scraper script and commit changes if successful"""
+    logger.info(f"Starting {script_name} at {datetime.now()}")
     success = False
     
     try:
-        # Run the scraper script
         result = subprocess.run(
-            ["python", "cian_scraper_part1.py"],  # Update this to your script filename
+            ["python", script_name],
             capture_output=True,
             text=True
         )
         if result.returncode == 0:
-            logger.info("Scraper job completed successfully")
+            logger.info(f"{script_name} completed successfully")
             success = True
         else:
-            logger.error(f"Scraper job failed with error: {result.stderr}")
+            logger.error(f"{script_name} failed with error:\n{result.stderr}")
     except Exception as e:
-        logger.error(f"Error running scraper: {e}")
+        logger.error(f"Error running {script_name}: {e}")
     
-    # If scraper was successful, commit and push regardless of changes
     if success:
         logger.info("Committing and pushing data files...")
         existing_files = [f for f in DATA_FILES if os.path.exists(f)]
-        
         if existing_files:
             commit_and_push(existing_files)
         else:
             logger.warning("None of the specified data files exist. Nothing to commit.")
     
-    logger.info(f"Scraper job finished at {datetime.now()}")
+    logger.info(f"{script_name} job finished at {datetime.now()}")
 
-# Run once at startup
-run_scraper()
+# Run both at startup
+run_scraper("cian_scraper_part1.py")
+run_scraper("cian_scraper_part2.py")
 
-# Schedule to run every 10 minutes
-schedule.every(10).minutes.do(run_scraper)
-logger.info("Scheduler started. Will run scraper and git operations every 10 minutes.")
+# Schedule scraper jobs
+schedule.every(10).minutes.do(run_scraper, "cian_scraper_part1.py")
+schedule.every(30).minutes.do(run_scraper, "cian_scraper_part2.py")
+
+logger.info("Scheduler started. part1.py every 10 minutes, part2.py every 30 minutes.")
 
 # Keep the script running
 while True:

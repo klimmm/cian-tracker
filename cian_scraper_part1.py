@@ -95,7 +95,7 @@ class CianScraper:
             logger.warning(f"Could not extract total listings: {e}")
         return None
     
-            
+                
     def collect_listings(self, url, max_pages=1000):
         all_apts = []
         added_ids = {}
@@ -136,6 +136,7 @@ class CianScraper:
                 current_page_ids = set()
                 page_listings_map[page] = []
                 page_new_listings_count = 0
+                page_apts = []
     
                 for card in cards:
                     data = self._parse_card(card)
@@ -145,6 +146,7 @@ class CianScraper:
                     offer_id = str(data['offer_id'])
                     current_page_ids.add(offer_id)
                     page_listings_map[page].append(offer_id)
+                    page_apts.append(data)
     
                     if offer_id not in added_ids:
                         data['status'] = 'active'
@@ -157,6 +159,9 @@ class CianScraper:
     
                 logger.info(f'Page {page}: Collected {page_new_listings_count} new listings')
                 logger.info(f'Collected {len(all_apts)} / {total_listings} so far')
+                logger.info(f'🧾 Listings on page {page}:')
+                for apt in page_apts:
+                    logger.info(f"  - {apt.get('offer_id')} | {apt.get('title')} | {apt.get('address')} | {apt.get('price')}")
     
                 total_pages_processed += 1
                 if current_page_ids == previous_page_ids:
@@ -208,11 +213,14 @@ class CianScraper:
                         continue
     
                     page_new_listings_count = 0
+                    page_apts = []
+    
                     for card in cards:
                         data = self._parse_card(card)
                         if not data or 'offer_id' not in data:
                             continue
                         offer_id = str(data['offer_id'])
+                        page_apts.append(data)
                         if offer_id not in added_ids:
                             data['status'] = 'active'
                             data['unpublished_date'] = '--'
@@ -224,6 +232,9 @@ class CianScraper:
     
                     logger.info(f'Page {reverse_page}: Recovered {page_new_listings_count} new listings')
                     logger.info(f'Total collected: {len(all_apts)} / {total_listings}')
+                    logger.info(f'🧾 Listings on page {reverse_page}:')
+                    for apt in page_apts:
+                        logger.info(f"  - {apt.get('offer_id')} | {apt.get('title')} | {apt.get('address')} | {apt.get('price')}")
                 except Exception as e:
                     logger.warning(f'Error while revisiting page {reverse_page}: {e}')
                     continue
@@ -251,9 +262,15 @@ class CianScraper:
         else:
             logger.info("✅ No duplicate listings found in final results.")
     
-        logger.info(f'Collection complete: {len(all_apts)} listings collected after {total_pages_processed} pages')
+        # -------- Final Listing Log --------
+        logger.info(f"📦 Final listing log ({len(all_apts)} total):")
+        for apt in all_apts:
+            logger.info(f"  - {apt.get('offer_id')} | {apt.get('title')} | {apt.get('address')} | {apt.get('price')}")
+    
+        logger.info(f'✅ Collection complete: {len(all_apts)} listings collected after {total_pages_processed} pages')
         return all_apts
     
+        
                     
     def _parse_card(self, card):
         try:
@@ -272,6 +289,7 @@ class CianScraper:
                 data['title'] = title.get_text(strip=True)
             if price := card.select_one('[data-mark="MainPrice"]'):
                 data['price'] = price.get_text(strip=True)
+                data['price_value'] = self._extract_price(data['price'])
 
             if price_info := card.select_one('[data-mark="PriceInfo"]'):
                 price_info_text = price_info.get_text(strip=True)
