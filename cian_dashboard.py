@@ -10,6 +10,11 @@ import os
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo  # Python 3.9+
+
+
 
 # Configuration - Adjusted for new column structure
 # Update CONFIG to include new columns
@@ -58,25 +63,34 @@ CONFIG = {
 
 
 
-from datetime import datetime, timedelta
 
-def pluralize_ru(number, forms):
-    """Подбирает правильную форму слова для русского языка.
-    forms: ['минута', 'минуты', 'минут'] или ['час', 'часа', 'часов']"""
+
+MOSCOW_TZ = ZoneInfo("Europe/Moscow")  # or any timezone you want
+
+def pluralize_ru_accusative(number, forms, word):
+    """
+    Подбирает правильную форму слова в винительном падеже:
+    forms = ['минута', 'минуты', 'минут'] или ['час', 'часа', 'часов']
+    word — 'минута' или 'час' — нужен для обработки исключений.
+    """
     n = abs(number) % 100
     if 11 <= n <= 19:
         return forms[2]
     n = n % 10
     if n == 1:
-        return forms[0]
+        if word == 'минута':
+            return 'минуту'
+        return forms[0]  # 'час'
     elif 2 <= n <= 4:
         return forms[1]
     else:
         return forms[2]
 
+
 def format_date(dt):
-    """Форматирует дату с учётом относительных выражений и склонений"""
-    now = datetime.now()
+    now = datetime.now(MOSCOW_TZ)  # или ваша временная зона
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=MOSCOW_TZ)
     delta = now - dt
     today = now.date()
     yesterday = today - timedelta(days=1)
@@ -85,18 +99,16 @@ def format_date(dt):
         return "только что"
     elif delta < timedelta(hours=1):
         minutes = int(delta.total_seconds() // 60)
-        return f"{minutes} {pluralize_ru(minutes, ['минута', 'минуты', 'минут'])} назад"
+        return f"{minutes} {pluralize_ru_accusative(minutes, ['минута', 'минуты', 'минут'], 'минута')} назад"
     elif delta < timedelta(hours=6):
         hours = int(delta.total_seconds() // 3600)
-        return f"{hours} {pluralize_ru(hours, ['час', 'часа', 'часов'])} назад"
+        return f"{hours} {pluralize_ru_accusative(hours, ['час', 'часа', 'часов'], 'час')} назад"
     elif dt.date() == today:
         return f"сегодня, {dt.hour:02}:{dt.minute:02}"
     elif dt.date() == yesterday:
         return f"вчера, {dt.hour:02}:{dt.minute:02}"
     else:
         return f"{dt.day} {CONFIG['months'][dt.month]}, {dt.hour:02}:{dt.minute:02}"
-
-
 
         
 # Unified styles
