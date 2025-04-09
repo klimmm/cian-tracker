@@ -265,7 +265,7 @@ class CianScraper:
             if offer_id in self.existing_data:
                 existing = self.existing_data[offer_id]
                 new_price = self._extract_price(apt.get('price'))
-                old_price = existing.get('price_value')
+                old_price = existing.get('price_value', new_price)
                 if new_price != old_price:
                     merged = apt.copy()
                     combined_apts.append(merged)
@@ -309,6 +309,12 @@ class CianScraper:
         if not apartments:
             return []
         try:
+            for apt in apartments:
+                if 'price' in apt:
+                    apt['price_value'] = self._extract_price(apt['price'])
+                if 'cian_estimation' in apt:
+                    apt['cian_estimation_value'] = self._extract_price(apt['cian_estimation'])
+            
             base_filename = self.csv_filename.replace('.csv', '')
             current_csv = f"{base_filename}.csv"
             current_json = f"{base_filename}.json"
@@ -319,6 +325,8 @@ class CianScraper:
             for col in ['price_change', 'cian_estimation', 'price']:
                 if col in df.columns:
                     df.drop(columns=col, inplace=True)
+
+
                     
             result = df.drop_duplicates('offer_id', keep='first').to_dict('records')
             if result:
@@ -367,10 +375,10 @@ class CianScraper:
         return result
 
 if __name__ == '__main__':
-    #csv_file = 'cian_apartments.csv'
-    #base_url = 'https://www.cian.ru/cat.php?currency=2&deal_type=rent&district%5B0%5D=13&district%5B1%5D=21&engine_version=2&maxprice=100000&metro%5B0%5D=4&metro%5B10%5D=86&metro%5B11%5D=115&metro%5B12%5D=118&metro%5B13%5D=120&metro%5B14%5D=134&metro%5B15%5D=143&metro%5B16%5D=151&metro%5B17%5D=159&metro%5B18%5D=310&metro%5B1%5D=8&metro%5B2%5D=12&metro%5B3%5D=18&metro%5B4%5D=20&metro%5B5%5D=33&metro%5B6%5D=46&metro%5B7%5D=56&metro%5B8%5D=63&metro%5B9%5D=80&offer_type=flat&room1=1&room2=1&room3=1&room4=1&room5=1&room6=1&room9=1&type=4'
-    csv_file = 'cian_apartments_large.csv'
-    base_url = 'https://www.cian.ru/cat.php?currency=2&deal_type=rent&district%5B0%5D=4&district%5B1%5D=88&district%5B2%5D=101&district%5B3%5D=113&engine_version=2&maxprice=100000&offer_type=flat&room1=1&room2=1&room3=1&room4=1&room5=1&room6=1&room9=1&type=4'
+    csv_file = 'cian_apartments.csv'
+    base_url = 'https://www.cian.ru/cat.php?currency=2&deal_type=rent&district%5B0%5D=13&district%5B1%5D=21&engine_version=2&maxprice=100000&metro%5B0%5D=4&metro%5B10%5D=86&metro%5B11%5D=115&metro%5B12%5D=118&metro%5B13%5D=120&metro%5B14%5D=134&metro%5B15%5D=143&metro%5B16%5D=151&metro%5B17%5D=159&metro%5B18%5D=310&metro%5B1%5D=8&metro%5B2%5D=12&metro%5B3%5D=18&metro%5B4%5D=20&metro%5B5%5D=33&metro%5B6%5D=46&metro%5B7%5D=56&metro%5B8%5D=63&metro%5B9%5D=80&offer_type=flat&room1=1&room2=1&room3=1&room4=1&room5=1&room6=1&room9=1&type=4'
+    #csv_file = 'cian_apartments_large.csv'
+    #base_url = 'https://www.cian.ru/cat.php?currency=2&deal_type=rent&district%5B0%5D=4&district%5B1%5D=88&district%5B2%5D=101&district%5B3%5D=113&engine_version=2&maxprice=100000&offer_type=flat&room1=1&room2=1&room3=1&room4=1&room5=1&room6=1&room9=1&type=4'
 
     
     scraper = CianScraper(headless=True, csv_filename=csv_file)

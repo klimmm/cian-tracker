@@ -17,116 +17,6 @@ class CianDetailFetcher:
     def __init__(self, chrome_options):
         self.chrome_options = chrome_options
 
-    def _normalize_key(self, label):
-        """
-        Normalize the label to use as a dictionary key.
-        
-        Args:
-            label: Original label text
-            
-        Returns:
-            str: Normalized key
-        """
-        # Lower case, remove spaces and special characters
-        key = label.lower().strip()
-        
-        # Map of Russian terms to normalized keys
-        key_map = {
-            'общая площадь': 'total_area',
-            'жилая площадь': 'living_area',
-            'площадь кухни': 'kitchen_area',
-            'этаж': 'floor',
-            'санузел': 'bathroom',
-            'вид из окон': 'view',
-            'ремонт': 'renovation',
-            'год постройки': 'year_built',
-            'строительная серия': 'building_series',
-            'тип дома': 'building_type',
-            'тип перекрытий': 'ceiling_type',
-            'парковка': 'parking',
-            'подъезды': 'entrances',
-            'отопление': 'heating',
-            'аварийность': 'emergency_status',
-            'газоснабжение': 'gas_supply',
-            'оплата жкх': 'utility_payment',
-            'залог': 'deposit',
-            'комиссия': 'commission',
-            'предоплата': 'prepayment',
-            'срок аренды': 'rental_term'
-            # Add more mappings as needed
-        }
-        
-        # Return mapped key or create one from original
-        return key_map.get(key, key.replace(' ', '_').replace('-', '_'))
-
-    def extract_property_details(self, driver):
-        """
-        Extract property details from various HTML elements on the page.
-        
-        Args:
-            driver: Selenium webdriver instance
-            
-        Returns:
-            dict: Dictionary with extracted property details
-        """
-        details = {}
-        
-        # Extract from ObjectFactoids
-        try:
-            factoids = driver.find_elements(By.CSS_SELECTOR, "[data-name='ObjectFactoids'] [data-name='ObjectFactoidsItem']")
-            for factoid in factoids:
-                try:
-                    # Get the label (first span) and value (second span)
-                    label_el = factoid.find_element(By.CSS_SELECTOR, ".a10a3f92e9--color_gray60_100--r_axa")
-                    value_el = factoid.find_element(By.CSS_SELECTOR, ".a10a3f92e9--color_text-primary-default--vSRPB")
-                    
-                    label = label_el.text.strip()
-                    value = value_el.text.strip()
-                    
-                    key = self._normalize_key(label)
-                    details[key] = value
-                    logger.debug(f"Extracted factoid: {key} = {value}")
-                except Exception as e:
-                    logger.debug(f"Failed to extract factoid: {e}")
-        except Exception as e:
-            logger.debug(f"Failed to extract ObjectFactoids: {e}")
-        
-        # Extract from OfferSummaryInfoLayout
-        try:
-            info_items = driver.find_elements(By.CSS_SELECTOR, "[data-name='OfferSummaryInfoItem']")
-            for item in info_items:
-                try:
-                    paragraphs = item.find_elements(By.TAG_NAME, "p")
-                    if len(paragraphs) >= 2:
-                        label = paragraphs[0].text.strip()
-                        value = paragraphs[1].text.strip()
-                        key = self._normalize_key(label)
-                        details[key] = value
-                        logger.debug(f"Extracted summary info: {key} = {value}")
-                except Exception as e:
-                    logger.debug(f"Failed to extract summary info item: {e}")
-        except Exception as e:
-            logger.debug(f"Failed to extract OfferSummaryInfoLayout: {e}")
-        
-        # Extract from OfferFactsInSidebar
-        try:
-            facts = driver.find_elements(By.CSS_SELECTOR, "[data-name='OfferFactsInSidebar'] [data-name='OfferFactItem']")
-            for fact in facts:
-                try:
-                    spans = fact.find_elements(By.TAG_NAME, "span")
-                    if len(spans) >= 2:
-                        label = spans[0].text.strip()
-                        value = spans[-1].text.strip()
-                        key = self._normalize_key(label)
-                        details[key] = value
-                        logger.debug(f"Extracted fact: {key} = {value}")
-                except Exception as e:
-                    logger.debug(f"Failed to extract fact item: {e}")
-        except Exception as e:
-            logger.debug(f"Failed to extract OfferFactsInSidebar: {e}")
-        
-        return details
-
     def fetch_page_data(self, update_item):
         url = update_item.get('url')
         update_type = update_item.get('update_type')
@@ -155,15 +45,6 @@ class CianDetailFetcher:
                     'update_type': update_type,
                     'success': True
                 }
-
-                # Extract property details regardless of update type 
-                # (this will ensure we get these details for all processed items)
-                if update_type in ['property_details', 'estimation', 'unpublished']:
-                    property_details = self.extract_property_details(driver)
-                    if property_details:
-                        # Add property details to result
-                        result.update(property_details)
-                        logger.info(f'[{item_id}] Extracted {len(property_details)} property details')
 
                 if update_type == 'estimation':
                     selector = "[data-testid='valuation_estimationPrice'] .a10a3f92e9--price--w7ha0 span"
@@ -204,10 +85,6 @@ class CianDetailFetcher:
                         result['unpublished_date'] = status_date
 
                     return result
-                
-                # For property_details update type, just return the collected details
-                elif update_type == 'property_details':
-                    return result
 
             except Exception as e:
                 if attempt < max_retries:
@@ -242,8 +119,8 @@ class CianDetailFetcher:
 
 
 class CianScraper:
-    def __init__(self, headless=True, intermediate_csv='cian_apartments.csv',
-                 final_csv='cian_apartments.csv', max_distance_km=3):
+    def __init__(self, headless=True, intermediate_csv='cian_apartments_large.csv',
+                 final_csv='cian_apartments_large.csv', max_distance_km=3):
         chrome_opts = Options()
         if headless:
             chrome_opts.add_argument('--headless')
@@ -278,7 +155,7 @@ class CianScraper:
 
     def _process_updates(self, apartments):
         update_items, keep_as_is = [], []
-        stats = {'estimation': 0, 'unpublished': 0, 'property_details': 0, 'unchanged': 0}
+        stats = {'estimation': 0, 'unpublished': 0, 'unchanged': 0}
 
         for apt in apartments:
             offer_id = str(apt.get('offer_id', ''))
@@ -292,22 +169,12 @@ class CianScraper:
             est_value = apt.get('cian_estimation_value')
             status = apt.get('status')
             unpub = apt.get('unpublished_date')
-            
-            # Check if property details are missing
-            # Use key fields as indicators of whether we have property details
-            has_property_details = any(apt.get(field) for field in ['total_area', 'living_area', 'kitchen_area'])
-            
             update_type = None
 
             if self._is_empty(est_value) and distance <= self.max_distance_km:
                 update_type = 'estimation'
-                stats['estimation'] += 1
             elif status == 'non active' and self._is_empty(unpub):
                 update_type = 'unpublished'
-                stats['unpublished'] += 1
-            elif not has_property_details:
-                update_type = 'property_details'
-                stats['property_details'] += 1
 
             if update_type:
                 update_items.append({
@@ -319,9 +186,8 @@ class CianScraper:
                 stats['unchanged'] += 1
 
         logger.info(f"Queued {len(update_items)} updates: "
-                    f"{stats['estimation']} estimation, "
-                    f"{stats['unpublished']} unpublished, "
-                    f"{stats['property_details']} property details")
+                    f"{sum(1 for i in update_items if i['update_type'] == 'estimation')} estimation, "
+                    f"{sum(1 for i in update_items if i['update_type'] == 'unpublished')} unpublished")
 
         results = list(keep_as_is)
 
@@ -340,43 +206,28 @@ class CianScraper:
                         results.append(apt)
                         continue
 
-                    # First, update with any property details that were fetched (for any update type)
-                    for key, value in result.items():
-                        if key not in ['item_id', 'update_type', 'success', 'error', 'is_unpublished', 
-                                      'unpublished_date', 'cian_estimation', 'cian_estimation_value']:
-                            apt[key] = value
-
-                    # Then handle specific update types
                     if update_type == 'estimation':
                         # Use values directly from the fetcher result
                         apt['cian_estimation'] = result['cian_estimation']
                         apt['cian_estimation_value'] = result['cian_estimation_value']
                         
                         logger.info(f"[{offer_id}] Estimation updated: {apt['cian_estimation']} (value: {apt['cian_estimation_value']})")
+                        stats['estimation'] += 1
 
                     elif update_type == 'unpublished':
                         apt['status'] = 'non active'
                         apt['unpublished_date'] = result.get('unpublished_date', '--')
                         logger.info(f"[{offer_id}] Marked unpublished: {apt['unpublished_date']}")
-                    
-                    elif update_type == 'property_details':
-                        # Property details were already added above
-                        extracted_count = sum(1 for k in result.keys() if k not in 
-                                             ['item_id', 'update_type', 'success'])
-                        logger.info(f"[{offer_id}] Property details updated: {extracted_count} fields")
+                        stats['unpublished'] += 1
 
                     results.append(apt)
 
                 except Exception as e:
                     logger.error(f"Future failed: {e}")
-                    # Add the original data back to results in case of failure
-                    if 'item' in locals() and 'original_data' in item:
-                        results.append(item['original_data'])
 
         total = len(apartments)
         logger.info(f"Processed {total} listings: {stats['estimation']} updated (estimation), "
-                    f"{stats['unpublished']} unpublished, {stats['property_details']} property details, "
-                    f"{stats['unchanged']} unchanged")
+                    f"{stats['unpublished']} unpublished, {stats['unchanged']} unchanged")
         return results
 
     def process(self):

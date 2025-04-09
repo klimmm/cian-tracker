@@ -5,6 +5,11 @@ import dash
 from dash import dcc, html, dash_table, callback
 from dash.dependencies import Input, Output, State
 import re
+import json
+import os
+import numpy as np
+import pandas as pd
+
 # Configuration - Adjusted for new column structure
 # Update CONFIG to include new columns
 CONFIG = {
@@ -19,7 +24,7 @@ CONFIG = {
         ],
         "visible": [
             "address", "distance", "price", 
-            #"commission_info_abbr", "deposit_info_abbr", 
+            "commission_info_abbr", "deposit_info_abbr", 
             #"monthly_burden_formatted", 
             "cian_estimation",  
             "updated_time", "price_change_formatted", "title", "metro_station", 
@@ -309,17 +314,41 @@ def format_burden(row):
         return '--'
     
 # Update the load_and_process_data function to process new columns
+
+
+# Modify the load_and_process_data function to read from metadata file
 def load_and_process_data():
     """Load and process data with improved price change handling and new columns"""
     try:
         path = "cian_apartments.csv"
         df = pd.read_csv(path, encoding="utf-8", comment="#")
         
-        # Extract update time from file
-        with open(path, encoding="utf-8") as f:
-            first_line = f.readline()
-            update_time = first_line.split("last_updated=")[1].split(",")[0].strip() if "last_updated=" in first_line else "Unknown"
+        # Extract update time from metadata file instead of CSV comment
+        try:
+            with open("cian_apartments.meta.json", "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+                update_time_str = metadata.get("last_updated", "Unknown")
+                
+                # Parse and reformat the datetime if it's in the expected format
+                try:
+                    # Parse the timestamp (assuming format like "2025-04-09 09:00:31")
+                    dt = pd.to_datetime(update_time_str)
+                    # Format as "09.04.2025 09:00:31"
+                    update_time = dt.strftime("%d.%m.%Y %H:%M:%S")
+                    
+                    # If you want to add italics to the time portion:
+                    # update_time = f"{dt.strftime('%d.%m.%Y')} *{dt.strftime('%H:%M:%S')}*"
+                except:
+                    # Fallback if parsing fails
+                    update_time = update_time_str
+        except Exception as e:
+            print(f"Error reading metadata file: {e}")
+            # Fallback to original method
+            with open(path, encoding="utf-8") as f:
+                first_line = f.readline()
+                update_time = first_line.split("")[1].split(",")[0].strip() if "last_updated=" in first_line else "Unknown"
         
+        # Rest of the function remains the same...
         # Process core columns
         df["offer_id"] = df["offer_id"].astype(str)
         df["address"] = df.apply(lambda r: f"[{r['address']}]({CONFIG['base_url']}{r['offer_id']}/)", axis=1)
@@ -579,7 +608,7 @@ def update_table_and_time(price_threshold, distance_threshold, filters, _):
         markdown_options={"html": True}
     )
     
-    return table, f"Last updated: {update_time}"
+    return table, f"{update_time}"
 
 # Callback for sorting
 @callback(
