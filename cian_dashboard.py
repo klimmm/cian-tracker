@@ -70,9 +70,9 @@ STYLE = {
     "data": {"lineHeight": "14px"},
     "input": {"marginRight": "5px", "width": "110px", "height": "15px"},
     "input_number": {"width": "110px", "height": "15px"},
-    "label": {"fontSize": "11px", "marginRight": "10px", "display": "inline-block", "width": "140px", "whiteSpace": "nowrap"},
-    "button_row": {"margin": "5px", "display": "flex", "flexWrap": "wrap", "alignItems": "center", "width": "100%"},
-    "button_container": {"display": "flex", "flexWrap": "wrap", "width": "calc(100% - 150px)"},
+    "label": {"fontSize": "11px", "marginRight": "3px", "display": "block"},
+    "button_base": {"display": "inline-block", "padding": "3px 8px", "fontSize": "9px", 
+                  "border": "1px solid #ccc", "margin": "0 5px", "cursor": "pointer"},
 }
 
 STYLE["button_base"] = {
@@ -84,13 +84,14 @@ STYLE["button_base"] = {
     "cursor": "pointer"
 }
 
+# Classic, standard colors for button groups
 BUTTON_STYLES = {
     'nearest': {"backgroundColor": "#d9edf7", **STYLE["button_base"]},
     'below_estimate': {"backgroundColor": "#fef3d5", **STYLE["button_base"]},
     'inactive': {"backgroundColor": "#f4f4f4", **STYLE["button_base"]},
     'updated_today': {"backgroundColor": "#dff0d8", **STYLE["button_base"]},
-    'price': {"backgroundColor": "#F0F0F0", **STYLE["button_base"]},
-    'distance': {"backgroundColor": "#E8E8E8", **STYLE["button_base"]}
+    'price': {"backgroundColor": "#e8e8e0", **STYLE["button_base"]},      # Light warm gray
+    'distance': {"backgroundColor": "#e0e4e8", **STYLE["button_base"]}    # Light cool gray
 }
 
 COLUMN_STYLES = [
@@ -522,10 +523,11 @@ app.layout = html.Div([
     }),
     
     # Container for price buttons, distance buttons, and filter buttons
+    # Reduced margins between button rows
     html.Div([
         # Price buttons
         html.Div([
-            html.Label('Макс. цена (₽):', className="dash-label", style=STYLE["label"]),
+            html.Label('Макс. цена (₽):', className="dash-label", style={"marginBottom": "2px"}),
             html.Div([
                 html.Button("50K", id="btn-price-50k", style={**BUTTON_STYLES['price'], "opacity": 0.6}),
                 html.Button("60K", id="btn-price-60k", style={**BUTTON_STYLES['price'], "opacity": 0.6}),
@@ -533,12 +535,12 @@ app.layout = html.Div([
                 html.Button("80K", id="btn-price-80k", style={**BUTTON_STYLES['price'], "opacity": 1.0, "boxShadow": "0 0 5px #4682B4"}),
                 html.Button("90K", id="btn-price-90k", style={**BUTTON_STYLES['price'], "opacity": 0.6}),
                 html.Button("90K+", id="btn-price-90k-plus", style={**BUTTON_STYLES['price'], "opacity": 0.6}),
-            ], style=STYLE["button_container"]),
-        ], style=STYLE["button_row"]),
+            ]),
+        ], style={"margin": "3px", "textAlign": "left", "width": "100%", "maxWidth": "600px"}),
         
         # Distance buttons
         html.Div([
-            html.Label('Макс. расстояние (км):', className="dash-label", style=STYLE["label"]),
+            html.Label('Макс. расстояние (км):', className="dash-label", style={"marginBottom": "2px"}),
             html.Div([
                 html.Button("1km", id="btn-dist-1km", style={**BUTTON_STYLES['distance'], "opacity": 0.6}),
                 html.Button("2km", id="btn-dist-2km", style={**BUTTON_STYLES['distance'], "opacity": 0.6}),
@@ -546,20 +548,17 @@ app.layout = html.Div([
                 html.Button("4km", id="btn-dist-4km", style={**BUTTON_STYLES['distance'], "opacity": 0.6}),
                 html.Button("5km", id="btn-dist-5km", style={**BUTTON_STYLES['distance'], "opacity": 0.6}),
                 html.Button("5km+", id="btn-dist-5km-plus", style={**BUTTON_STYLES['distance'], "opacity": 0.6}),
-            ], style=STYLE["button_container"]),
-        ], style=STYLE["button_row"]),
+            ]),
+        ], style={"margin": "3px", "textAlign": "left", "width": "100%", "maxWidth": "600px"}),
         
-        # Filter buttons
+        # Filter buttons - add consistent label for filters
         html.Div([
-            html.Label('Фильтры:', className="dash-label", style=STYLE["label"]),
-            html.Div([
-                html.Button("Ближайшие", id="btn-nearest", style={**BUTTON_STYLES['nearest'], "opacity": "0.6"}),
-                html.Button("Цена ниже оценки", id="btn-below-estimate", style={**BUTTON_STYLES['below_estimate'], "opacity": "0.6"}),
-                html.Button("Сегодня", id="btn-updated-today", style={**BUTTON_STYLES['updated_today'], "opacity": "0.6"}),
-                html.Button("Неактивные", id="btn-inactive", style={**BUTTON_STYLES['inactive'], "opacity": "0.6"}),
-            ], style=STYLE["button_container"]),
-        ], style=STYLE["button_row"]),
-    ], style={"margin": "5px", "width": "100%", "maxWidth": "600px"}),
+            html.Button("Ближайшие", id="btn-nearest", style={**BUTTON_STYLES['nearest'], "opacity": "0.6"}),
+            html.Button("Цена ниже оценки", id="btn-below-estimate", style={**BUTTON_STYLES['below_estimate'], "opacity": "0.6"}),
+            html.Button("Сегодня", id="btn-updated-today", style={**BUTTON_STYLES['updated_today'], "opacity": "0.6"}),
+            html.Button("Неактивные", id="btn-inactive", style={**BUTTON_STYLES['inactive'], "opacity": "0.6"}),
+        ], style={"margin": "3px", "marginTop": "5px", "display": "flex", "alignItems": "center", "flexWrap": "wrap", "width": "100%", "maxWidth": "600px"}),
+    ], style={"margin": "3px", "textAlign": "left", "width": "100%"}),
     
     # Table container
     dcc.Loading(id="loading-main", children=[html.Div(id="table-container")], style={"margin": "5px"}),
