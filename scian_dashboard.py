@@ -22,34 +22,34 @@ CONFIG = {
     "columns": {
         "display": [
             "offer_id", "title", "updated_time", "updated_time_sort", 
-            "price", "price_value", "cian_estimation", "price_difference",
+            "price_value_formatted", "price_value", "cian_estimation_formatted", "price_difference_formatted",
             "address", "metro_station", "offer_link", "distance", "distance_sort",
             "price_change_formatted", "status", "unpublished_date", "unpublished_date_sort",
-            "calculated_price_diff", "rental_period_abbr", "utilities_type_abbr", 
+            "price_difference_value", "rental_period_abbr", "utilities_type_abbr", 
             "commission_info_abbr", "deposit_info_abbr", "monthly_burden", "monthly_burden_formatted"
         ],
         "visible": [
-            "address", "distance", "price", 
+            "address", "distance", "price_value_formatted", 
             "commission_info_abbr", "deposit_info_abbr", 
             #"monthly_burden_formatted", 
-            "cian_estimation",  
+            "cian_estimation_formatted",  
             "updated_time", "price_change_formatted", "title", "metro_station", 
             #"rental_period_abbr", "utilities_type_abbr", 
             "unpublished_date"
         ],
         "headers": {
             "offer_id": "ID", "distance": "Расст.", "price_change_formatted": "Изм.",
-            "title": "Описание", "updated_time": "Обновлено", "price": "Цена", "cian_estimation": "Оценка",
-            "price_difference": "Разница", "address": "Адрес", "metro_station": "Метро", "offer_link": "Ссылка",
+            "title": "Описание", "updated_time": "Обновлено", "price_value_formatted": "Цена", "cian_estimation_formatted": "Оценка",
+            "price_difference_formatted": "Разница", "address": "Адрес", "metro_station": "Метро", "offer_link": "Ссылка",
             "status": "Статус", "unpublished_date": "Снято",
             "rental_period_abbr": "Срок", "utilities_type_abbr": "ЖКХ", 
             "commission_info_abbr": "Коммис", "deposit_info_abbr": "Залог",
             "monthly_burden_formatted": "Нагрузка/мес"
         },
         "sort_map": {
-            "updated_time": "updated_time_sort", "price": "price_value",
-            "price_change_formatted": "price_change_value", "cian_estimation": "cian_estimation_value",
-            "price_difference": "price_difference_value", "distance": "distance_sort",
+            "updated_time": "updated_time_sort", "price_value_formatted": "price_value",
+            "price_change_formatted": "price_change_value", "cian_estimation_formatted": "cian_estimation_value",
+            "price_difference_formatted": "price_difference_value", "distance": "distance_sort",
             "monthly_burden_formatted": "monthly_burden"
         },
     },
@@ -142,8 +142,8 @@ STYLE["button_base"] = {
 BUTTON_STYLES = {
     'nearest': {"backgroundColor": "#d9edf7", **STYLE["button_base"]},
     'below_estimate': {"backgroundColor": "#fef3d5", **STYLE["button_base"]},
-    'inactive': {"backgroundColor": "#f4f4f4", **STYLE["button_base"]},
     'updated_today': {"backgroundColor": "#dff0d8", **STYLE["button_base"]},
+    'inactive': {"backgroundColor": "#f4f4f4", **STYLE["button_base"]},
     'price': {"backgroundColor": "#e8e8e0", **STYLE["button_base"]},      # Light warm gray
     'distance': {"backgroundColor": "#e0e4e8", **STYLE["button_base"]}    # Light cool gray
 }
@@ -151,12 +151,12 @@ BUTTON_STYLES = {
 COLUMN_STYLES = [
     {"if": {"filter_query": '{status} contains "non active"'}, "backgroundColor": "#f4f4f4", "color": "#888"},
     {"if": {"filter_query": '{distance_sort} < 1.5 && {status} ne "non active"'}, "backgroundColor": "#d9edf7"},
-    {"if": {"filter_query": '{calculated_price_diff} < -5000 && {status} ne "non active"'}, "backgroundColor": "#fef3d5"},
+    {"if": {"filter_query": '{price_difference_value} < -5000 && {status} ne "non active"'}, "backgroundColor": "#fef3d5"},
     {"if": {"filter_query": '{updated_time_sort} > "' + (pd.Timestamp.now() - pd.Timedelta(hours=24)).isoformat() + '"'}, 
      "backgroundColor": "#e6f3e0", "fontWeight": "normal"},
     {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
     {"if": {"column_id": "updated_time"}, "fontWeight": "bold", "textAlign": "center"},
-    {"if": {"column_id": "price"}, "fontWeight": "bold", "textAlign": "center"},
+    {"if": {"column_id": "price_value_formatted"}, "fontWeight": "bold", "textAlign": "center"},
     {"if": {"column_id": "monthly_burden_formatted"}, "fontWeight": "bold", "textAlign": "center"},
     {"if": {"column_id": "address"}, "textAlign": "left"},
     {"if": {"column_id": "title"}, "textAlign": "left"},
@@ -164,7 +164,7 @@ COLUMN_STYLES = [
 
 HEADER_STYLES = [
     {"if": {"column_id": col}, "textAlign": "center"} 
-    for col in ["distance", "updated_time", "unpublished_date", "price", "cian_estimation", 
+    for col in ["distance", "updated_time", "unpublished_date", "price_value_formatted", "cian_estimation_formatted", 
                "price_change_formatted", "metro_station", "status", "monthly_burden_formatted"]
 ] + [
     {"if": {"column_id": col}, "textAlign": "left"} 
@@ -413,22 +413,11 @@ def load_and_process_data():
         df["distance"] = df["distance_sort"].apply(lambda x: f"{x:.2f} km" if pd.notnull(x) else "")
         
         # Format prices from numeric values
-        df["price"] = df["price_value"].apply(lambda x: format_text(x, format_price, "--"))
-        df["cian_estimation"] = df["cian_estimation_value"].apply(lambda x: format_text(x, format_price, "--"))
-        df["price_difference"] = df["price_difference_value"].apply(lambda x: format_text(x, format_price, ""))
+        df["price_value_formatted"] = df["price_value"].apply(lambda x: format_text(x, format_price, "--"))
+        df["cian_estimation_formatted"] = df["cian_estimation_value"].apply(lambda x: format_text(x, format_price, "--"))
+        df["price_difference_formatted"] = df["price_difference_value"].apply(lambda x: format_text(x, format_price, ""))
         
-        # Handle price change specifically - ensure the column exists
-        if "price_change_value" in df.columns:
-            # Ensure it's numeric when possible
-            df["price_change_value"] = pd.to_numeric(df["price_change_value"], errors="coerce").fillna(0)
-            df["price_change_formatted"] = df["price_change_value"].apply(format_price_changes)
-        else:
-            # Create an empty column if missing
-            df["price_change_value"] = 0
-            df["price_change_formatted"] = df["price_change_value"].apply(format_price_changes)
-        
-        # Calculate price difference for highlighting
-        df["calculated_price_diff"] = df["price_value"] - df["cian_estimation_value"]
+        df["price_change_formatted"] = df["price_change_value"].apply(format_price_changes)
         
         # Process date-time fields
         df["updated_time_sort"] = pd.to_datetime(df["updated_time"], errors="coerce")
@@ -446,55 +435,14 @@ def load_and_process_data():
         df["deposit_value"] = df["deposit_info"].apply(extract_deposit_value)
         
         # Format deposit as percentage
-        df["deposit_info_abbr"] = df.apply(lambda row: "0%" if pd.notnull(row["deposit_value"]) and row["deposit_value"] == 0 
-                                           else f"{int((row['deposit_value']/row['price_value'])*100)}%" 
-                                           if pd.notnull(row["deposit_value"]) and pd.notnull(row["price_value"]) and row["price_value"] > 0 
-                                           else "--", axis=1)
-
-        # Make sure price_value is numeric
-        if 'price_value' not in df.columns:
-            print("WARNING: price_value column missing - attempting to create from price")
-            # Try to create price_value from price if it exists
-            if 'price' in df.columns:
-                df['price_value'] = df['price'].str.replace('[^\d]', '', regex=True).astype(float)
-            else:
-                df['price_value'] = None
-
-        # Ensure commission_value is numeric
-        if 'commission_value' not in df.columns:
-            print("WARNING: commission_value column missing - creating from commission_info")
-            df['commission_value'] = df['commission_info'].apply(
-                lambda x: 0 if pd.isna(x) or 'без комиссии' in str(x) 
-                else float(re.search(r'(\d+)%', str(x)).group(1)) if re.search(r'(\d+)%', str(x)) 
-                else None
-            )
+        df["deposit_info_abbr"] = df.apply(
+            lambda row: "0%" if pd.notnull(row["deposit_value"]) and row["deposit_value"] == 0 
+            else f"{int((row['deposit_value']/row['price_value'])*100)}%" if pd.notnull(row["deposit_value"]) 
+            and pd.notnull(row["price_value"]) and row["price_value"] > 0 else "--", axis=1)
         
-        # Print column info for debugging
-        print("\nCOLUMN STATUS FOR BURDEN CALCULATION:")
-        for col in ['price_value', 'commission_value', 'deposit_value']:
-            if col in df.columns:
-                non_null = df[col].notnull().sum()
-                total = len(df)
-                print(f"{col}: {non_null}/{total} non-null values, dtype: {df[col].dtype}")
-            else:
-                print(f"{col}: MISSING")
         
-        # Calculate monthly burden
         df['monthly_burden'] = df.apply(calculate_monthly_burden, axis=1)
-        
-        # Print stats about the calculation result
-        non_null_burden = df['monthly_burden'].notnull().sum()
-        print(f"\nMonthly burden calculated for {non_null_burden}/{len(df)} rows")
-        if non_null_burden > 0:
-            print(f"Sample values: {df['monthly_burden'].dropna().head(3).tolist()}")
-        
-        # Format the monthly burden AFTER calculating it
         df['monthly_burden_formatted'] = df.apply(format_burden, axis=1)
-        
-        # Print sample of formatted values
-        print("\nSample formatted burden values:")
-        sample_formatted = df['monthly_burden_formatted'].head(5).tolist()
-        print(sample_formatted)
         
         # Default sorting
         df['sort_key'] = df['status'].apply(lambda x: 1 if x == 'active' else 2)
@@ -506,8 +454,6 @@ def load_and_process_data():
         print(f"Error in load_and_process_data: {e}")
         print(traceback.format_exc())
         return pd.DataFrame(), f"Error: {e}"
-
-
 
 def filter_and_sort_data(df, filters=None, sort_by=None):
     """Filter and sort data in a single function"""
@@ -534,7 +480,7 @@ def filter_and_sort_data(df, filters=None, sort_by=None):
         if filters.get('nearest'):
             mask |= (df["distance_sort"] < 1.5)
         if filters.get('below_estimate'):
-            mask |= (df["calculated_price_diff"] < -5000)
+            mask |= (df["price_difference_value"] < -5000)
         if filters.get('inactive'):
             mask |= (df["status"] == "non active")
         if filters.get('updated_today'):
@@ -548,7 +494,8 @@ def filter_and_sort_data(df, filters=None, sort_by=None):
         for item in sort_by:
             col = CONFIG["columns"]["sort_map"].get(item["column_id"], item["column_id"])
             df = df.sort_values(col, ascending=item["direction"] == "asc")
-    
+
+    df = df[df["distance_sort"] <= 6]
     return df
 
 # Initialize the app
@@ -770,7 +717,7 @@ def update_table_and_time(filters, _):
     
     # Define column properties 
     visible = CONFIG["columns"]["visible"]
-    numeric_cols = {"distance", "price", "cian_estimation", "price_difference", "monthly_burden_formatted"}
+    numeric_cols = {"distance", "price_value_formatted", "cian_estimation_formatted", "price_difference_formatted", "monthly_burden_formatted"}
     markdown_cols = {"price_change_formatted", "title", "address", "offer_link"}
     
     columns = [{"name": CONFIG["columns"]["headers"].get(c, c), "id": c, 

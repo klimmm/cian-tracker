@@ -128,7 +128,8 @@ class CianScraper:
                 time.sleep(1.5)
     
                 soup = BeautifulSoup(driver.page_source, 'html.parser')
-                cards = soup.select("article[data-name='CardComponent']")
+
+                cards = soup.select("div._93444fe79c--wrapper--W0WqH[data-name='Offers'] article[data-name='CardComponent']")
                 if not cards:
                     logger.info('No cards found on page. Stopping forward loop.')
                     break
@@ -205,9 +206,9 @@ class CianScraper:
                     )
                     driver.execute_script('window.scrollTo(0, document.body.scrollHeight/2);')
                     time.sleep(1.5)
-    
                     soup = BeautifulSoup(driver.page_source, 'html.parser')
-                    cards = soup.select("article[data-name='CardComponent']")
+                    # Replace with this more specific selector in both places
+                    cards = soup.select("div._93444fe79c--wrapper--W0WqH[data-name='Offers'] article[data-name='CardComponent']")
                     if not cards:
                         logger.warning(f"No cards found on page {reverse_page}")
                         continue
@@ -308,28 +309,8 @@ class CianScraper:
                         data['utilities_type'] = p
                     elif 'комиссия' in p or 'без комиссии' in p: 
                         data['commission_info'] = p
-                        # Extract commission as numeric value
-                        if 'без комиссии' in p:
-                            data['commission_value'] = 0
-                        elif 'комиссия' in p:
-                            commission_match = re.search(r'комиссия\s+(\d+)%', p)
-                            if commission_match:
-                                data['commission_value'] = float(commission_match.group(1))
                     elif 'залог' in p or 'без залога' in p: 
                         data['deposit_info'] = p
-                        # Extract deposit as numeric value
-                        if 'без залога' in p:
-                            data['deposit_value'] = 0
-                        elif 'залог' in p:
-                            deposit_match = re.search(r'залог\s+([\d\s\xa0]+)\s*₽', p)
-                            if deposit_match:
-                                amount_str = deposit_match.group(1)
-                                # Remove all whitespace including non-breaking spaces
-                                clean_amount = re.sub(r'\s', '', amount_str)
-                                try:
-                                    data['deposit_value'] = int(clean_amount)
-                                except ValueError:
-                                    pass  # Keep as None if conversion fails
 
             
             if metro := card.select_one('div[data-name="SpecialGeo"]'):

@@ -185,9 +185,31 @@ class CianScraper:
                 keep_as_is.append(apt)
                 stats['unchanged'] += 1
 
+        # Create lists of the specific items
+        estimation_items = [item for item in update_items if item['update_type'] == 'estimation']
+        unpublished_items = [item for item in update_items if item['update_type'] == 'unpublished']
+        
+        # Log the summary counts
         logger.info(f"Queued {len(update_items)} updates: "
-                    f"{sum(1 for i in update_items if i['update_type'] == 'estimation')} estimation, "
-                    f"{sum(1 for i in update_items if i['update_type'] == 'unpublished')} unpublished")
+                    f"{len(estimation_items)} estimation, "
+                    f"{len(unpublished_items)} unpublished")
+        
+        # Log estimation items, one per line
+        if estimation_items:
+            logger.info("Estimation items:")
+            for item in estimation_items:
+                item_id = item.get('url', 'unknown')
+                estimation_value = item.get('original_data', {}).get('cian_estimation_value', 'N/A')
+                logger.info(f"  {item_id} - {estimation_value}")
+        
+        # Log unpublished items, one per line
+        if unpublished_items:
+            logger.info("Unpublished items:")
+            for item in unpublished_items:
+                item_id = item.get('url', 'unknown')
+                unpublished_date = item.get('original_data', {}).get('unpublished_date', 'N/A')
+                logger.info(f"  {item_id} - {unpublished_date}")
+                        
 
         results = list(keep_as_is)
 
