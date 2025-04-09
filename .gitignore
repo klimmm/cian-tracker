@@ -42,7 +42,7 @@ logs/
 
 # Data files
 *.xlsx
-*.json
+
 
 # Chrome/Selenium
 .chrome/
@@ -85,7 +85,7 @@ logs/
 # Data files
 
 *.xlsx
-*.json
+
 
 # Chrome/Selenium
 .chrome/
