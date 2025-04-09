@@ -82,9 +82,28 @@ class CianScraper:
                 (isinstance(val, str) and (val.strip().lower() in ['nan', 'n/a'] or val.strip() == '')) or
                 (isinstance(val, float) and pd.isna(val)))
     
-    def collect_listings(self, url, max_pages=5):
-        all_apts, seen_ids = [], set()
+    def _get_total_listings(self, driver):
+        try:
+            WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="SummaryHeader"] h5'))
+            )
+            header_text = driver.find_element(By.CSS_SELECTOR, '[data-testid="SummaryHeader"] h5').text
+            match = re.search(r'Найдено\s+(\d+)', header_text.replace('\xa0', ''))
+            if match:
+                return int(match.group(1))
+        except Exception as e:
+            logger.warning(f"Could not extract total listings: {e}")
+        return None
+    
+            
+    def collect_listings(self, url, max_pages=1000):
+        all_apts = []
+        added_ids = {}
+        visited_pages = set()
+        page_listings_map = {}
         driver = webdriver.Chrome(options=self.chrome_options)
+        total_pages_processed = 0
+    
         try:
             page = 1
             driver.get(url)
@@ -92,87 +111,157 @@ class CianScraper:
                 EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-name='CardComponent']"))
             )
             logger.info('Starting collection of apartment listings')
-            
-            previous_url = ""
+    
+            total_listings = self._get_total_listings(driver)
+            if not total_listings:
+                logger.warning("Total listing count not found. Defaulting to max_pages logic.")
+                total_listings = float('inf')
+    
+            logger.info(f'Total listings to collect: {total_listings}')
             previous_page_ids = set()
-            
-            while page <= max_pages:
+    
+            # -------- FORWARD LOOP --------
+            while len(all_apts) < total_listings and page <= max_pages:
+                visited_pages.add(page)
                 logger.info(f'Parsing page {page}')
                 driver.execute_script('window.scrollTo(0, document.body.scrollHeight/2);')
                 time.sleep(1.5)
-                
-                # Check if URL hasn't changed (potential infinite loop)
-                current_url = driver.current_url
-                if current_url == previous_url and page > 1:
-                    logger.info('URL did not change from previous page. Stopping.')
-                    break
-                    
-                previous_url = current_url
-                
+    
                 soup = BeautifulSoup(driver.page_source, 'html.parser')
                 cards = soup.select("article[data-name='CardComponent']")
-                
-                # Check if no cards found
                 if not cards:
-                    logger.info('No cards found on page. Stopping.')
+                    logger.info('No cards found on page. Stopping forward loop.')
                     break
-                
-                # Process cards and track IDs from this page
+    
                 current_page_ids = set()
-                new_items_found = False
-                
+                page_listings_map[page] = []
+                page_new_listings_count = 0
+    
                 for card in cards:
                     data = self._parse_card(card)
                     if not data or 'offer_id' not in data:
                         continue
-                        
-                    id = data['offer_id']
-                    current_page_ids.add(id)
-                    
-                    if id in seen_ids:
-                        continue
-                        
-                    # If we found at least one new ID, we're on a new page
-                    new_items_found = True
-                    
-                    if id in self.existing_data and 'distance' in self.existing_data[id]:
-                        data['distance'] = self.existing_data[id]['distance']
-                    data['status'] = 'active'
-                    data['unpublished_date'] = '--'
-                    seen_ids.add(id)
-                    all_apts.append(data)
-                
-                # If we didn't find any new items or the page has the same items as previous page
-                if not new_items_found or current_page_ids == previous_page_ids:
-                    logger.info('No new items found or same items as previous page. Stopping.')
+    
+                    offer_id = str(data['offer_id'])
+                    current_page_ids.add(offer_id)
+                    page_listings_map[page].append(offer_id)
+    
+                    if offer_id not in added_ids:
+                        data['status'] = 'active'
+                        data['unpublished_date'] = '--'
+                        if offer_id in self.existing_data and 'distance' in self.existing_data[offer_id]:
+                            data['distance'] = self.existing_data[offer_id]['distance']
+                        all_apts.append(data)
+                        added_ids[offer_id] = page
+                        page_new_listings_count += 1
+    
+                logger.info(f'Page {page}: Collected {page_new_listings_count} new listings')
+                logger.info(f'Collected {len(all_apts)} / {total_listings} so far')
+    
+                total_pages_processed += 1
+                if current_page_ids == previous_page_ids:
+                    logger.info('Same items as previous page. Stopping forward loop.')
                     break
-                    
                 previous_page_ids = current_page_ids
-                
-                # Navigate to next page with proper URL construction
-                next_url = re.sub(r'p=\d+', f'p={page+1}', driver.current_url) if 'p=' in driver.current_url else f"{driver.current_url}{'&' if '?' in driver.current_url else '?'}p={page+1}"
+    
+                if len(all_apts) >= total_listings:
+                    logger.info('Reached required number of listings. Done.')
+                    break
+    
+                page += 1
+                next_url = re.sub(r'p=\d+', f'p={page}', driver.current_url) if 'p=' in driver.current_url else f"{driver.current_url}{'&' if '?' in driver.current_url else '?'}p={page}"
                 logger.info(f'Navigating to next page: {next_url}')
-                driver.get(next_url)
-                
                 try:
+                    driver.get(next_url)
                     WebDriverWait(driver, 10).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-name='CardComponent']"))
                     )
-                    page += 1
                 except Exception as e:
-                    logger.error(f'Error waiting for next page: {str(e)}. Stopping.')
+                    logger.error(f"Failed to load page {page}: {e}")
                     break
+    
+            # -------- BACKWARD LOOP --------
+            logger.info('Starting reverse crawl to fill missing listings...')
+            for reverse_page in range(page - 1, 0, -1):
+                if len(all_apts) >= total_listings:
+                    break
+                if reverse_page not in visited_pages:
+                    continue
+    
+                back_url = re.sub(r'p=\d+', f'p={reverse_page}', url)
+                if 'p=' not in back_url:
+                    back_url = f"{back_url}{'&' if '?' in back_url else '?'}p={reverse_page}"
+                logger.info(f'Revisiting page {reverse_page}: {back_url}')
+    
+                try:
+                    driver.get(back_url)
+                    WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-name='CardComponent']"))
+                    )
+                    driver.execute_script('window.scrollTo(0, document.body.scrollHeight/2);')
+                    time.sleep(1.5)
+    
+                    soup = BeautifulSoup(driver.page_source, 'html.parser')
+                    cards = soup.select("article[data-name='CardComponent']")
+                    if not cards:
+                        logger.warning(f"No cards found on page {reverse_page}")
+                        continue
+    
+                    page_new_listings_count = 0
+                    for card in cards:
+                        data = self._parse_card(card)
+                        if not data or 'offer_id' not in data:
+                            continue
+                        offer_id = str(data['offer_id'])
+                        if offer_id not in added_ids:
+                            data['status'] = 'active'
+                            data['unpublished_date'] = '--'
+                            if offer_id in self.existing_data and 'distance' in self.existing_data[offer_id]:
+                                data['distance'] = self.existing_data[offer_id]['distance']
+                            all_apts.append(data)
+                            added_ids[offer_id] = reverse_page
+                            page_new_listings_count += 1
+    
+                    logger.info(f'Page {reverse_page}: Recovered {page_new_listings_count} new listings')
+                    logger.info(f'Total collected: {len(all_apts)} / {total_listings}')
+                except Exception as e:
+                    logger.warning(f'Error while revisiting page {reverse_page}: {e}')
+                    continue
+    
+        except Exception as e:
+            logger.error(f'Unexpected error: {e}')
         finally:
-            driver.quit()
-        logger.info(f'Collected {len(all_apts)} apartments')
+            try:
+                driver.quit()
+            except:
+                pass
+    
+        # -------- Deduplication Check --------
+        unique_ids = set()
+        duplicates = []
+        for apt in all_apts:
+            offer_id = apt.get("offer_id")
+            if offer_id in unique_ids:
+                duplicates.append(offer_id)
+            else:
+                unique_ids.add(offer_id)
+    
+        if duplicates:
+            logger.warning(f"❗ Found {len(duplicates)} duplicate listings: {duplicates[:10]}{' ...' if len(duplicates) > 10 else ''}")
+        else:
+            logger.info("✅ No duplicate listings found in final results.")
+    
+        logger.info(f'Collection complete: {len(all_apts)} listings collected after {total_pages_processed} pages')
         return all_apts
+    
+                    
     def _parse_card(self, card):
         try:
             data = {
                 'offer_id': '', 'offer_url': '', 'updated_time': '', 'title': '',
                 'price': '', 'price_info': '', 'address': '', 'metro_station': '', 
                 'neighborhood': '', 'district': '', 'description': '', 'image_urls': [], 
-                'distance': None, 'cian_estimation': ''
+                'distance': None
             }
             if link := card.select_one("a[href*='/rent/flat/']"):
                 url = link.get('href')
@@ -362,7 +451,7 @@ class CianScraper:
 
 if __name__ == '__main__':
     csv_file = 'cian_apartments.csv'
-    base_url = 'https://www.cian.ru/cat.php?currency=2&deal_type=rent&district%5B0%5D=13&district%5B1%5D=21&engine_version=2&maxprice=100000&metro%5B0%5D=4&metro%5B10%5D=86&metro%5B11%5D=115&metro%5B12%5D=118&metro%5B13%5D=120&metro%5B14%5D=134&metro%5B15%5D=143&metro%5B16%5D=151&metro%5B17%5D=159&metro%5B18%5D=310&metro%5B1%5D=8&metro%5B2%5D=12&metro%5B3%5D=18&metro%5B4%5D=20&metro%5B5%5D=33&metro%5B6%5D=46&metro%5B7%5D=56&metro%5B8%5D=63&metro%5B9%5D=80&offer_type=flat&room1=1&room2=1&room3=1&room4=1&room5=1&room6=1&room9=1&type=4'
+    base_url = 'https://www.cian.ru/cat.php?currency=2&deal_type=rent&district%5B0%5D=13&district%5B1%5D=21&engine_version=2&maxprice=100000&metro%5B0%5D=4&metro%5B10%5D=86&metro%5B11%5D=115&metro%5B12%5D=118&metro%5B13%5D=120&metro%5B14%5D=134&metro%5B15%5D=143&metro%5B16%5D=151&metro%5B17%5D=159&metro%5B18%5D=310&metro%5B1%5D=8&metro%5B2%5D=12&metro%5B3%5D=18&metro%5B4%5D=20&metro%5B5%5D=33&metro%5B6%5D=46&metro%5B7%5D=56&metro%5B8%5D=63&metro%5B9%5D=80&offer_type=flat&room1=1&room2=1&room3=1&room4=1&room5=1&room6=1&room9=1&sort=creation_date_desc&type=4'
     #csv_file = 'cian_apartments_large.csv'
     #base_url = 'https://www.cian.ru/cat.php?currency=2&deal_type=rent&district%5B0%5D=4&district%5B1%5D=88&district%5B2%5D=101&district%5B3%5D=113&engine_version=2&maxprice=100000&offer_type=flat&room1=1&room2=1&room3=1&room4=1&room5=1&room6=1&room9=1&type=4'
 
