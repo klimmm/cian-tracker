@@ -62,7 +62,7 @@ FONT = "Arial,sans-serif"
 STYLE = {
     "container": {"fontFamily": FONT, "padding": "5px", "maxWidth": "100%"},
     "header": {"fontFamily": FONT, "textAlign": "center", "fontSize": "10px", "borderBottom": "1px solid #ddd"},
-    "update_time": {"fontFamily": FONT, "fontStyle": "italic", "fontSize": "10px"},
+    "update_time": {"fontFamily": FONT, "fontStyle": "bold", "fontSize": "12px"},
     "table": {"overflowX": "auto", "width": "100%"},
     "cell": {"fontFamily": FONT, "textAlign": "center", "padding": "3px", "fontSize": "9px", "whiteSpace": "nowrap"},
     "header_cell": {"fontFamily": FONT, "backgroundColor": "#4682B4", "color": "white", "fontSize": "9px"},

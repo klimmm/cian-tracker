@@ -45,7 +45,7 @@ def run_scraper():
     try:
         # Run the scraper script
         result = subprocess.run(
-            ["python", "cian_parser.py"],  # Update this to your script filename
+            ["python", "cian_scraper_part1.py"],  # Update this to your script filename
             capture_output=True,
             text=True
         )
