@@ -99,7 +99,7 @@ def update_table_and_time(filters, _):
         style_data=STYLE["data"],
         style_filter=STYLE["filter"],
         style_data_conditional=COLUMN_STYLES,
-        page_size=100,
+        page_size=1000,
         page_action="native",
         markdown_options={"html": True},
     )

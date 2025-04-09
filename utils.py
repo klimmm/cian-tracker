@@ -30,27 +30,25 @@ def format_date(dt):
     delta = now - dt
     today = now.date()
     yesterday = today - timedelta(days=1)
-    
+
     if delta < timedelta(minutes=1):
         return "только что"
     elif delta < timedelta(hours=1):
         minutes = int(delta.total_seconds() // 60)
         minutes_text = pluralize_ru_accusative(
-            minutes, ['минута', 'минуты', 'минут'], 'минута'
+            minutes, ["минута", "минуты", "минут"], "минута"
         )
         return f"{minutes} {minutes_text} назад"
     elif delta < timedelta(hours=6):
         hours = int(delta.total_seconds() // 3600)
-        hours_text = pluralize_ru_accusative(
-            hours, ['час', 'часа', 'часов'], 'час'
-        )
+        hours_text = pluralize_ru_accusative(hours, ["час", "часа", "часов"], "час")
         return f"{hours} {hours_text} назад"
     elif dt.date() == today:
         return f"сегодня, {dt.hour:02}:{dt.minute:02}"
     elif dt.date() == yesterday:
         return f"вчера, {dt.hour:02}:{dt.minute:02}"
     else:
-        month_name = CONFIG['months'][dt.month]
+        month_name = CONFIG["months"][dt.month]
         return f"{dt.day} {month_name}, {dt.hour:02}:{dt.minute:02}"
 
 
@@ -87,6 +85,8 @@ def format_text(value, formatter, default=""):
     )
 
     return f"<div style='text-align:center;'><span style='color:{color};'>{arrow}{display}</span></div>"'''
+
+
 def format_price_changes(value):
     """Format price changes with HTML styling but without div wrapper"""
     if value is None or pd.isna(value):
@@ -108,7 +108,6 @@ def format_price_changes(value):
         f"{abs(int(value))//1000}K" if abs(value) >= 1000 else str(abs(int(value)))
     )
     return f'<span style="color:{color};">{arrow}{display}</span>'
-
 
 
 def extract_deposit_value(deposit_info):
@@ -135,6 +134,7 @@ def extract_deposit_value(deposit_info):
 
     return None
 
+
 def extract_commission_value(value):
     """Format commission info with compact abbreviation and return as float"""
     if "без комиссии" in value:
@@ -151,7 +151,7 @@ def format_price(value):
     """Format price value with K notation for thousands"""
     if value is None or pd.isna(value) or value == 0:
         return "--"
-    
+
     amount_num = int(value)
     if amount_num >= 1000000:
         return f"{amount_num//1000000}M"
@@ -159,7 +159,8 @@ def format_price(value):
         return f"{amount_num//1000}K"
     else:
         return f"{amount_num} ₽"
-        
+
+
 def format_rental_period(value):
     """Format rental period with more intuitive abbreviation"""
     if value == "От года":
@@ -167,7 +168,8 @@ def format_rental_period(value):
     elif value == "На несколько месяцев":
         return "мес+"
     return "--"
-    
+
+
 def format_price_r(value):
     """Format price value"""
     if value == 0:
@@ -175,7 +177,6 @@ def format_price_r(value):
     return f"{'{:,}'.format(int(value)).replace(',', ' ')} ₽/мес."
 
 
-    
 def format_utilities(value):
     """Format utilities info with clearer abbreviation"""
     if "без счётчиков" in value:
@@ -210,6 +211,7 @@ def format_deposit(value):
             return f"{amount_num//1000}K"
         return f"{amount_num}₽"
     return "--"
+
 
 def calculate_monthly_burden(row):
     """Calculate average monthly financial burden over 12 months"""
@@ -261,7 +263,6 @@ def format_burden(row):
         return "--"
 
 
-
 def format_update_title(row):
     """Format the update_title field based on status"""
     if row["status"] == "active":
@@ -271,13 +272,17 @@ def format_update_title(row):
     else:
         # For non-active status
         # Use unpublished_date if available, otherwise fallback to updated_time
-        time_str = row["unpublished_date"] if row["unpublished_date"] and row["unpublished_date"] != "--" else row["updated_time"]
+        time_str = (
+            row["unpublished_date"]
+            if row["unpublished_date"] and row["unpublished_date"] != "--"
+            else row["updated_time"]
+        )
         price_str = '<span style="color:gray;">cнято</span>'
-    
+
     return f'<div style="text-align:center;"><strong>{time_str}</strong>&nbsp;&nbsp;{price_str}</div>'
 
-# Then in your data processing code:
 
+# Then in your data processing code:
 
 
 def load_and_process_data():
@@ -315,8 +320,6 @@ def load_and_process_data():
         df["offer_link"] = df["offer_id"].apply(
             lambda x: f"[View]({CONFIG['base_url']}{x}/)"
         )
-        
-
 
         # Process distance and prices
         df["distance_sort"] = pd.to_numeric(df["distance"], errors="coerce")
@@ -325,12 +328,10 @@ def load_and_process_data():
         )
         # Create combined address_title column
         df["address_title"] = df.apply(
-            lambda r: f"[{r['address']}]({CONFIG['base_url']}{r['offer_id']}/)<br>{r['title']}", 
-            axis=1
+            lambda r: f"[{r['address']}]({CONFIG['base_url']}{r['offer_id']}/)<br>{r['title']}",
+            axis=1,
         )
 
-
-        
         df["price_value_formatted"] = df["price_value"].apply(
             lambda x: format_text(x, format_price_r, "--")
         )
@@ -345,51 +346,54 @@ def load_and_process_data():
             format_price_changes
         )
         # Process date-time fields
-        #df["updated_time_sort"] = pd.to_datetime(df["updated_time"], errors="coerce")
-        #df["updated_time"] = df["updated_time_sort"].apply(
+        # df["updated_time_sort"] = pd.to_datetime(df["updated_time"], errors="coerce")
+        # df["updated_time"] = df["updated_time_sort"].apply(
         #    lambda x: format_text(x, format_date, "")
-        #)
-        
-        '''df["update_title"] = df.apply(
+        # )
+
+        """df["update_title"] = df.apply(
             lambda r: f'<strong>{r["updated_time"]}</strong>&nbsp;{r["price_change_formatted"]}', 
             axis=1
         )
-        '''
+        """
         # Then use this modified function in your data processing
-        #df["price_change_formatted"] = df["price_change_value"].apply(format_price_changes)
-        #df["update_title"] = df.apply(format_update_title, axis=1)
-        
-        '''# And create the combined column
+        # df["price_change_formatted"] = df["price_change_value"].apply(format_price_changes)
+        # df["update_title"] = df.apply(format_update_title, axis=1)
+
+        """# And create the combined column
         df["update_title"] = df.apply(
             lambda r: f'<div style="text-align:center;"><strong>{r["updated_time"]}</strong>&nbsp;&nbsp;{r["price_change_formatted"]}</div>', 
             axis=1
-        )'''
-        
-        
-                
+        )"""
 
-        '''df["unpublished_date_sort"] = pd.to_datetime(
+        """df["unpublished_date_sort"] = pd.to_datetime(
             df["unpublished_date"], errors="coerce"
         )
         df["unpublished_date"] = df["unpublished_date_sort"].apply(
             lambda x: format_text(x, format_date, "--")
-        )'''
-        
+        )"""
+
         # Process date-time fields
         df["updated_time_sort"] = pd.to_datetime(df["updated_time"], errors="coerce")
         df["updated_time"] = df["updated_time_sort"].apply(
             lambda x: format_text(x, format_date, "")
         )
-        
-        # Process unpublished_date fields
-        df["unpublished_date_sort"] = pd.to_datetime(df["unpublished_date"], errors="coerce")
+
+        # Process unpublished_date fields with explicit format
+        df["unpublished_date_sort"] = pd.to_datetime(
+            df["unpublished_date"],
+            format="%Y-%m-%d %H:%M:%S",  # Format matching "2025-04-10 00:04:00"
+            errors="coerce",
+        )
         df["unpublished_date"] = df["unpublished_date_sort"].apply(
             lambda x: format_text(x, format_date, "--")
         )
-        
+
         # Format price changes
-        df["price_change_formatted"] = df["price_change_value"].apply(format_price_changes)
-        
+        df["price_change_formatted"] = df["price_change_value"].apply(
+            format_price_changes
+        )
+
         # Create the conditional update_title column
         def format_update_title(row):
             """Format the update_title field based on status"""
@@ -401,18 +405,18 @@ def load_and_process_data():
                 # For non-active status
                 # Use unpublished_date if available, otherwise fallback to updated_time
                 # Both are already formatted by previous steps
-                time_str = row["unpublished_date"] if row["unpublished_date"] and row["unpublished_date"] != "--" else row["updated_time"]
+                time_str = (
+                    row["unpublished_date"]
+                    if row["unpublished_date"] and row["unpublished_date"] != "--"
+                    else row["updated_time"]
+                )
                 price_str = '<span style="color:gray;">cнято</span>'
-            
+
             return f'<div style="text-align:center;"><strong>{time_str}</strong>&nbsp;&nbsp;{price_str}</div>'
-        
+
         # Apply the formatting function
         df["update_title"] = df.apply(format_update_title, axis=1)
-        
-        
-                
-        
-        
+
         # Process new columns with improved abbreviations
         df["rental_period_abbr"] = df["rental_period"].apply(
             lambda x: format_rental_period(x)
@@ -422,7 +426,7 @@ def load_and_process_data():
         )
         df["commission_value"] = df["commission_info"].apply(extract_commission_value)
         df["commission_info_abbr"] = df["commission_value"].apply(format_commission)
-        
+
         # Extract deposit values
         df["deposit_value"] = df["deposit_info"].apply(extract_deposit_value)
         df["deposit_info_abbr"] = df["deposit_value"].apply(format_deposit)
@@ -431,32 +435,43 @@ def load_and_process_data():
         df["monthly_burden_formatted"] = df.apply(format_burden, axis=1)
 
         # Create temporary variables with the formatted strings
-        df["price_text"] = df.apply(lambda r: f'<strong>{r["price_value_formatted"]}</strong>', axis=1)
-        df["cian_text"] = df.apply(lambda r: f'оценка циан: {r["cian_estimation_formatted"]}', axis=1)
-        df["commission_text"] = df.apply(lambda r: f'комиссия {r["commission_info_abbr"]}', axis=1)
-        df["deposit_text"] = df.apply(lambda r: f'залог {r["deposit_info_abbr"]}', axis=1)
-        
+        df["price_text"] = df.apply(
+            lambda r: f'<strong>{r["price_value_formatted"]}</strong>', axis=1
+        )
+        df["cian_text"] = df.apply(
+            lambda r: f'оценка циан: {r["cian_estimation_formatted"]}', axis=1
+        )
+        df["commission_text"] = df.apply(
+            lambda r: f'комиссия {r["commission_info_abbr"]}', axis=1
+        )
+        df["deposit_text"] = df.apply(
+            lambda r: f'залог {r["deposit_info_abbr"]}', axis=1
+        )
+
         # Combine all variables into a single column with <br> separators
         df["price_info"] = df.apply(
-            lambda r: f"{r['price_text']}<br>{r['commission_text']}<br> {r['deposit_text']}", 
-            axis=1
-        )
-        
-        # Optionally remove the temporary variables
-        df = df.drop(columns=["price_text", "cian_text", "commission_text", "deposit_text"])
-        
-        df["date_sort_combined"] = df.apply(
-            lambda r: r["updated_time_sort"] if r["status"] == "active" else r["unpublished_date_sort"],
-            axis=1
+            lambda r: f"{r['price_text']}<br>{r['commission_text']}<br> {r['deposit_text']}",
+            axis=1,
         )
 
-        
+        # Optionally remove the temporary variables
+        df = df.drop(
+            columns=["price_text", "cian_text", "commission_text", "deposit_text"]
+        )
+
+        df["date_sort_combined"] = df.apply(
+            lambda r: (
+                r["updated_time_sort"]
+                if r["status"] == "active"
+                else r["unpublished_date_sort"]
+            ),
+            axis=1,
+        )
+
         # Default sorting
-        #df["sort_key"] = df["status"].apply(lambda x: 1 if x == "active" else 2)
+        # df["sort_key"] = df["status"].apply(lambda x: 1 if x == "active" else 2)
         df["sort_key"] = df["status"].apply(lambda x: 1)
 
-
-        
         df = df.sort_values(
             ["sort_key", "date_sort_combined"], ascending=[True, False]
         ).drop(columns="sort_key")
@@ -468,6 +483,7 @@ def load_and_process_data():
         print(f"Error in load_and_process_data: {e}")
         print(traceback.format_exc())
         return pd.DataFrame(), f"Error: {e}"
+
 
 def filter_and_sort_data(df, filters=None, sort_by=None):
     """Filter and sort data in a single function"""
@@ -515,5 +531,5 @@ def filter_and_sort_data(df, filters=None, sort_by=None):
             )
             df = df.sort_values(col, ascending=item["direction"] == "asc")
 
-    df = df[df["distance_sort"] <= 6]
+    #df = df[df["distance_sort"] <= 6]
     return df

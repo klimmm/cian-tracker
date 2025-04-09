@@ -13,7 +13,7 @@ def run_dashboard():
     """Run the dashboard app in a separate process"""
     logger.info("Starting dashboard process")
     try:
-        subprocess.run(["python", "dashboard/cian_dashboard.py"], check=True)
+        subprocess.run(["python", "cian_dashboard.py"], check=True)
     except subprocess.CalledProcessError as e:
         logger.error(f"Dashboard process failed: {e}")
     except KeyboardInterrupt:
