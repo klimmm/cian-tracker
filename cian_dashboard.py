@@ -799,7 +799,7 @@ def update_table_and_time(filters, _):
         markdown_options={"html": True}
     )
     
-    return table, f"{update_time}"
+    return table, f"Актуально на: {update_time}"
 
 # Callback for sorting
 @callback(
