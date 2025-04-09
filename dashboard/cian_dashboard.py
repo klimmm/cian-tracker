@@ -5,7 +5,6 @@ from dash.dependencies import Input, Output
 from config import CONFIG, STYLE, COLUMN_STYLES, HEADER_STYLES
 from utils import load_and_process_data, filter_and_sort_data
 from layout import create_app_layout
-import callbacks
 
 # Initialize the app
 app = dash.Dash(
