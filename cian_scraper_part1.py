@@ -41,12 +41,6 @@ class CianScraper:
                 if 'offer_id' in row:
                     entry = row.to_dict()
 
-                    if 'price' in df.columns:
-                        df['price_value'] = df['price'].apply(self._extract_price)
-                    
-                    # Convert cian_estimation to cian_estimation_value if present
-                    if 'cian_estimation' in df.columns:
-                        df['cian_estimation_value'] = df['cian_estimation'].apply(self._extract_price)
 
                     # Initialize new fields if they don't exist
                     if 'price_info' in entry and ('rental_period' not in entry or self._is_empty(entry.get('rental_period'))):
@@ -258,33 +252,59 @@ class CianScraper:
     def _combine_with_existing(self, new_apts):
         combined_apts = []
         new_ids = set(apt['offer_id'] for apt in new_apts if 'offer_id' in apt)
+        
+        # First, process new apartments
         for apt in new_apts:
             if 'offer_id' not in apt:
                 continue
+                
             offer_id = str(apt['offer_id'])
             if offer_id in self.existing_data:
                 existing = self.existing_data[offer_id]
                 new_price = self._extract_price(apt.get('price'))
                 old_price = existing.get('price_value', new_price)
+                
+                # Create a merged copy starting with new data
+                merged = apt.copy()
+                
+                # CRITICAL: Always preserve cian_estimation_value from existing data
+                if 'cian_estimation_value' in existing and not self._is_empty(existing['cian_estimation_value']):
+                    merged['cian_estimation_value'] = existing['cian_estimation_value']
+                
                 if new_price != old_price:
-                    merged = apt.copy()
-                    combined_apts.append(merged)
+                    # Price changed, but still preserve essential data
                     self.price_changes += 1
+                    # Preserve other fields from existing data
+                    for field in ['distance', 'cian_estimation_value']:
+                        if field in existing and not self._is_empty(existing.get(field)):
+                            merged[field] = existing[field]
                 else:
+                    # Price unchanged - use existing record as base but update status
                     merged = existing.copy()
+                    # Update with new data from the latest scrape
+                    for field in ['updated_time', 'description', 'image_urls']:
+                        if field in apt and not self._is_empty(apt.get(field)):
+                            merged[field] = apt[field]
+                    
                     merged['status'] = 'active'
                     merged['unpublished_date'] = '--'
-                    combined_apts.append(merged)
+                
+                combined_apts.append(merged)
             else:
+                # Completely new apartment
                 combined_apts.append(apt)
                 self.new += 1
+        
+        # Then, handle apartments that are missing in the new data (disappeared)
         for missing_id in set(self.existing_data.keys()) - new_ids:
             if existing := self.existing_data.get(missing_id):
-                existing = existing.copy()
-                existing['status'] = 'non active'
-                existing.setdefault('unpublished_date', '--')
-                combined_apts.append(existing)
+                # Copy the entire existing record - this preserves ALL fields including cian_estimation_value
+                existing_copy = existing.copy()
+                existing_copy['status'] = 'non active'
+                existing_copy.setdefault('unpublished_date', '--')
+                combined_apts.append(existing_copy)
                 self.removed += 1
+        
         return combined_apts
 
     def _process_distances(self, apartments):
@@ -309,32 +329,46 @@ class CianScraper:
         if not apartments:
             return []
         try:
-            for apt in apartments:
-                if 'price' in apt:
-                    apt['price_value'] = self._extract_price(apt['price'])
-                if 'cian_estimation' in apt:
-                    apt['cian_estimation_value'] = self._extract_price(apt['cian_estimation'])
+            # Calculate and set values first
+
             
+            # Create DataFrame
             base_filename = self.csv_filename.replace('.csv', '')
             current_csv = f"{base_filename}.csv"
             current_json = f"{base_filename}.json"
+            
+            # Create DataFrame with all values
             df = pd.DataFrame([{k: json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict, np.ndarray)) else v 
                                 for k, v in apt.items()} for apt in apartments])
             df['offer_id'] = df['offer_id'].astype(str)
             
+            # Make a backup of cian_estimation_value if it exists
+            if 'cian_estimation_value' in df.columns and 'cian_estimation' in df.columns:
+                # Ensure all values are properly set
+                df['cian_estimation_value'] = df.apply(
+                    lambda row: self._extract_price(row['cian_estimation']) 
+                    if pd.isna(row.get('cian_estimation_value')) and not pd.isna(row.get('cian_estimation')) 
+                    else row.get('cian_estimation_value'),
+                    axis=1
+                )
+            
+            # Now drop columns that aren't needed
             for col in ['price_change', 'cian_estimation', 'price']:
                 if col in df.columns:
                     df.drop(columns=col, inplace=True)
+            
+            # Continue with the rest of the method...
 
 
                     
             result = df.drop_duplicates('offer_id', keep='first').to_dict('records')
             if result:
                 # Updated priority_cols to use price and cian_estimation instead of derived value columns
+                # In the _save_data method, add 'cian_estimation_value' to priority_cols
                 priority_cols = [
                     'offer_id', 'offer_url', 'title', 'updated_time',
                     'address', 'metro_station', 'neighborhood', 'district', 'description',
-                    'status', 'unpublished_date'
+                    'status', 'unpublished_date', 'price_value', 'cian_estimation_value'  # Add it here
                 ]
                 save_df = pd.DataFrame(result)
                 cols = [c for c in priority_cols if c in save_df.columns] + \

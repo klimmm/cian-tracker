@@ -70,9 +70,9 @@ STYLE = {
     "data": {"lineHeight": "14px"},
     "input": {"marginRight": "5px", "width": "110px", "height": "15px"},
     "input_number": {"width": "110px", "height": "15px"},
-    "label": {"fontSize": "11px", "marginRight": "3px", "display": "block"},
-    "button_base": {"display": "inline-block", "padding": "3px 8px", "fontSize": "9px", 
-                  "border": "1px solid #ccc", "margin": "0 5px", "cursor": "pointer"},
+    "label": {"fontSize": "11px", "marginRight": "10px", "display": "inline-block", "width": "140px", "whiteSpace": "nowrap"},
+    "button_row": {"margin": "5px", "display": "flex", "flexWrap": "wrap", "alignItems": "center", "width": "100%"},
+    "button_container": {"display": "flex", "flexWrap": "wrap", "width": "calc(100% - 150px)"},
 }
 
 STYLE["button_base"] = {
@@ -88,7 +88,9 @@ BUTTON_STYLES = {
     'nearest': {"backgroundColor": "#d9edf7", **STYLE["button_base"]},
     'below_estimate': {"backgroundColor": "#fef3d5", **STYLE["button_base"]},
     'inactive': {"backgroundColor": "#f4f4f4", **STYLE["button_base"]},
-    'updated_today': {"backgroundColor": "#dff0d8", **STYLE["button_base"]}
+    'updated_today': {"backgroundColor": "#dff0d8", **STYLE["button_base"]},
+    'price': {"backgroundColor": "#F0F0F0", **STYLE["button_base"]},
+    'distance': {"backgroundColor": "#E8E8E8", **STYLE["button_base"]}
 }
 
 COLUMN_STYLES = [
@@ -455,19 +457,26 @@ def load_and_process_data():
 
 
 
-def filter_and_sort_data(df, price_thresh=None, dist_thresh=None, filters=None, sort_by=None):
+def filter_and_sort_data(df, filters=None, sort_by=None):
     """Filter and sort data in a single function"""
     if df.empty:
         return df
+    
+    # Apply price and distance thresholds from filters
+    if filters:
+        price_value = filters.get('price_value')
+        distance_value = filters.get('distance_value')
         
-    # Apply thresholds
-    if price_thresh:
-        df = df[df["price_value"] <= price_thresh]
-    if dist_thresh:
-        df = df[df["distance_sort"] <= dist_thresh]
+        # Apply price filter if not infinity (90k+)
+        if price_value and price_value != float('inf'):
+            df = df[df["price_value"] <= price_value]
+            
+        # Apply distance filter if not infinity (5km+)
+        if distance_value and distance_value != float('inf'):
+            df = df[df["distance_sort"] <= distance_value]
     
     # Apply button filters
-    if filters and any(filters.values()):
+    if filters and any(v for k, v in filters.items() if k in ['nearest', 'below_estimate', 'inactive', 'updated_today']):
         mask = pd.Series(False, index=df.index)
         
         if filters.get('nearest'):
@@ -479,7 +488,8 @@ def filter_and_sort_data(df, price_thresh=None, dist_thresh=None, filters=None, 
         if filters.get('updated_today'):
             mask |= (df["updated_time_sort"] > (pd.Timestamp.now() - pd.Timedelta(hours=24)))
         
-        df = df[mask]
+        if any(mask):  # Only apply if any filter is active
+            df = df[mask]
     
     # Apply sorting
     if sort_by:
@@ -499,47 +509,186 @@ app.layout = html.Div([
     html.Div(html.Span(id="last-update-time", style=STYLE["update_time"])),
     dcc.Interval(id="interval-component", interval=2 * 60 * 1000, n_intervals=0),
     
-    # Filter store
+    # Filter store - now also storing price and distance values
     dcc.Store(id='filter-store', data={
-        'nearest': False, 'below_estimate': False, 'inactive': False, 'updated_today': False
+        'nearest': False, 
+        'below_estimate': False, 
+        'inactive': False, 
+        'updated_today': False,
+        'price_value': 80000,  # Default price value (80k)
+        'distance_value': 3.0,  # Default distance value (3km)
+        'active_price_btn': 'btn-price-80k',  # Default active price button
+        'active_dist_btn': 'btn-dist-3km'   # Default active distance button
     }),
     
-    # Container for both inputs and buttons
+    # Container for price buttons, distance buttons, and filter buttons
     html.Div([
-        # Input filters - with specific width
+        # Price buttons
         html.Div([
-            html.Label('Макс. цена (₽):', className="dash-label"),
-            dcc.Input(id="price-threshold", type="number", value=80000, step=5000, min=10000, max=500000, style=STYLE["input_number"]),
-            html.Label('Макс. расстояние (км):', className="dash-label"),
-            dcc.Input(id="distance-threshold", type="number", value=3, step=0.5, min=0.5, max=10, style=STYLE["input_number"]),
-        ], style={"margin": "5px", "textAlign": "left", "width": "100%", "maxWidth": "600px"}),
+            html.Label('Макс. цена (₽):', className="dash-label", style=STYLE["label"]),
+            html.Div([
+                html.Button("50K", id="btn-price-50k", style={**BUTTON_STYLES['price'], "opacity": 0.6}),
+                html.Button("60K", id="btn-price-60k", style={**BUTTON_STYLES['price'], "opacity": 0.6}),
+                html.Button("70K", id="btn-price-70k", style={**BUTTON_STYLES['price'], "opacity": 0.6}),
+                html.Button("80K", id="btn-price-80k", style={**BUTTON_STYLES['price'], "opacity": 1.0, "boxShadow": "0 0 5px #4682B4"}),
+                html.Button("90K", id="btn-price-90k", style={**BUTTON_STYLES['price'], "opacity": 0.6}),
+                html.Button("90K+", id="btn-price-90k-plus", style={**BUTTON_STYLES['price'], "opacity": 0.6}),
+            ], style=STYLE["button_container"]),
+        ], style=STYLE["button_row"]),
         
-        # Button filters - with matching width to input row
+        # Distance buttons
         html.Div([
-            html.Button("Ближайшие", id="btn-nearest", style={**BUTTON_STYLES['nearest'], "opacity": "0.6"}),
-            html.Button("Цена ниже оценки", id="btn-below-estimate", style={**BUTTON_STYLES['below_estimate'], "opacity": "0.6"}),
-            html.Button("Сегодня", id="btn-updated-today", style={**BUTTON_STYLES['updated_today'], "opacity": "0.6"}),
-            html.Button("Неактивные", id="btn-inactive", style={**BUTTON_STYLES['inactive'], "opacity": "0.6"}),
-        ], style={"margin": "5px", "marginTop": "8px", "textAlign": "left", "width": "100%", "maxWidth": "600px"}),
-    ], style={"margin": "5px", "textAlign": "left", "width": "100%"}),
+            html.Label('Макс. расстояние (км):', className="dash-label", style=STYLE["label"]),
+            html.Div([
+                html.Button("1km", id="btn-dist-1km", style={**BUTTON_STYLES['distance'], "opacity": 0.6}),
+                html.Button("2km", id="btn-dist-2km", style={**BUTTON_STYLES['distance'], "opacity": 0.6}),
+                html.Button("3km", id="btn-dist-3km", style={**BUTTON_STYLES['distance'], "opacity": 1.0, "boxShadow": "0 0 5px #4682B4"}),
+                html.Button("4km", id="btn-dist-4km", style={**BUTTON_STYLES['distance'], "opacity": 0.6}),
+                html.Button("5km", id="btn-dist-5km", style={**BUTTON_STYLES['distance'], "opacity": 0.6}),
+                html.Button("5km+", id="btn-dist-5km-plus", style={**BUTTON_STYLES['distance'], "opacity": 0.6}),
+            ], style=STYLE["button_container"]),
+        ], style=STYLE["button_row"]),
+        
+        # Filter buttons
+        html.Div([
+            html.Label('Фильтры:', className="dash-label", style=STYLE["label"]),
+            html.Div([
+                html.Button("Ближайшие", id="btn-nearest", style={**BUTTON_STYLES['nearest'], "opacity": "0.6"}),
+                html.Button("Цена ниже оценки", id="btn-below-estimate", style={**BUTTON_STYLES['below_estimate'], "opacity": "0.6"}),
+                html.Button("Сегодня", id="btn-updated-today", style={**BUTTON_STYLES['updated_today'], "opacity": "0.6"}),
+                html.Button("Неактивные", id="btn-inactive", style={**BUTTON_STYLES['inactive'], "opacity": "0.6"}),
+            ], style=STYLE["button_container"]),
+        ], style=STYLE["button_row"]),
+    ], style={"margin": "5px", "width": "100%", "maxWidth": "600px"}),
     
     # Table container
     dcc.Loading(id="loading-main", children=[html.Div(id="table-container")], style={"margin": "5px"}),
 ], style=STYLE["container"])
 
+# Callback to handle price button clicks
+@callback(
+    [Output('btn-price-50k', 'style'),
+     Output('btn-price-60k', 'style'),
+     Output('btn-price-70k', 'style'),
+     Output('btn-price-80k', 'style'),
+     Output('btn-price-90k', 'style'),
+     Output('btn-price-90k-plus', 'style'),
+     Output('filter-store', 'data', allow_duplicate=True)],
+    [Input('btn-price-50k', 'n_clicks'),
+     Input('btn-price-60k', 'n_clicks'),
+     Input('btn-price-70k', 'n_clicks'),
+     Input('btn-price-80k', 'n_clicks'),
+     Input('btn-price-90k', 'n_clicks'),
+     Input('btn-price-90k-plus', 'n_clicks')],
+    [State('filter-store', 'data')],
+    prevent_initial_call=True
+)
+def update_price_buttons(click_50k, click_60k, click_70k, click_80k, click_90k, click_90k_plus, current_filters):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        # Default to 80k
+        button_id = 'btn-price-80k'
+        price_value = 80000
+    else:
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        price_map = {
+            'btn-price-50k': 50000,
+            'btn-price-60k': 60000,
+            'btn-price-70k': 70000,
+            'btn-price-80k': 80000,
+            'btn-price-90k': 90000,
+            'btn-price-90k-plus': float('inf')  # Represents no limit
+        }
+        price_value = price_map.get(button_id, 80000)
+    
+    # Update the filter store
+    current_filters['price_value'] = price_value
+    current_filters['active_price_btn'] = button_id
+    
+    # Create button styles
+    styles = []
+    for btn in ['btn-price-50k', 'btn-price-60k', 'btn-price-70k', 'btn-price-80k', 'btn-price-90k', 'btn-price-90k-plus']:
+        if btn == button_id:
+            styles.append({**BUTTON_STYLES['price'], "opacity": 1.0, "boxShadow": '0 0 5px #4682B4'})
+        else:
+            styles.append({**BUTTON_STYLES['price'], "opacity": 0.6})
+    
+    return *styles, current_filters
+
+# Callback to handle distance button clicks
+@callback(
+    [Output('btn-dist-1km', 'style'),
+     Output('btn-dist-2km', 'style'),
+     Output('btn-dist-3km', 'style'),
+     Output('btn-dist-4km', 'style'),
+     Output('btn-dist-5km', 'style'),
+     Output('btn-dist-5km-plus', 'style'),
+     Output('filter-store', 'data', allow_duplicate=True)],
+    [Input('btn-dist-1km', 'n_clicks'),
+     Input('btn-dist-2km', 'n_clicks'),
+     Input('btn-dist-3km', 'n_clicks'),
+     Input('btn-dist-4km', 'n_clicks'),
+     Input('btn-dist-5km', 'n_clicks'),
+     Input('btn-dist-5km-plus', 'n_clicks')],
+    [State('filter-store', 'data')],
+    prevent_initial_call=True
+)
+def update_distance_buttons(click_1km, click_2km, click_3km, click_4km, click_5km, click_5km_plus, current_filters):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        # Default to 3km
+        button_id = 'btn-dist-3km'
+        distance_value = 3.0
+    else:
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        distance_map = {
+            'btn-dist-1km': 1.0,
+            'btn-dist-2km': 2.0,
+            'btn-dist-3km': 3.0,
+            'btn-dist-4km': 4.0,
+            'btn-dist-5km': 5.0,
+            'btn-dist-5km-plus': float('inf')  # Represents no limit
+        }
+        distance_value = distance_map.get(button_id, 3.0)
+    
+    # Update the filter store
+    current_filters['distance_value'] = distance_value
+    current_filters['active_dist_btn'] = button_id
+    
+    # Create button styles
+    styles = []
+    for btn in ['btn-dist-1km', 'btn-dist-2km', 'btn-dist-3km', 'btn-dist-4km', 'btn-dist-5km', 'btn-dist-5km-plus']:
+        if btn == button_id:
+            styles.append({**BUTTON_STYLES['distance'], "opacity": 1.0, "boxShadow": '0 0 5px #4682B4'})
+        else:
+            styles.append({**BUTTON_STYLES['distance'], "opacity": 0.6})
+    
+    return *styles, current_filters
+
 # Callback to handle filter button clicks
 @callback(
-    Output('filter-store', 'data'),
+    [Output('btn-nearest', 'style'),
+     Output('btn-below-estimate', 'style'),
+     Output('btn-inactive', 'style'),
+     Output('btn-updated-today', 'style'),
+     Output('filter-store', 'data', allow_duplicate=True)],
     [Input('btn-nearest', 'n_clicks'),
      Input('btn-below-estimate', 'n_clicks'),
      Input('btn-inactive', 'n_clicks'),
      Input('btn-updated-today', 'n_clicks')],
-    [State('filter-store', 'data')]
+    [State('filter-store', 'data')],
+    prevent_initial_call=True
 )
 def update_filters(nearest_clicks, below_est_clicks, inactive_clicks, updated_today_clicks, current_filters):
     ctx = dash.callback_context
     if not ctx.triggered:
-        return current_filters
+        return [
+            {**BUTTON_STYLES['nearest'], "opacity": 0.6},
+            {**BUTTON_STYLES['below_estimate'], "opacity": 0.6},
+            {**BUTTON_STYLES['inactive'], "opacity": 0.6},
+            {**BUTTON_STYLES['updated_today'], "opacity": 0.6},
+            current_filters
+        ]
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     filter_map = {'btn-nearest': 'nearest', 'btn-below-estimate': 'below_estimate', 
@@ -548,34 +697,26 @@ def update_filters(nearest_clicks, below_est_clicks, inactive_clicks, updated_to
     if button_id in filter_map:
         current_filters[filter_map[button_id]] = not current_filters[filter_map[button_id]]
     
-    return current_filters
-
-# Callback to update button styles
-@callback(
-    [Output('btn-nearest', 'style'),
-     Output('btn-below-estimate', 'style'),
-     Output('btn-inactive', 'style'),
-     Output('btn-updated-today', 'style')],
-    [Input('filter-store', 'data')]
-)
-def update_button_styles(filters):
-    return [{**BUTTON_STYLES[key], 
-             "opacity": 1.0 if filters[key] else 0.6,
-             "boxShadow": '0 0 5px #4682B4' if filters[key] else 'none'} 
-            for key in ['nearest', 'below_estimate', 'inactive', 'updated_today']]
+    # Create button styles
+    styles = []
+    for key in ['nearest', 'below_estimate', 'inactive', 'updated_today']:
+        if current_filters[key]:
+            styles.append({**BUTTON_STYLES[key], "opacity": 1.0, "boxShadow": '0 0 5px #4682B4'})
+        else:
+            styles.append({**BUTTON_STYLES[key], "opacity": 0.6})
+    
+    return *styles, current_filters
 
 # Combined callback for updating table and time
 @callback(
     [Output("table-container", "children"),
      Output("last-update-time", "children")],
-    [Input("price-threshold", "value"), 
-     Input("distance-threshold", "value"),
-     Input("filter-store", "data"),
+    [Input("filter-store", "data"),
      Input("interval-component", "n_intervals")]
 )
-def update_table_and_time(price_threshold, distance_threshold, filters, _):
+def update_table_and_time(filters, _):
     df, update_time = load_and_process_data()
-    df = filter_and_sort_data(df, price_threshold, distance_threshold, filters)
+    df = filter_and_sort_data(df, filters)
     
     # Define column properties 
     visible = CONFIG["columns"]["visible"]
@@ -613,17 +754,14 @@ def update_table_and_time(price_threshold, distance_threshold, filters, _):
 # Callback for sorting
 @callback(
     Output("apartment-table", "data"), 
-    [Input("apartment-table", "sort_by"), 
-     Input("price-threshold", "value"), 
-     Input("distance-threshold", "value"),
+    [Input("apartment-table", "sort_by"),
      Input("filter-store", "data")]
 )
-def update_sort(sort_by, price_threshold, distance_threshold, filters):
+def update_sort(sort_by, filters):
     df, _ = load_and_process_data()
-    df = filter_and_sort_data(df, price_threshold, distance_threshold, filters, sort_by)
+    df = filter_and_sort_data(df, filters, sort_by)
     return df[CONFIG["columns"]["display"]].to_dict("records") if not df.empty else []
 
 
 if __name__ == "__main__":
-    
     app.run_server(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8050)))

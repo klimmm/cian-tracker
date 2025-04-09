@@ -119,8 +119,8 @@ class CianDetailFetcher:
 
 
 class CianScraper:
-    def __init__(self, headless=True, intermediate_csv='cian_apartments_large.csv',
-                 final_csv='cian_apartments_large.csv', max_distance_km=3):
+    def __init__(self, headless=True, intermediate_csv='cian_apartments.csv',
+                 final_csv='cian_apartments.csv', max_distance_km=3):
         chrome_opts = Options()
         if headless:
             chrome_opts.add_argument('--headless')
