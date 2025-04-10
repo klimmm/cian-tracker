@@ -207,7 +207,6 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
         price = table_row_data.get("price_value_formatted", "")
     
     # Process rental terms
-    terms_section = []
     terms = apartment_data.get("terms", {})
     
     # Define mapping for terms display with proper formatting
@@ -221,22 +220,17 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
         "negotiable": ("Торг", lambda x: x)
     }
     
-    for field, (label, formatter) in terms_mapping.items():
-        if terms.get(field):
-            value = formatter(terms.get(field))
-            terms_section.append(html.Div([
-                html.Span(f"{label}: ", style={"fontWeight": "bold", "fontSize": "10px"}),
-                html.Span(value, style={"fontSize": "10px"})
-            ], style={"marginBottom": "2px"}))
+    # We'll build the terms directly in the layout later, not as a separate list
     
     # Create two-column header layout
     header = html.Div([
-        # Top row with ID and Cian link - full width
+        # Top row with ID and Cian link - with justified alignment
         html.Div([
             html.Div(f"ID: {offer_id}", style={
                 "fontSize": "10px", 
                 "color": "#666",
-                "display": "inline-block"
+                "display": "inline-block",
+                "float": "left"
             }),
             html.A(
                 "Открыть на Циан ↗", 
@@ -245,12 +239,13 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
                 style={
                     "fontSize": "10px", 
                     "color": "#4682B4", 
-                    "marginLeft": "10px",
                     "textDecoration": "none",
-                    "display": "inline-block"
+                    "display": "inline-block",
+                    "float": "right"
                 }
-            )
-        ], style={"marginBottom": "5px"}),
+            ),
+            html.Div(style={"clear": "both"})
+        ], style={"marginBottom": "6px", "width": "100%"}),
         
         # Two-column main header content
         html.Div([
@@ -290,26 +285,35 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
             ], style={"width": "40%", "display": "inline-block", "verticalAlign": "top", "textAlign": "right"})
         ]),
         
-        # Rental Terms section - more compact with horizontal layout
+        # Rental Terms section - grid layout for efficiency
         html.Div([
             html.Div("Условия:", style={
                 "fontSize": "11px", 
                 "fontWeight": "bold", 
                 "color": "#4682B4",
-                "display": "inline-block",
-                "marginRight": "5px",
-                "width": "60px",
-                "verticalAlign": "top"
+                "marginBottom": "4px",
+                "display": "block"
             }),
-            html.Div(terms_section, style={
-                "display": "inline-block",
-                "width": "calc(100% - 65px)",
-                "verticalAlign": "top",
-                "fontSize": "10px"
-            })
+            # Create a grid layout for terms
+            html.Div([
+                # Replace terms_section with a custom grid layout
+                html.Div([
+                    html.Div([
+                        html.Span(f"{label}: ", style={"fontWeight": "bold", "fontSize": "10px"}),
+                        html.Span(formatter(terms.get(field)), style={"fontSize": "10px"})
+                    ], style={
+                        "display": "inline-block", 
+                        "width": "48%", 
+                        "marginRight": "2%",
+                        "marginBottom": "3px",
+                        "verticalAlign": "top"
+                    })
+                    for field, (label, formatter) in terms_mapping.items() if terms.get(field)
+                ], style={"width": "100%"})
+            ])
         ], style={
-            "marginTop": "6px",
-            "padding": "4px",
+            "marginTop": "8px",
+            "padding": "6px 8px",
             "backgroundColor": "#f7f9fc",
             "borderRadius": "4px"
         })
@@ -546,17 +550,17 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
     main_sections = [section for section in main_sections if section is not None]
     
     return html.Div(main_sections, style={
-        "padding": "10px",
+        "padding": "12px",
         "backgroundColor": "#fff",
         "fontFamily": "Arial, sans-serif",
         "fontSize": "10px",
         "borderRadius": "6px",
-        "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.08)",
+        "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.1)",
         "width": "100%",
         "maxWidth": "500px",
-        "margin": "0 auto"
+        "margin": "0 auto",
+        "lineHeight": "1.3"  # Slightly increase line height for better readability
     })
-
 # Register callbacks with the app - this will be called from cian_dashboard.py
 def register_callbacks(app):
     @app.callback(

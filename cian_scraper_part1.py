@@ -670,9 +670,18 @@ class CianScraper:
             
             if not offer_id or not images:
                 return
-                
+            
             # Create folder for this specific listing
             offer_folder = os.path.join(image_folder, str(offer_id))
+            
+            # Check if this offer was already downloaded
+            if os.path.exists(offer_folder):
+                # Count existing images
+                existing_images = [f for f in os.listdir(offer_folder) if f.endswith('.jpg')]
+                if len(existing_images) > 0:
+                    logger.info(f"⏭️ Skipping offer {offer_id}: {len(existing_images)} images already downloaded")
+                    return
+
             os.makedirs(offer_folder, exist_ok=True)
             
             logger.info(f"🖼️ Downloading {len(images)} image(s) for offer {offer_id}")
@@ -774,7 +783,7 @@ class CianScraper:
             
         except Exception as e:
             logger.error(f"⚠️ Failed to process image download for offer {listing.get('offer_id')}: {e}")
-                
+                    
     def scrape(self, search_url, max_pages=5, max_distance_km=None, time_filter=None):
         url = f'{search_url}&totime={time_filter * 60}' if time_filter else search_url
         parsed_apts = self.collect_listings(url, max_pages)
@@ -790,19 +799,40 @@ class CianScraper:
         image_folder = 'images'
         os.makedirs(image_folder, exist_ok=True)
         
+        # Get a list of offers that already have downloaded images
+        already_downloaded = set()
+        if os.path.exists(image_folder):
+            for offer_id in os.listdir(image_folder):
+                offer_path = os.path.join(image_folder, offer_id)
+                if os.path.isdir(offer_path):
+                    # If the folder exists and has at least one image, consider it downloaded
+                    image_files = [f for f in os.listdir(offer_path) if f.endswith(('.jpg', '.jpeg', '.png'))]
+                    if image_files:
+                        already_downloaded.add(offer_id)
+        
+        logger.info(f"ℹ️ Found {len(already_downloaded)} offers with previously downloaded images")
+        
+        # Filter offers that need image downloads
+        offers_to_download = [apt for apt in parsed_apts 
+                             if 'offer_id' in apt 
+                             and 'image_urls' in apt 
+                             and apt['image_urls'] 
+                             and str(apt['offer_id']) not in already_downloaded]
+        
+        logger.info(f"🖼️ Need to download images for {len(offers_to_download)} out of {len(parsed_apts)} offers")
+        
         # Process in small batches with pauses between
         batch_size = 5
-        for i in range(0, len(parsed_apts), batch_size):
-            batch = parsed_apts[i:i+batch_size]
-            logger.info(f"📦 Processing batch {i//batch_size + 1}/{(len(parsed_apts) + batch_size - 1)//batch_size}, listings {i+1}-{min(i+batch_size, len(parsed_apts))}")
+        for i in range(0, len(offers_to_download), batch_size):
+            batch = offers_to_download[i:i+batch_size]
+            logger.info(f"📦 Processing batch {i//batch_size + 1}/{(len(offers_to_download) + batch_size - 1)//batch_size}, listings {i+1}-{min(i+batch_size, len(offers_to_download))}")
             
             # Download images for this batch
             for apt in batch:
-                if 'image_urls' in apt and apt['image_urls']:
-                    self._download_images_for_listing(apt, image_folder)
+                self._download_images_for_listing(apt, image_folder)
             
             # Take a break between batches if not at the end
-            if i + batch_size < len(parsed_apts):
+            if i + batch_size < len(offers_to_download):
                 sleep_time = 10 + random.random() * 20  # 10-30 seconds
                 logger.info(f"😴 Taking a break between batches: {sleep_time:.1f} seconds")
                 time.sleep(sleep_time)
