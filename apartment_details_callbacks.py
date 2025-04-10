@@ -40,30 +40,123 @@ def format_number(value):
     except (ValueError, TypeError):
         return value
 
+import base64
+import os
+import logging
+
 def get_apartment_images(offer_id):
-    """Get list of image paths for a specific apartment offer_id"""
-    # Define the physical directory where images are stored
-    image_dir = f"images/{offer_id}"
+    """Get base64 encoded images for apartment with robust path handling"""
+    logger = logging.getLogger(__name__)
     
-    # Check if directory exists
+    # Get the absolute path to the images directory relative to the current file
+    # This ensures correct path resolution regardless of where the script is launched from
+    current_file_dir = os.path.dirname(os.path.abspath(__file__))
+    base_image_dir = os.path.join(current_file_dir, "images")
+    image_dir = os.path.join(base_image_dir, str(offer_id))
+    
+    logger.info(f"Looking for images in: {image_dir}")
+    
+    # Check if the directory exists
     if not os.path.exists(image_dir):
+        logger.warning(f"Image directory not found: {image_dir}")
+        # Try an alternative path (relative to current working directory)
+        alt_image_dir = os.path.join("images", str(offer_id))
+        logger.info(f"Trying alternative path: {os.path.abspath(alt_image_dir)}")
+        
+        if os.path.exists(alt_image_dir):
+            image_dir = alt_image_dir
+            logger.info(f"Using alternative image path: {os.path.abspath(image_dir)}")
+        else:
+            logger.warning(f"Alternative image directory not found: {os.path.abspath(alt_image_dir)}")
+            return []
+    
+    try:
+        # List all jpg files in the directory
+        image_files = [f for f in os.listdir(image_dir) if f.lower().endswith('.jpg')]
+        logger.info(f"Found {len(image_files)} images for offer_id {offer_id}")
+        
+        if not image_files:
+            logger.warning(f"No JPG images found in directory: {image_dir}")
+            return []
+        
+        # Create list to store encoded images
+        encoded_images = []
+        
+        # Encode each image as base64
+        for file in sorted(image_files):
+            image_path = os.path.join(image_dir, file)
+            try:
+                logger.info(f"Reading image file: {image_path}")
+                with open(image_path, "rb") as image_file:
+                    encoded_string = base64.b64encode(image_file.read()).decode()
+                    # Format as data URL
+                    encoded_images.append(f"data:image/jpeg;base64,{encoded_string}")
+                    logger.info(f"Successfully encoded image: {image_path}")
+            except Exception as e:
+                logger.error(f"Error encoding image {image_path}: {e}", exc_info=True)
+        
+        return encoded_images
+    except Exception as e:
+        logger.error(f"Error processing images for offer_id {offer_id}: {e}", exc_info=True)
         return []
-    
-    # Get all jpg files in the directory
-    image_files = [f for f in os.listdir(image_dir) if f.lower().endswith('.jpg')]
-    
-    # Return paths that use the /assets/ URL prefix for proper serving
-    # This assumes you have an assets folder set up in your Dash app
-    return [f"/assets/images/{offer_id}/{file}" for file in sorted(image_files)]
 
 def create_slideshow(offer_id):
-    """Create a slideshow component for apartment images"""
+    """Create a slideshow component for apartment images with fallback"""
     image_paths = get_apartment_images(offer_id)
     
     if not image_paths:
-        return None
-        
-    # Create a unique ID for this slideshow
+        # Create a fallback with a placeholder image
+        return html.Div([
+            # Placeholder image container
+            html.Div([
+                html.Div([
+                    html.I(className="fas fa-image", style={
+                        "fontSize": "48px",
+                        "color": "#ccc",
+                    }),
+                    html.Div("Изображения недоступны", style={
+                        "fontSize": "12px",
+                        "color": "#888",
+                        "marginTop": "10px"
+                    })
+                ], style={
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "height": "150px",
+                    "backgroundColor": "#f5f5f5",
+                    "borderRadius": "4px",
+                })
+            ], style={
+                "position": "relative",
+                "display": "flex",
+                "justifyContent": "center",
+                "alignItems": "center",
+                "height": "150px",
+                "backgroundColor": "#f5f5f5",
+                "borderRadius": "4px",
+                "marginBottom": "10px"
+            }),
+            
+            # Title showing no photos available
+            html.Div(
+                "Фотографии недоступны", 
+                style={
+                    "fontSize": "11px", 
+                    "fontWeight": "bold", 
+                    "marginBottom": "10px",
+                    "color": "#4682B4",
+                    "textAlign": "center"
+                }
+            )
+        ], style={
+            "marginBottom": "15px",
+            "borderBottom": "1px solid #eee",
+            "paddingBottom": "10px"
+        })
+    
+    # Rest of the function remains the same...
     slideshow_id = f"slideshow-{offer_id}"
     image_id = f"slideshow-img-{offer_id}"
     counter_id = f"counter-{offer_id}"
@@ -181,7 +274,6 @@ def create_slideshow(offer_id):
     })
     
     return slideshow
-
 # Improved implementation for apartment_details_callbacks.py
 
 def create_apartment_details_card(apartment_data, table_row_data=None):
