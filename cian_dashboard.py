@@ -2,13 +2,12 @@
 
 import os
 import dash
-from dash import dash_table, callback, html
-from dash.dependencies import Input, Output
+from dash import dash_table, html, dcc
+from dash.dependencies import Input, Output, State
 from config import CONFIG, STYLE, COLUMN_STYLES, HEADER_STYLES
 from utils import load_and_process_data, filter_and_sort_data
 from layout import create_app_layout
 import callbacks
-from dash import dcc, html
 import apartment_details_callbacks
 
 # Initialize the app
@@ -19,7 +18,7 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
 )
 
-
+apartment_details_callbacks.register_callbacks(app)
 # Add this to cian_dashboard.py right after the app initialization
 server = app.server
 
@@ -170,7 +169,7 @@ app.index_string = """
 app.layout = create_app_layout(app)
 
 # Combined callback for updating table and time
-@callback(
+@app.callback(
     [Output("table-container", "children"), Output("last-update-time", "children")],
     [Input("filter-store", "data"), Input("interval-component", "n_intervals")],
 )
@@ -285,7 +284,7 @@ def update_table_and_time(filters, _):
     return table_container, f"Актуально на: {update_time}"
     
 # Callback for sorting - kept in app.py
-@callback(
+@app.callback(
     Output("apartment-table", "data"),
     [Input("apartment-table", "sort_by"), Input("filter-store", "data")],
 )

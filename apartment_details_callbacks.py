@@ -1,9 +1,10 @@
 # apartment_details_callbacks.py
 import dash
-from dash import callback, html, ctx
-from dash.dependencies import Input, Output, State
+from dash import html, dcc, callback_context as ctx
+from dash.dependencies import Input, Output, State, MATCH, ALL
 import logging
 import re
+import os
 
 # Configure logging
 logging.basicConfig(
@@ -38,6 +39,147 @@ def format_number(value):
         return f"{formatted} ₽"
     except (ValueError, TypeError):
         return value
+
+# Image slideshow helper functions
+def get_apartment_images(offer_id):
+    """Get list of image paths for a specific apartment offer_id"""
+    image_dir = f"images/{offer_id}"
+    
+    # Check if directory exists
+    if not os.path.exists(image_dir):
+        return []
+    
+    # Get all jpg files in the directory
+    image_files = [f for f in os.listdir(image_dir) if f.lower().endswith('.jpg')]
+    
+    # Return full paths to images
+    return [f"{image_dir}/{file}" for file in sorted(image_files)]
+
+def create_slideshow(offer_id):
+    """Create a slideshow component for apartment images"""
+    image_paths = get_apartment_images(offer_id)
+    
+    if not image_paths:
+        return None
+        
+    # Create a unique ID for this slideshow
+    slideshow_id = f"slideshow-{offer_id}"
+    image_id = f"slideshow-img-{offer_id}"
+    counter_id = f"counter-{offer_id}"
+    
+    # Create slideshow container
+    slideshow = html.Div([
+        # Image container with navigation arrows
+        html.Div([
+            # Main image
+            html.Img(
+                id={"type": "slideshow-img", "offer_id": offer_id},
+                src=image_paths[0],
+                style={
+                    "maxWidth": "100%", 
+                    "maxHeight": "220px", 
+                    "objectFit": "contain",
+                    "borderRadius": "4px"
+                }
+            ),
+            
+            # Left/right arrows
+            html.Button(
+                "❮", 
+                id={"type": "prev-btn", "offer_id": offer_id},
+                style={
+                    "position": "absolute",
+                    "top": "50%",
+                    "left": "10px",
+                    "transform": "translateY(-50%)",
+                    "backgroundColor": "rgba(0,0,0,0.3)",
+                    "color": "white",
+                    "border": "none",
+                    "borderRadius": "50%",
+                    "width": "30px",
+                    "height": "30px",
+                    "fontSize": "16px",
+                    "cursor": "pointer",
+                    "zIndex": "2",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center"
+                }
+            ),
+            html.Button(
+                "❯", 
+                id={"type": "next-btn", "offer_id": offer_id},
+                style={
+                    "position": "absolute",
+                    "top": "50%",
+                    "right": "10px",
+                    "transform": "translateY(-50%)",
+                    "backgroundColor": "rgba(0,0,0,0.3)",
+                    "color": "white",
+                    "border": "none",
+                    "borderRadius": "50%",
+                    "width": "30px",
+                    "height": "30px",
+                    "fontSize": "16px",
+                    "cursor": "pointer",
+                    "zIndex": "2",
+                    "display": "flex",
+                    "alignItems": "center",
+                    "justifyContent": "center"
+                }
+            ),
+            
+            # Image counter
+            html.Div(
+                f"1/{len(image_paths)}", 
+                id={"type": "counter", "offer_id": offer_id},
+                style={
+                    "position": "absolute",
+                    "bottom": "10px",
+                    "right": "10px",
+                    "backgroundColor": "rgba(0,0,0,0.5)",
+                    "color": "white",
+                    "padding": "3px 8px",
+                    "borderRadius": "12px",
+                    "fontSize": "10px"
+                }
+            )
+        ], style={
+            "position": "relative",
+            "display": "flex",
+            "justifyContent": "center",
+            "alignItems": "center",
+            "height": "220px",
+            "backgroundColor": "#f5f5f5",
+            "borderRadius": "4px",
+            "overflow": "hidden",
+            "marginBottom": "5px"
+        }),
+        
+        # Hidden store for current index and image paths
+        dcc.Store(id={"type": "slideshow-data", "offer_id": offer_id}, data={
+            "current_index": 0,
+            "image_paths": image_paths
+        }),
+        
+        # Title showing total number of photos
+        html.Div(
+            f"Фотографии ({len(image_paths)})", 
+            style={
+                "fontSize": "11px", 
+                "fontWeight": "bold", 
+                "marginBottom": "10px",
+                "color": "#4682B4",
+                "textAlign": "center"
+            }
+        )
+    ], style={
+        "marginBottom": "15px",
+        "borderBottom": "1px solid #eee",
+        "paddingBottom": "10px"
+    })
+    
+    return slideshow
 
 # Improved implementation for apartment_details_callbacks.py
 
@@ -363,14 +505,18 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
         if stats.get(field):
             stats_items.append(f"{label}: {stats[field]}")
 
-    # === Assemble Card ===
-    # First, get price history section ready to move it up
+    # Create image slideshow
+    slideshow = create_slideshow(offer_id)
+
+    # Get price history section ready
     price_history_section = (format_section("История цен", price_html_items, is_html_items=True) if price_html_items 
                             else format_section("История цен", price_items))
     
+    # === Assemble Card ===
     # Define sections in the desired order
     sections = [
         header,  # Add header as first section
+        slideshow,  # Add slideshow after header
         price_history_section,  # Move price history up
         format_section("Основное", apartment_items),
         format_section("Оснащение", features_items),
@@ -393,113 +539,37 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
         "margin": "0 auto"  # Center the card
     })
 
-# ===============================================================================
-# IMPROVED COMBINED CALLBACK: Use CSS classes instead of style conditions
-# ===============================================================================
-@callback(
-    [
-        Output("apartment-details-panel", "style"),
-        Output("apartment-details-card", "children"),
-        Output("selected-apartment-store", "data"),
-        Output("apartment-table", "css")
-    ],
-    [
-        Input("apartment-table", "active_cell"), 
-        Input("close-details-button", "n_clicks")
-    ],
-    [
-        State("apartment-table", "data"), 
-        State("selected-apartment-store", "data")
-    ],
-    prevent_initial_call=True
-)
-def handle_apartment_details(active_cell, close_clicks, table_data, selected_apartment):
-    # Determine which input triggered the callback
-    triggered_id = ctx.triggered_id if ctx.triggered_id else None
-    logger.info(f"CALLBACK TRIGGERED by {triggered_id}")
-    
-    # Default panel style (hidden)
-    panel_style = {
-        "opacity": "0",
-        "visibility": "hidden",
-        "pointer-events": "none",
-        "display": "block",  # Always set display:block and control visibility with CSS properties
-        "position": "fixed",  # Fixed position instead of absolute
-        "top": "50%",
-        "left": "50%",
-        "transform": "translate(-50%, -50%)",  # Center in viewport
-        "width": "90%",  # Take 90% of viewport width
-        "maxWidth": "500px",  # Limit to 500px
-        "maxHeight": "90vh",  # Use 90% of viewport height
-        "zIndex": "1000",
-        "backgroundColor": "#fff",
-        "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",
-        "borderRadius": "8px",
-        "padding": "15px",
-        "overflow": "auto",
-        "transformOrigin": "center",  # Add animation origin
-        "willChange": "opacity, visibility",  # Performance optimization
-    }
-    details_content = []
-    result_data = None
-    
-    # Default CSS with no row highlighting and proper cursor for details cells
-    css_rules = [
-        {"selector": ".highlighted-row td", 
-         "rule": "background-color: #e6f3ff !important; border-bottom: 2px solid #4682B4 !important;"},
-        {"selector": "td.details-column .dash-cell-value", 
-         "rule": "cursor: pointer !important;"}
-    ]
-    
-    # ===== CASE 1: Close button was clicked =====
-    if triggered_id == "close-details-button" and close_clicks:
-        logger.info(f"CLOSING PANEL: close button clicked")
-        # Clear the selected_apartment to allow clicking the same row again
-        return panel_style, details_content, None, css_rules
+# Register callbacks with the app - this will be called from cian_dashboard.py
+def register_callbacks(app):
+    @app.callback(
+        [
+            Output("apartment-details-panel", "style"),
+            Output("apartment-details-card", "children"),
+            Output("selected-apartment-store", "data"),
+            Output("apartment-table", "css")
+        ],
+        [
+            Input("apartment-table", "active_cell"), 
+            Input("close-details-button", "n_clicks")
+        ],
+        [
+            State("apartment-table", "data"), 
+            State("selected-apartment-store", "data")
+        ],
+        prevent_initial_call=True
+    )
+    def handle_apartment_details(active_cell, close_clicks, table_data, selected_apartment):
+        # Determine which input triggered the callback
+        triggered_id = ctx.triggered_id if ctx.triggered_id else None
+        logger.info(f"CALLBACK TRIGGERED by {triggered_id}")
         
-    # ===== CASE 2: Table cell was clicked =====
-    elif triggered_id == "apartment-table" and active_cell:
-        column_id = active_cell.get("column_id")
-        logger.info(f"Table cell clicked: column={column_id}, row={active_cell.get('row')}")
-        
-        # Only process clicks on the "details" column
-        if column_id != "details":
-            logger.info(f"Ignoring click on non-details column")
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update
-        
-        # Get the clicked row data
-        row_idx = active_cell["row"]
-        row_data = table_data[row_idx]
-        offer_id = row_data.get("offer_id")
-        logger.info(f"Details requested for offer_id: {offer_id}")
-        
-        # Important: We're removing this condition to allow clicking the same row again
-        # after closing the panel
-        # if selected_apartment and selected_apartment.get("offer_id") == offer_id:
-        #     logger.info(f"Same row clicked again, closing panel")
-        #     return panel_style, details_content, None, css_rules
-        
-        # Load apartment details and create the card
-        logger.info(f"Loading apartment details for offer_id: {offer_id}")
-        from utils import load_apartment_details
-        try:
-            apartment_data = load_apartment_details(offer_id)
-            logger.info(f"Successfully loaded data for offer_id: {offer_id}")
-            # Pass table_row_data to the card creation function
-            details_content = create_apartment_details_card(apartment_data, row_data)
-            result_data = apartment_data
-        except Exception as e:
-            logger.error(f"Error loading apartment details: {str(e)}")
-            details_content = html.Div(f"Error loading details: {str(e)}", style={"color": "red"})
-            result_data = {"offer_id": offer_id, "error": str(e)}
-        
-        # Show panel with improved style
+        # Default panel style (hidden)
         panel_style = {
-            "opacity": "1",
-            "visibility": "visible",
-            "pointer-events": "auto",
-            "display": "block",
-            "position": "fixed",  # Fixed position for better centering
+            "opacity": "0",
+            "visibility": "hidden",
+            "pointer-events": "none",
+            "display": "block",  # Always set display:block and control visibility with CSS properties
+            "position": "fixed",  # Fixed position instead of absolute
             "top": "50%",
             "left": "50%",
             "transform": "translate(-50%, -50%)",  # Center in viewport
@@ -512,20 +582,131 @@ def handle_apartment_details(active_cell, close_clicks, table_data, selected_apa
             "borderRadius": "8px",
             "padding": "15px",
             "overflow": "auto",
-            "transformOrigin": "center",
-            "willChange": "opacity, visibility",
-            "animation": "fadeIn 0.3s ease-in-out"  # Add animation
+            "transformOrigin": "center",  # Add animation origin
+            "willChange": "opacity, visibility",  # Performance optimization
         }
+        details_content = []
+        result_data = None
         
-        # Add CSS rule for highlighting the selected row
-        css_rules.append({
-            "selector": f'tr[data-dash-row-id="{row_idx}"]', 
-            "rule": "background-color: #e6f3ff !important; border-bottom: 2px solid #4682B4 !important;"
-        })
+        # Default CSS with no row highlighting and proper cursor for details cells
+        css_rules = [
+            {"selector": ".highlighted-row td", 
+             "rule": "background-color: #e6f3ff !important; border-bottom: 2px solid #4682B4 !important;"},
+            {"selector": "td.details-column .dash-cell-value", 
+             "rule": "cursor: pointer !important;"}
+        ]
         
-        logger.info(f"RETURNING: panel=visible, content=card, data=result, highlighting row {row_idx}")
-        return panel_style, details_content, result_data, css_rules
-    
-    # Default case (should not normally happen)
-    logger.warning(f"DEFAULT CASE REACHED - This should not normally happen")
-    return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        # ===== CASE 1: Close button was clicked =====
+        if triggered_id == "close-details-button" and close_clicks:
+            logger.info(f"CLOSING PANEL: close button clicked")
+            # Clear the selected_apartment to allow clicking the same row again
+            return panel_style, details_content, None, css_rules
+            
+        # ===== CASE 2: Table cell was clicked =====
+        elif triggered_id == "apartment-table" and active_cell:
+            column_id = active_cell.get("column_id")
+            logger.info(f"Table cell clicked: column={column_id}, row={active_cell.get('row')}")
+            
+            # Only process clicks on the "details" column
+            if column_id != "details":
+                logger.info(f"Ignoring click on non-details column")
+                return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            
+            # Get the clicked row data
+            row_idx = active_cell["row"]
+            row_data = table_data[row_idx]
+            offer_id = row_data.get("offer_id")
+            logger.info(f"Details requested for offer_id: {offer_id}")
+            
+            # Load apartment details and create the card
+            logger.info(f"Loading apartment details for offer_id: {offer_id}")
+            from utils import load_apartment_details
+            try:
+                apartment_data = load_apartment_details(offer_id)
+                logger.info(f"Successfully loaded data for offer_id: {offer_id}")
+                # Pass table_row_data to the card creation function
+                details_content = create_apartment_details_card(apartment_data, row_data)
+                result_data = apartment_data
+            except Exception as e:
+                logger.error(f"Error loading apartment details: {str(e)}")
+                details_content = html.Div(f"Error loading details: {str(e)}", style={"color": "red"})
+                result_data = {"offer_id": offer_id, "error": str(e)}
+            
+            # Show panel with improved style
+            panel_style = {
+                "opacity": "1",
+                "visibility": "visible",
+                "pointer-events": "auto",
+                "display": "block",
+                "position": "fixed",  # Fixed position for better centering
+                "top": "50%",
+                "left": "50%",
+                "transform": "translate(-50%, -50%)",  # Center in viewport
+                "width": "90%",  # Take 90% of viewport width
+                "maxWidth": "500px",  # Limit to 500px
+                "maxHeight": "90vh",  # Use 90% of viewport height
+                "zIndex": "1000",
+                "backgroundColor": "#fff",
+                "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",
+                "borderRadius": "8px",
+                "padding": "15px",
+                "overflow": "auto",
+                "transformOrigin": "center",
+                "willChange": "opacity, visibility",
+                "animation": "fadeIn 0.3s ease-in-out"  # Add animation
+            }
+            
+            # Add CSS rule for highlighting the selected row
+            css_rules.append({
+                "selector": f'tr[data-dash-row-id="{row_idx}"]', 
+                "rule": "background-color: #e6f3ff !important; border-bottom: 2px solid #4682B4 !important;"
+            })
+            
+            logger.info(f"RETURNING: panel=visible, content=card, data=result, highlighting row {row_idx}")
+            return panel_style, details_content, result_data, css_rules
+        
+        # Default case (should not normally happen)
+        logger.warning(f"DEFAULT CASE REACHED - This should not normally happen")
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+    @app.callback(
+        [
+            Output({"type": "slideshow-data", "offer_id": MATCH}, "data"),
+            Output({"type": "slideshow-img", "offer_id": MATCH}, "src"),
+            Output({"type": "counter", "offer_id": MATCH}, "children")
+        ],
+        [
+            Input({"type": "prev-btn", "offer_id": MATCH}, "n_clicks"),
+            Input({"type": "next-btn", "offer_id": MATCH}, "n_clicks")
+        ],
+        [
+            State({"type": "slideshow-data", "offer_id": MATCH}, "data")
+        ],
+        prevent_initial_call=True
+    )
+    def navigate_slideshow(prev_clicks, next_clicks, slideshow_data):
+        # Determine which button was clicked
+        triggered_id = ctx.triggered_id
+        
+        # Get current state
+        current_index = slideshow_data["current_index"]
+        image_paths = slideshow_data["image_paths"]
+        total_images = len(image_paths)
+        
+        # Update index based on which button was clicked
+        if triggered_id and triggered_id["type"] == "prev-btn":
+            # Go to previous image
+            current_index = (current_index - 1) % total_images
+        else:
+            # Go to next image
+            current_index = (current_index + 1) % total_images
+        
+        # Update the data
+        slideshow_data["current_index"] = current_index
+        
+        # Return updated data and new image source
+        return (
+            slideshow_data, 
+            image_paths[current_index],
+            f"{current_index + 1}/{total_images}"
+        )

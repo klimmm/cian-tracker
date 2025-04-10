@@ -14,6 +14,7 @@ logger = logging.getLogger('CianScraper')
 import re
 from datetime import datetime, timedelta
 import requests
+import os, re, json, time, logging, random  # Add random to the imports at the top
 
 def parse_updated_time(time_str):
     """Parse Cian time format to datetime string"""
@@ -661,8 +662,8 @@ class CianScraper:
         except Exception as e:
             logger.error(f"Error saving data: {e}")
             return apartments
-    def _download_images_for_listing(self, listing, image_folder='images'):
-        """Download images for a single listing as soon as they're found"""
+    def _download_images_for_listing(self, listing, image_folder='images', max_retries=3):
+        """Download images for a single listing with retry and anti-block measures"""
         try:
             offer_id = listing.get('offer_id')
             images = listing.get('image_urls', [])
@@ -676,43 +677,141 @@ class CianScraper:
             
             logger.info(f"🖼️ Downloading {len(images)} image(s) for offer {offer_id}")
             
-            for idx, image_url in enumerate(images):
-                try:
+            # Create a session for better connection reuse
+            session = requests.Session()
+            
+            # List of common user agents to rotate through
+            user_agents = [
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            ]
+            
+            # Set common headers to mimic a browser
+            session.headers.update({
+                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept-Language': 'en-US,en;q=0.9,ru;q=0.8',
+                'Referer': 'https://www.cian.ru/',
+                'sec-ch-ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
+                'sec-ch-ua-mobile': '?0',
+                'sec-ch-ua-platform': '"Windows"',
+                'Sec-Fetch-Dest': 'image',
+                'Sec-Fetch-Mode': 'no-cors',
+                'Sec-Fetch-Site': 'cross-site',
+                'Connection': 'keep-alive'
+            })
+            
+            success_count = 0
+            error_count = 0
+            
+            # Process a small batch at a time (5 images) with longer delay between batches
+            batch_size = 5
+            batches = [images[i:i + batch_size] for i in range(0, len(images), batch_size)]
+            
+            for batch_idx, batch in enumerate(batches):
+                # Add a longer delay between batches (3-7 seconds)
+                if batch_idx > 0:
+                    sleep_time = 3 + random.random() * 4
+                    logger.info(f"😴 Sleeping for {sleep_time:.1f} seconds between image batches...")
+                    time.sleep(sleep_time)
+                
+                for idx, image_url in enumerate(batch):
                     if not image_url:
                         continue
+                    
+                    abs_idx = batch_idx * batch_size + idx
+                    
+                    # Choose a random user agent for each request
+                    current_ua = random.choice(user_agents)
+                    session.headers.update({'User-Agent': current_ua})
+                    
+                    # Add a random delay between requests (0.5-2 seconds)
+                    sleep_time = 0.5 + random.random() * 1.5
+                    time.sleep(sleep_time)
+                    
+                    # Retry logic
+                    for retry in range(max_retries):
+                        try:
+                            logger.info(f"⬇️ Downloading image {abs_idx + 1}/{len(images)} for offer {offer_id}")
+                            
+                            response = session.get(image_url, timeout=15)
+                            
+                            if response.status_code == 200:
+                                filename = os.path.join(offer_folder, f'{abs_idx + 1}.jpg')
+                                with open(filename, 'wb') as f:
+                                    f.write(response.content)
+                                logger.info(f"✅ Downloaded image {abs_idx + 1} for {offer_id} → {filename}")
+                                success_count += 1
+                                break  # Success, exit retry loop
+                            else:
+                                logger.warning(f"❌ Failed to download image {abs_idx + 1} for {offer_id}: status {response.status_code}")
+                                # If blocked (403 or 429), wait longer before retry
+                                if response.status_code in [403, 429]:
+                                    time.sleep(5 + retry * 5)  # 5s, 10s, 15s
+                                else:
+                                    time.sleep(1 + retry * 2)  # 1s, 3s, 5s
                         
-                    # Add headers to avoid being blocked
-                    headers = {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-                    }
-                    
-                    response = requests.get(image_url, timeout=10, headers=headers)
-                    
-                    if response.status_code == 200:
-                        filename = os.path.join(offer_folder, f'{idx + 1}.jpg')
-                        with open(filename, 'wb') as f:
-                            f.write(response.content)
-                        logger.info(f"✅ Downloaded image {idx + 1} for {offer_id} → {filename}")
-                    else:
-                        logger.warning(f"❌ Failed to download image {idx + 1} for {offer_id}: status {response.status_code}")
-                    
-                    # Short delay to avoid overwhelming the server
-                    time.sleep(0.2)
-                    
-                except Exception as e:
-                    logger.error(f"⚠️ Error downloading image {idx + 1} for {offer_id}: {e}")
+                        except (requests.exceptions.RequestException, ConnectionError, TimeoutError) as e:
+                            error_msg = str(e)
+                            if retry < max_retries - 1:
+                                # Increase backoff time for connection errors
+                                backoff_time = 5 + retry * 10  # 5s, 15s, 25s
+                                logger.warning(f"⚠️ Error downloading image {abs_idx + 1} for {offer_id} (attempt {retry+1}/{max_retries}): {error_msg}. Retrying in {backoff_time}s...")
+                                time.sleep(backoff_time)
+                            else:
+                                logger.error(f"❌ Failed to download image {abs_idx + 1} for {offer_id} after {max_retries} attempts: {error_msg}")
+                                error_count += 1
+                
+                # If we've had too many errors in this batch, pause for longer
+                if error_count > success_count and error_count > 3:
+                    recovery_time = 30 + random.random() * 30  # 30-60 seconds
+                    logger.warning(f"⚠️ Too many errors, possibly being rate-limited. Taking a longer break for {recovery_time:.1f} seconds.")
+                    time.sleep(recovery_time)
+            
+            logger.info(f"📊 Offer {offer_id}: Successfully downloaded {success_count} out of {len(images)} images, {error_count} errors")
+            
         except Exception as e:
-            logger.error(f"⚠️ Failed to download images for offer {listing.get('offer_id')}: {e}")
-
+            logger.error(f"⚠️ Failed to process image download for offer {listing.get('offer_id')}: {e}")
+                
     def scrape(self, search_url, max_pages=5, max_distance_km=None, time_filter=None):
         url = f'{search_url}&totime={time_filter * 60}' if time_filter else search_url
         parsed_apts = self.collect_listings(url, max_pages)
+        
+        # Immediately save what we've collected, just in case
+        backup_file = f'backup_{int(time.time())}_listings.json'
+        with open(backup_file, 'w', encoding='utf-8') as f:
+            json.dump([{k: v for k, v in apt.items() if k != 'image_urls'} for apt in parsed_apts], f, ensure_ascii=False)
+        logger.info(f"💾 Backup of listings saved to {backup_file}")
+        
+        # Download images independently, with better error handling
+        logger.info(f"🖼️ Starting batch download of images for {len(parsed_apts)} listings")
+        image_folder = 'images'
+        os.makedirs(image_folder, exist_ok=True)
+        
+        # Process in small batches with pauses between
+        batch_size = 5
+        for i in range(0, len(parsed_apts), batch_size):
+            batch = parsed_apts[i:i+batch_size]
+            logger.info(f"📦 Processing batch {i//batch_size + 1}/{(len(parsed_apts) + batch_size - 1)//batch_size}, listings {i+1}-{min(i+batch_size, len(parsed_apts))}")
+            
+            # Download images for this batch
+            for apt in batch:
+                if 'image_urls' in apt and apt['image_urls']:
+                    self._download_images_for_listing(apt, image_folder)
+            
+            # Take a break between batches if not at the end
+            if i + batch_size < len(parsed_apts):
+                sleep_time = 10 + random.random() * 20  # 10-30 seconds
+                logger.info(f"😴 Taking a break between batches: {sleep_time:.1f} seconds")
+                time.sleep(sleep_time)
+        
+        # Continue with the rest of your code
         combined_apts = self._combine_with_existing(parsed_apts)
         self._process_distances(combined_apts)
         result = self._save_data(combined_apts)
-    
-        # ➕ Download images here
-    
+        
         print(f"Changes: +{self.new} new, -{self.removed} removed, {self.price_changes} price changes")
         return result
 
