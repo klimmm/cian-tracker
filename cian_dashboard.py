@@ -154,7 +154,7 @@ app.index_string = """
                 overflow: auto;
                 width: 90%;
                 max-width: 500px;
-                max-height: 90vh;
+                max-height: 100%;
                 
                 /* Animation settings */
                 transform-origin: center;

@@ -101,62 +101,13 @@ def get_apartment_images(offer_id):
         return []
 
 def create_slideshow(offer_id):
-    """Create a slideshow component for apartment images with fallback"""
+    """Create a slideshow component for apartment images"""
     image_paths = get_apartment_images(offer_id)
     
     if not image_paths:
-        # Create a fallback with a placeholder image
-        return html.Div([
-            # Placeholder image container
-            html.Div([
-                html.Div([
-                    html.I(className="fas fa-image", style={
-                        "fontSize": "48px",
-                        "color": "#ccc",
-                    }),
-                    html.Div("Изображения недоступны", style={
-                        "fontSize": "12px",
-                        "color": "#888",
-                        "marginTop": "10px"
-                    })
-                ], style={
-                    "display": "flex",
-                    "flexDirection": "column",
-                    "alignItems": "center",
-                    "justifyContent": "center",
-                    "height": "150px",
-                    "backgroundColor": "#f5f5f5",
-                    "borderRadius": "4px",
-                })
-            ], style={
-                "position": "relative",
-                "display": "flex",
-                "justifyContent": "center",
-                "alignItems": "center",
-                "height": "150px",
-                "backgroundColor": "#f5f5f5",
-                "borderRadius": "4px",
-                "marginBottom": "10px"
-            }),
-            
-            # Title showing no photos available
-            html.Div(
-                "Фотографии недоступны", 
-                style={
-                    "fontSize": "11px", 
-                    "fontWeight": "bold", 
-                    "marginBottom": "10px",
-                    "color": "#4682B4",
-                    "textAlign": "center"
-                }
-            )
-        ], style={
-            "marginBottom": "15px",
-            "borderBottom": "1px solid #eee",
-            "paddingBottom": "10px"
-        })
-    
-    # Rest of the function remains the same...
+        return None
+        
+    # Create a unique ID for this slideshow
     slideshow_id = f"slideshow-{offer_id}"
     image_id = f"slideshow-img-{offer_id}"
     counter_id = f"counter-{offer_id}"
@@ -274,6 +225,7 @@ def create_slideshow(offer_id):
     })
     
     return slideshow
+
 # Improved implementation for apartment_details_callbacks.py
 
 def create_apartment_details_card(apartment_data, table_row_data=None):
@@ -298,7 +250,64 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
         cian_est = table_row_data.get("cian_estimation_formatted", "")
         price = table_row_data.get("price_value_formatted", "")
     
-    # Process rental terms
+    # Create image slideshow - MOVED TO TOP
+    slideshow = create_slideshow(offer_id)
+    
+    # Top header with ID and Cian link - more compact, space-efficient
+    top_header = html.Div([
+        html.Div(f"ID: {offer_id}", style={
+            "fontSize": "10px", 
+            "color": "#666",
+            "display": "inline-block",
+            "float": "left"
+        }),
+        html.A(
+            "Открыть на Циан ↗", 
+            href=f"https://www.cian.ru/rent/flat/{offer_id}/",
+            target="_blank",
+            style={
+                "fontSize": "10px", 
+                "color": "#4682B4", 
+                "textDecoration": "none",
+                "display": "inline-block",
+                "float": "right"
+            }
+        ),
+        html.Div(style={"clear": "both"})
+    ], style={"marginBottom": "4px"})
+    
+    # Compact address section
+    address_section = html.Div([
+        html.Div(address, style={
+            "fontSize": "13px", 
+            "fontWeight": "bold", 
+            "marginBottom": "1px"
+        }),
+        html.Div([
+            html.Span(metro, style={
+                "fontSize": "11px", 
+                "color": "#4682B4", 
+                "marginRight": "8px"
+            }),
+            html.Span(title, style={
+                "fontSize": "11px"
+            })
+        ], style={"marginBottom": "2px"})
+    ])
+    
+    # Price info with Cian estimation in a compact horizontal layout
+    price_section = html.Div([
+        html.Div([
+            html.Span("Цена: ", style={"fontWeight": "bold", "fontSize": "11px"}),
+            html.Span(price, style={"fontSize": "11px", "fontWeight": "bold"})
+        ], style={"display": "inline-block", "marginRight": "12px"}),
+        html.Div([
+            html.Span("Оценка: ", style={"fontWeight": "bold", "fontSize": "11px"}),
+            html.Span(cian_est, style={"fontSize": "11px", "color": "#4682B4"})
+        ], style={"display": "inline-block"})
+    ], style={"marginBottom": "4px"})
+    
+    # Process rental terms with a 3-column compact layout
     terms = apartment_data.get("terms", {})
     
     # Define mapping for terms display with proper formatting
@@ -312,180 +321,37 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
         "negotiable": ("Торг", lambda x: x)
     }
     
-    # We'll build the terms directly in the layout later, not as a separate list
-    
-    # Create two-column header layout
-    header = html.Div([
-        # Top row with ID and Cian link - with justified alignment
-        html.Div([
-            html.Div(f"ID: {offer_id}", style={
-                "fontSize": "10px", 
-                "color": "#666",
-                "display": "inline-block",
-                "float": "left"
-            }),
-            html.A(
-                "Открыть на Циан ↗", 
-                href=f"https://www.cian.ru/rent/flat/{offer_id}/",
-                target="_blank",
-                style={
-                    "fontSize": "10px", 
-                    "color": "#4682B4", 
-                    "textDecoration": "none",
-                    "display": "inline-block",
-                    "float": "right"
-                }
-            ),
-            html.Div(style={"clear": "both"})
-        ], style={"marginBottom": "6px", "width": "100%"}),
-        
-        # Two-column main header content
-        html.Div([
-            # Left column: Address, metro, title
-            html.Div([
-                html.Div(address, style={
-                    "fontSize": "13px", 
-                    "fontWeight": "bold", 
-                    "marginBottom": "2px"
-                }),
-                html.Div(metro, style={
-                    "fontSize": "11px", 
-                    "color": "#4682B4", 
-                    "marginBottom": "2px"
-                }),
-                html.Div(title, style={
-                    "fontSize": "11px"
-                }),
-            ], style={"width": "60%", "display": "inline-block", "verticalAlign": "top"}),
-            
-            # Right column: Price, Cian estimation
-            html.Div([
+    # Create a 3-column grid of terms for maximum space efficiency
+    terms_elements = []
+    for field, (label, formatter) in terms_mapping.items():
+        if terms.get(field):
+            terms_elements.append(
                 html.Div([
-                    html.Span("Цена: ", style={"fontWeight": "bold"}),
-                    html.Span(price)
+                    html.Span(f"{label}: ", style={"fontWeight": "bold", "fontSize": "10px"}),
+                    html.Span(formatter(terms.get(field)), style={"fontSize": "10px"})
                 ], style={
-                    "fontSize": "11px", 
-                    "marginBottom": "2px"
-                }),
-                html.Div([
-                    html.Span("Оценка Циан: ", style={"fontWeight": "bold"}),
-                    html.Span(cian_est)
-                ], style={
-                    "fontSize": "11px", 
-                    "color": "#4682B4"
+                    "display": "inline-block", 
+                    "width": "32%", 
+                    "marginBottom": "2px",
+                    "verticalAlign": "top",
+                    "whiteSpace": "nowrap",
+                    "overflow": "hidden",
+                    "textOverflow": "ellipsis"
                 })
-            ], style={"width": "40%", "display": "inline-block", "verticalAlign": "top", "textAlign": "right"})
-        ]),
-        
-        # Rental Terms section - grid layout for efficiency
-        html.Div([
-            html.Div("Условия:", style={
-                "fontSize": "11px", 
-                "fontWeight": "bold", 
-                "color": "#4682B4",
-                "marginBottom": "4px",
-                "display": "block"
-            }),
-            # Create a grid layout for terms
-            html.Div([
-                # Replace terms_section with a custom grid layout
-                html.Div([
-                    html.Div([
-                        html.Span(f"{label}: ", style={"fontWeight": "bold", "fontSize": "10px"}),
-                        html.Span(formatter(terms.get(field)), style={"fontSize": "10px"})
-                    ], style={
-                        "display": "inline-block", 
-                        "width": "48%", 
-                        "marginRight": "2%",
-                        "marginBottom": "3px",
-                        "verticalAlign": "top"
-                    })
-                    for field, (label, formatter) in terms_mapping.items() if terms.get(field)
-                ], style={"width": "100%"})
-            ])
-        ], style={
-            "marginTop": "8px",
-            "padding": "6px 8px",
-            "backgroundColor": "#f7f9fc",
-            "borderRadius": "4px"
-        })
+            )
+    
+    # Create terms section if we have terms
+    terms_section = html.Div([
+        html.Div(terms_elements, style={"width": "100%"})
     ], style={
-        "borderBottom": "1px solid #eee",
-        "paddingBottom": "6px",
+        "padding": "4px 6px",
+        "backgroundColor": "#f7f9fc",
+        "borderRadius": "4px",
         "marginBottom": "6px"
-    })
-
-    def format_section(title, items, is_html_items=False):
-        if not items:
-            return None
-            
-        # Handle HTML items differently than string items
-        content = items if is_html_items else html.Div(", ".join(items), style={"fontSize": "10px"})
-            
-        return html.Div([
-            html.Div(title, style={"fontWeight": "bold", "fontSize": "11px", "color": "#4682B4", "marginBottom": "2px"}),
-            content
-        ], style={"marginBottom": "6px"})
-
-    # === 1. Apartment info ===
-    apartment_items = []
-    apt = apartment_data.get("apartment", {})
-    for field, label in {
-        "apartment_type": "Тип жилья",
-        "layout": "Планировка",
-        "total_area": "Общая площадь",
-        "living_area": "Жилая площадь",
-        "kitchen_area": "Площадь кухни",
-        "ceiling_height": "Высота потолков",
-        "bathroom": "Санузел",
-        "balcony": "Балкон/лоджия",
-        "sleeping_places": "Спальных мест",
-        "renovation": "Ремонт",
-        "view": "Вид из окон"
-    }.items():
-        if apt.get(field):
-            apartment_items.append(f"{label}: {apt[field]}")
-
-    # === 2. Building info ===
-    building_items = []
-    bld = apartment_data.get("building", {})
-    for field, label in {
-        "year_built": "Год постройки",
-        "building_series": "Серия",
-        "garbage_chute": "Мусоропровод",
-        "elevators": "Лифты",
-        "building_type": "Тип дома",
-        "ceiling_type": "Перекрытия",
-        "parking": "Парковка",
-        "entrances": "Подъезды",
-        "heating": "Отопление",
-        "emergency": "Аварийность",
-        "gas_supply": "Газоснабжение"
-    }.items():
-        if bld.get(field):
-            building_items.append(f"{label}: {bld[field]}")
-
-    # === 3. Features ===
-    features_items = []
-    features = apartment_data.get("features", {})
-    for field, label in {
-        "has_refrigerator": "Холодильник",
-        "has_dishwasher": "Посудомоечная машина",
-        "has_washing_machine": "Стиральная машина",
-        "has_air_conditioner": "Кондиционер",
-        "has_tv": "Телевизор",
-        "has_internet": "Интернет",
-        "has_kitchen_furniture": "Мебель на кухне",
-        "has_room_furniture": "Мебель в комнатах",
-        "has_bathtub": "Ванна",
-        "has_shower_cabin": "Душевая кабина"
-    }.items():
-        if str(features.get(field)).lower() == "true":
-            features_items.append(label)
-
-    # === 4. Price history with deduplication of same date/price entries ===
-    price_items = []
-    price_html_items = None
+    }) if terms_elements else None
+    
+    # Process price history data
+    price_history_items = []
     
     if "price_history" in apartment_data and apartment_data["price_history"]:
         try:
@@ -570,32 +436,122 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
                 if entry["has_change"]:
                     line += f" {entry['change_text']}"
                 
-                price_items.append(line)
+                price_history_items.append(line)
             
             # Take only top 3 entries
-            price_items = price_items[:3]
-                
-            # Create HTML formatted version with separators
-            if price_items:
-                price_html_items = html.Div([
-                    html.Div(
-                        item, 
-                        style={
-                            "fontSize": "10px",
-                            "marginBottom": "2px",
-                            "paddingBottom": "2px",
-                            "borderBottom": "1px dotted #eee" if i < len(price_items)-1 else "none"
-                        }
-                    ) for i, item in enumerate(price_items)
-                ])
+            price_history_items = price_history_items[:3]
                 
         except Exception as e:
             print(f"Error processing price history: {e}")
-            price_items = ["Ошибка обработки истории цен"]
-
-    # === 5. Stats (optional) ===
-    stats_items = []
+            price_history_items = ["Ошибка обработки истории цен"]
+    
+    # Compact price history section as horizontal pills/tags
+    price_history_section = None
+    if price_history_items:
+        price_history_elements = []
+        for item in price_history_items:
+            # Create a pill/tag for each price history item
+            price_history_elements.append(
+                html.Div(item, style={
+                    "display": "inline-block",
+                    "fontSize": "9px",
+                    "backgroundColor": "#f0f5fa",
+                    "borderRadius": "3px",
+                    "padding": "1px 4px",
+                    "margin": "0 3px 3px 0",
+                    "border": "1px solid #e0e8f0"
+                })
+            )
+        
+        # Create price history container
+        price_history_section = html.Div([
+            html.Div("История цен:", style={
+                "fontSize": "10px",
+                "fontWeight": "bold",
+                "display": "inline-block",
+                "marginRight": "5px",
+                "color": "#4682B4",
+                "verticalAlign": "middle"
+            }),
+            html.Div(price_history_elements, style={
+                "display": "inline-block",
+                "verticalAlign": "middle"
+            })
+        ], style={"marginBottom": "6px"})
+    
+    # Main apartment info in 3-column layout for better space usage
+    apt = apartment_data.get("apartment", {})
+    apartment_items = []
+    apt_fields = [
+        ("apartment_type", "Тип жилья"),
+        ("layout", "Планировка"),
+        ("total_area", "Общая площадь"),
+        ("living_area", "Жилая площадь"),
+        ("kitchen_area", "Площадь кухни"),
+        ("ceiling_height", "Высота потолков"),
+        ("bathroom", "Санузел"),
+        ("balcony", "Балкон/лоджия"),
+        ("sleeping_places", "Спальных мест"),
+        ("renovation", "Ремонт"),
+        ("view", "Вид из окон")
+    ]
+    
+    for field, label in apt_fields:
+        if apt.get(field):
+            apartment_items.append((label, apt[field]))
+    
+    # Features as tags/pills for better visual distinction
+    features = apartment_data.get("features", {})
+    feature_items = []
+    for field, label in {
+        "has_refrigerator": "Холодильник",
+        "has_dishwasher": "Посудомоечная машина",
+        "has_washing_machine": "Стиральная машина",
+        "has_air_conditioner": "Кондиционер",
+        "has_tv": "Телевизор",
+        "has_internet": "Интернет",
+        "has_kitchen_furniture": "Мебель на кухне",
+        "has_room_furniture": "Мебель в комнатах",
+        "has_bathtub": "Ванна",
+        "has_shower_cabin": "Душевая кабина"
+    }.items():
+        if str(features.get(field)).lower() == "true":
+            feature_items.append(
+                html.Div(label, style={
+                    "display": "inline-block",
+                    "fontSize": "9px",
+                    "backgroundColor": "#e8f2e8",
+                    "borderRadius": "3px",
+                    "padding": "1px 4px",
+                    "margin": "0 3px 3px 0",
+                    "border": "1px solid #d0e6d0"
+                })
+            )
+    
+    # Building info in 3-column layout
+    bld = apartment_data.get("building", {})
+    building_items = []
+    bld_fields = [
+        ("year_built", "Год постройки"),
+        ("building_series", "Серия"),
+        ("garbage_chute", "Мусоропровод"),
+        ("elevators", "Лифты"),
+        ("building_type", "Тип дома"),
+        ("ceiling_type", "Перекрытия"),
+        ("parking", "Парковка"),
+        ("entrances", "Подъезды"),
+        ("heating", "Отопление"),
+        ("emergency", "Аварийность"),
+        ("gas_supply", "Газоснабжение")
+    ]
+    
+    for field, label in bld_fields:
+        if bld.get(field):
+            building_items.append((label, bld[field]))
+    
+    # Stats info
     stats = apartment_data.get("stats", {})
+    stats_items = []
     for field, label in {
         "creation_date": "Создано",
         "total_views": "Просмотров",
@@ -603,46 +559,89 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
         "unique_views": "Уникальных"
     }.items():
         if stats.get(field):
-            stats_items.append(f"{label}: {stats[field]}")
-
-    # Create image slideshow
-    slideshow = create_slideshow(offer_id)
-
-    # Create two-column layout for info sections
-    # First column: Apartment info and Building info
-    # Second column: Features and Stats
+            stats_items.append((label, stats[field]))
     
-    # Price history section
-    price_history_section = format_section("История цен", price_html_items, is_html_items=True) if price_html_items else format_section("История цен", price_items)
-    
-    # Two-column layout for information sections
-    info_sections = html.Div([
-        # Left column
-        html.Div([
-            format_section("Основное", apartment_items),
-            format_section("Дом", building_items),
-        ], style={"width": "60%", "display": "inline-block", "verticalAlign": "top", "paddingRight": "8px"}),
+    # Function to create a 3-column grid section
+    def create_grid_section(title, items, color="#4682B4"):
+        if not items:
+            return None
+            
+        # Create a 3-column grid of items
+        grid_elements = []
+        for label, value in items:
+            grid_elements.append(
+                html.Div([
+                    html.Span(f"{label}: ", style={"fontWeight": "bold", "fontSize": "10px"}),
+                    html.Span(value, style={"fontSize": "10px"})
+                ], style={
+                    "display": "inline-block", 
+                    "width": "32%", 
+                    "marginBottom": "2px",
+                    "verticalAlign": "top",
+                    "whiteSpace": "nowrap",
+                    "overflow": "hidden",
+                    "textOverflow": "ellipsis"
+                })
+            )
         
-        # Right column
-        html.Div([
-            format_section("Оснащение", features_items),
-            format_section("Статистика", stats_items),
-        ], style={"width": "40%", "display": "inline-block", "verticalAlign": "top"})
-    ])
+        return html.Div([
+            html.Div(title, style={
+                "fontWeight": "bold", 
+                "fontSize": "11px", 
+                "color": color,
+                "marginBottom": "3px",
+                "borderBottom": f"1px solid {color}",
+                "paddingBottom": "2px",
+                "display": "inline-block"
+            }),
+            html.Div(grid_elements, style={"width": "100%"})
+        ], style={"marginBottom": "8px"})
     
-    # Main sections in compact layout
-    main_sections = [
-        header,
+    # Create feature section if we have features
+    features_section = None
+    if feature_items:
+        features_section = html.Div([
+            html.Div("", style={
+                "fontWeight": "bold", 
+                "fontSize": "11px", 
+                "color": "#4682B4",
+                "marginBottom": "3px",
+                "borderBottom": "1px solid #4682B4",
+                "paddingBottom": "2px",
+                "display": "inline-block"
+            }),
+            html.Div(feature_items)
+        ], style={"marginBottom": "8px"})
+    
+    # Create apartment info section with 3-column grid
+    apartment_section = create_grid_section("", apartment_items)
+    
+    # Create building info section with 3-column grid
+    building_section = create_grid_section("Дом", building_items, "#5a7fa6")
+    
+    # Create stats section if we have stats
+    stats_section = create_grid_section("Статистика", stats_items, "#6b8eb3")
+    
+    # Assemble all sections
+    all_sections = [
+        top_header,
         slideshow,
+        address_section,
+        price_section,
+        terms_section,
         price_history_section,
-        info_sections
+        apartment_section,
+        features_section,
+        building_section,
+        stats_section
     ]
     
     # Filter out None sections
-    main_sections = [section for section in main_sections if section is not None]
+    all_sections = [section for section in all_sections if section is not None]
     
-    return html.Div(main_sections, style={
-        "padding": "12px",
+    # Main container with slightly increased height and compact spacing
+    return html.Div(all_sections, style={
+        "padding": "10px",
         "backgroundColor": "#fff",
         "fontFamily": "Arial, sans-serif",
         "fontSize": "10px",
@@ -651,7 +650,7 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
         "width": "100%",
         "maxWidth": "500px",
         "margin": "0 auto",
-        "lineHeight": "1.3"  # Slightly increase line height for better readability
+        "lineHeight": "1.2"  # Slightly reduced line height for more compact layout
     })
 # Register callbacks with the app - this will be called from cian_dashboard.py
 def register_callbacks(app):
@@ -689,7 +688,7 @@ def register_callbacks(app):
             "transform": "translate(-50%, -50%)",  # Center in viewport
             "width": "90%",  # Take 90% of viewport width
             "maxWidth": "500px",  # Limit to 500px
-            "maxHeight": "90vh",  # Use 90% of viewport height
+            "maxHeight": "100%",  # Use 90% of viewport height
             "zIndex": "1000",
             "backgroundColor": "#fff",
             "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",
@@ -758,7 +757,7 @@ def register_callbacks(app):
                 "transform": "translate(-50%, -50%)",  # Center in viewport
                 "width": "90%",  # Take 90% of viewport width
                 "maxWidth": "500px",  # Limit to 500px
-                "maxHeight": "90vh",  # Use 90% of viewport height
+                "maxHeight": "100%",  # Use 90% of viewport height
                 "zIndex": "1000",
                 "backgroundColor": "#fff",
                 "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",

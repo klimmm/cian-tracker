@@ -41,7 +41,7 @@ def create_app_layout(app):
             "width": "345px",
             "minWidth": "345px",
             "maxWidth": "345px",  # Limit width
-            "maxHeight": "80vh",  # Limit height
+            "maxHeight": "100%",  # Limit height
             "zIndex": "1000",
             "backgroundColor": "#fff",
             "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",
