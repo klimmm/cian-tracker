@@ -10,14 +10,48 @@ from layout import create_app_layout
 import callbacks
 import apartment_details_callbacks
 
-# Initialize the app
+
+# Get current directory to set up assets properly
+current_dir = os.path.dirname(os.path.abspath(__file__))
+assets_path = os.path.join(current_dir, 'assets')
+
+# Initialize the app with proper assets configuration
 app = dash.Dash(
     __name__,
     title="",
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
     suppress_callback_exceptions=True,
+    assets_folder=assets_path,  # Set the assets folder
 )
 
+# Create assets directory structure if it doesn't exist
+if not os.path.exists(assets_path):
+    os.makedirs(assets_path)
+
+# Create a symlink from images to assets/images if it doesn't exist already
+images_dir = os.path.join(current_dir, 'images')
+assets_images_dir = os.path.join(assets_path, 'images')
+
+if os.path.exists(images_dir) and not os.path.exists(assets_images_dir):
+    # On Windows, we might need different commands or directory junction
+    if os.name == 'nt':  # Windows
+        try:
+            # Try directory junction on Windows
+            import subprocess
+            subprocess.run(['mklink', '/J', assets_images_dir, images_dir], shell=True, check=False)
+        except Exception as e:
+            print(f"Warning: Could not create directory junction: {e}")
+            # Fall back to copying if junctions don't work
+            import shutil
+            if not os.path.exists(assets_images_dir):
+                os.makedirs(assets_images_dir)
+    else:  # Unix-like
+        try:
+            # Create a symbolic link
+            os.symlink(images_dir, assets_images_dir)
+        except Exception as e:
+            print(f"Warning: Could not create symlink: {e}")
+            
 apartment_details_callbacks.register_callbacks(app)
 # Add this to cian_dashboard.py right after the app initialization
 server = app.server
