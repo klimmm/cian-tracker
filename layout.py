@@ -1,4 +1,4 @@
-# app.py
+# layout.py
 import os
 import pandas as pd
 import dash
@@ -26,9 +26,73 @@ default_distance_btn = next(
 
 
 def create_app_layout(app):
+    # Create a store for the selected apartment
+    selected_apartment_store = dcc.Store(id="selected-apartment-store", data=None, storage_type="memory")
+
+    # Create an improved overlay details panel
+    apartment_details_panel = html.Div(
+        id="apartment-details-panel",
+        style={
+            "display": "none",
+            "position": "fixed",  # Fixed position for better centering
+            "top": "50%",
+            "left": "50%",
+            "transform": "translate(-50%, -50%)",  # Center in viewport
+            "width": "345px",
+            "minWidth": "345px",
+            "maxWidth": "345px",  # Limit width
+            "maxHeight": "80vh",  # Limit height
+            "zIndex": "1000",
+            "backgroundColor": "#fff",
+            "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",
+            "borderRadius": "8px",
+            "padding": "15px",
+            "overflow": "auto"
+        },
+        children=[
+            # Close button in top right corner with improved styling
+            html.Div(
+                style={
+                    "display": "flex",
+                    "justifyContent": "flex-end",
+                    "padding": "0px",
+                    "position": "absolute",  # Absolute position in top-right
+                    "top": "10px",
+                    "right": "10px",
+                    "zIndex": "1001"  # One higher than the panel
+                },
+                children=[
+                    html.Button(
+                        "×", 
+                        id="close-details-button",
+                        style={
+                            "backgroundColor": "transparent",
+                            "border": "none",
+                            "color": "#4682B4",
+                            "fontSize": "24px",
+                            "fontWeight": "bold",
+                            "cursor": "pointer",
+                            "padding": "0",
+                            "width": "24px",
+                            "height": "24px",
+                            "lineHeight": "20px",
+                            "borderRadius": "50%",
+                            "transition": "background-color 0.2s",
+                            "display": "flex",
+                            "alignItems": "center",
+                            "justifyContent": "center"
+                        }
+                    )
+                ]
+            ),
+            # Details content - will be populated by the callback
+            html.Div(id="apartment-details-card", style={"marginTop": "0px"})
+        ]
+    )
+    
+        
     # App layout
-    app.layout = html.Div(
-        [
+    original_layout = [
             html.H2("", style=STYLE["header"]),
             html.Div(html.Span(id="last-update-time", style=STYLE["update_time"])),
             dcc.Interval(id="interval-component", interval=2 * 60 * 1000, n_intervals=0),
@@ -213,12 +277,28 @@ def create_app_layout(app):
                 ],
                 style={"textAlign": "left", "width": "355px", "padding": "0px"},  # Fixed width with no padding
             ),
-            # Table container
-            dcc.Loading(
-                id="loading-main",
-                children=[html.Div(id="table-container")],
-                style={"margin": "5px"},
+    ]
+    app.layout = html.Div(
+        original_layout + [
+            # Table container with ID for toggling visibility
+            html.Div(
+                id="table-view-container",
+                children=[
+                    dcc.Loading(
+                        id="loading-main",
+                        children=[
+                            html.Div(id="table-container"),
+                            # Details panel appears directly after the table
+                            apartment_details_panel
+                        ],
+                        style={"margin": "5px"},
+                    )
+                ]
             ),
+            # Store for tracking the selected apartment
+            selected_apartment_store,
+            # Store for expanded row
+            dcc.Store(id="expanded-row-store", data=None),
         ],
         style=STYLE["container"],
     )

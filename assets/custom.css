@@ -151,3 +151,176 @@ label.dash-label {
         padding-right: 4px !important;
     }
 }
+
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+#apartment-details-panel {
+    transition: all 0.3s ease-in-out;
+    transform-origin: center;
+}
+
+#apartment-details-panel[style*="display: block"] {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+
+
+/* Style for the dash app container */
+.dash-container {
+  position: relative;
+  overflow-x: hidden; /* Prevent horizontal scrolling during animations */
+}
+
+/* Smooth transition for the details panel */
+#apartment-details-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  padding: 15px;
+  overflow: auto;
+  
+  /* Improved transition */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+  transform: translateZ(0); /* Force hardware acceleration */
+  will-change: opacity, visibility; /* Hint to the browser */
+}
+
+/* When the panel is visible */
+#apartment-details-panel[style*="display: block"] {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Improved row highlighting */
+.highlighted-row td {
+  background-color: #e6f3ff !important;
+  border-bottom: 2px solid #4682B4 !important;
+  transition: background-color 0.3s ease;
+}
+
+/* Details button styling */
+.detail-button {
+  background-color: #4682B4;
+  color: white;
+  border: none;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.detail-button:hover {
+  background-color: #365F8A;
+}
+
+/* Remove any margins on paragraph elements in cells */
+.dash-cell-value p {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Dash container */
+.dash-container {
+  position: relative;
+  overflow-x: hidden; /* Prevent horizontal scrolling during animations */
+}
+
+/* Remove margins from paragraph elements */
+.dash-cell-value p {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Details button styling - more prominent */
+td.details-column .dash-cell-value {
+    display: inline-block !important;
+    background-color: #4682B4 !important;
+    color: white !important;
+    border: none !important;
+    padding: 3px 10px !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s !important;
+    text-align: center !important;
+    font-weight: normal !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+td.details-column .dash-cell-value:hover {
+    background-color: #365F8A !important;
+}
+
+/* Fix cursor for clickable cells */
+.dash-spreadsheet td.cell-clickable,
+td.details-column, 
+td[data-dash-column="details"] {
+    cursor: pointer !important;
+}
+
+/* Apartment details panel */
+#apartment-details-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    background-color: #fff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    border-radius: 8px;
+    padding: 15px;
+    overflow: auto;
+    width: 90%;
+    max-width: 500px !important;
+    max-height: 90vh;
+    
+    /* Animation settings */
+    transform-origin: center;
+    will-change: opacity, visibility, transform;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    
+    /* Initial state - hidden */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* When panel is visible */
+#apartment-details-panel[style*="visibility: visible"] {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Highlighted row */
+.highlighted-row td {
+    background-color: #e6f3ff !important;
+    border-bottom: 2px solid #4682B4 !important;
+    transition: background-color 0.3s ease;
+}
+
+/* Make details column transparent */
+.details-column {
+    background-color: transparent !important;
+    padding: 3px 5px !important;
+}

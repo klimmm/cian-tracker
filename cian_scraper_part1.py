@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger('CianScraper')
 import re
 from datetime import datetime, timedelta
+import requests
 
 def parse_updated_time(time_str):
     """Parse Cian time format to datetime string"""
@@ -72,6 +73,30 @@ class CianScraper:
         self.new = self.removed = self.price_changes = 0
         self.existing_data = self._load_existing_data()
 
+    def _download_images(self, offers, image_folder='images'):
+        os.makedirs(image_folder, exist_ok=True)
+    
+        for offer in offers:
+            offer_id = offer.get('offer_id')
+            images = offer.get('image_urls', [])
+            if not images:
+                continue
+            image_url = images[0]  # Скачиваем только первое фото
+            
+            try:
+                response = requests.get(image_url, timeout=10)
+                if response.status_code == 200:
+                    with open(os.path.join(image_folder, f'{offer_id}.jpg'), 'wb') as f:
+                        f.write(response.content)
+                    print(f"✅ Downloaded image for {offer_id}")
+                else:
+                    print(f"❌ Failed to download image for {offer_id}: status {response.status_code}")
+            except Exception as e:
+                print(f"⚠️ Error downloading image for {offer_id}: {e}")
+    
+
+
+        
     def _load_existing_data(self):
         if not os.path.exists(self.csv_filename):
             return {}
@@ -480,12 +505,17 @@ class CianScraper:
             logger.error(f"Error saving data: {e}")
             return apartments
 
+
     def scrape(self, search_url, max_pages=5, max_distance_km=None, time_filter=None):
         url = f'{search_url}&totime={time_filter * 60}' if time_filter else search_url
         parsed_apts = self.collect_listings(url, max_pages)
         combined_apts = self._combine_with_existing(parsed_apts)
         self._process_distances(combined_apts)
         result = self._save_data(combined_apts)
+    
+        # ➕ Download images here
+        self._download_images(result)
+    
         print(f"Changes: +{self.new} new, -{self.removed} removed, {self.price_changes} price changes")
         return result
 

@@ -5,7 +5,170 @@ import json
 from datetime import datetime, timedelta
 from config import CONFIG, MOSCOW_TZ
 
+# Add to utils.py
 
+import os
+import pandas as pd
+
+def load_csv_safely(file_path):
+    """Load a CSV file with robust error handling for malformed files"""
+    import pandas as pd
+    import os
+    
+    if not os.path.exists(file_path):
+        print(f"File not found: {file_path}")
+        return pd.DataFrame()
+    
+    try:
+        # First try using Python's built-in CSV module which is more forgiving
+        import csv
+        
+        # Read raw data while auto-detecting dialect
+        with open(file_path, 'r', encoding='utf-8') as f:
+            # Sample first 1000 chars to detect format
+            sample = f.read(1000)
+            f.seek(0)
+            
+            # Try to detect the dialect
+            try:
+                dialect = csv.Sniffer().sniff(sample)
+                reader = csv.reader(f, dialect)
+            except:
+                # If detection fails, use most permissive settings
+                reader = csv.reader(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            
+            rows = list(reader)
+        
+        if not rows:
+            return pd.DataFrame()
+            
+        # Find maximum field count
+        max_fields = max(len(row) for row in rows)
+        
+        # Use header as column names, padded if needed
+        header = rows[0]
+        
+        # Pad header if it has fewer columns than data rows
+        if len(header) < max_fields:
+            header = header + [f'unnamed_{i}' for i in range(len(header), max_fields)]
+        
+        # Fix possible duplicate column names
+        unique_header = []
+        seen = set()
+        
+        for col in header:
+            if col in seen or not col:  # Also handle empty column names
+                # Add suffix to make the column name unique
+                count = 1
+                new_col = f"column_{count}" if not col else f"{col}_{count}"
+                while new_col in seen:
+                    count += 1
+                    new_col = f"column_{count}" if not col else f"{col}_{count}"
+                unique_header.append(new_col)
+            else:
+                unique_header.append(col)
+            seen.add(unique_header[-1])
+        
+        # Create DataFrame, padding rows that have fewer fields
+        data = []
+        for row in rows[1:]:  # Skip header
+            # Pad row if needed
+            if len(row) < max_fields:
+                row = row + [''] * (max_fields - len(row))
+            # Truncate if longer (shouldn't happen with max_fields)
+            data.append(row[:max_fields])
+        
+        df = pd.DataFrame(data, columns=unique_header)
+        return df
+        
+    except Exception as e:
+        print(f"Error in CSV module parsing for {file_path}: {str(e)}")
+        
+        # Fallback to pandas with error handling options
+        try:
+            # Try with some common settings that might help with malformed files
+            return pd.read_csv(
+                file_path,
+                encoding='utf-8',
+                on_bad_lines='skip',     # For newer pandas versions
+                escapechar='\\',
+                quotechar='"',
+                low_memory=False
+            )
+        except Exception as e2:
+            try:
+                # For older pandas versions
+                return pd.read_csv(
+                    file_path,
+                    encoding='utf-8',
+                    error_bad_lines=False,  # Deprecated but works in older pandas
+                    warn_bad_lines=True,
+                    low_memory=False
+                )
+            except Exception as e3:
+                print(f"All loading methods failed for {file_path}: {str(e3)}")
+                return pd.DataFrame()  # Return empty DataFrame
+
+def load_apartment_details(offer_id):
+    """
+    Load all details for a specific apartment by offer_id, 
+    combining data from multiple CSV files with robust error handling.
+    """
+    # Get the data directory path
+    data_dir = "cian_data"
+    
+    # Initialize the result dictionary
+    apartment_data = {"offer_id": offer_id}
+    
+    # List of files to check and their corresponding field groups
+    files_to_check = [
+        ("price_history.csv", "price_history"),
+        ("stats.csv", "stats"),
+        ("features.csv", "features"),
+        ("rental_terms.csv", "terms"),
+        ("apartment_details.csv", "apartment"),
+        ("building_details.csv", "building")
+    ]
+    
+    for filename, group_name in files_to_check:
+        filepath = os.path.join(data_dir, filename)
+        
+        if not os.path.exists(filepath):
+            continue
+            
+        try:
+            # Use the safer CSV loading approach
+            df = load_csv_safely(filepath)
+            
+            if df.empty:
+                continue
+                
+            if 'offer_id' not in df.columns:
+                print(f"Warning: 'offer_id' column missing in {filepath}")
+                continue
+                
+            # Convert offer_id to string for safer comparison
+            df['offer_id'] = df['offer_id'].astype(str)
+            offer_id_str = str(offer_id)
+            
+            # Filter for the specific offer_id
+            filtered_df = df[df['offer_id'] == offer_id_str]
+            
+            if not filtered_df.empty:
+                if group_name == "price_history":
+                    # For price history, we may have multiple rows
+                    apartment_data[group_name] = filtered_df.to_dict('records')
+                else:
+                    # For other files, we expect just one row per offer_id
+                    apartment_data[group_name] = filtered_df.iloc[0].to_dict()
+                    
+                print(f"Successfully loaded {group_name} data for offer_id {offer_id}")
+            else:
+                print(f"No data found for offer_id {offer_id} in {filepath}")
+        except Exception as e:
+            print(f"Error processing data from {filepath}: {e}")
+    
+    return apartment_data
 def pluralize_ru_accusative(number, forms, word):
     """Подбирает правильную форму слова в винительном падеже"""
     n = abs(number) % 100
@@ -279,7 +442,7 @@ def format_update_title(row):
         )
         price_str = '<span style="color:gray;">cнято</span>'
 
-    return f'<div style="text-align:center;"><strong>{time_str}</strong>&nbsp;&nbsp;{price_str}</div>'
+    return f'<div style="text-align:center;"><strong>{time_str}<br></strong>&nbsp;&nbsp;{price_str}</div>'
 
 
 # Then in your data processing code:
@@ -336,7 +499,7 @@ def load_and_process_data():
             lambda x: format_text(x, format_price_r, "--")
         )
         df["cian_estimation_formatted"] = df["cian_estimation_value"].apply(
-            lambda x: format_text(x, format_price, "--")
+            lambda x: format_text(x, format_price_r, "--")
         )
         df["price_difference_formatted"] = df["price_difference_value"].apply(
             lambda x: format_text(x, format_price, "")
@@ -396,23 +559,20 @@ def load_and_process_data():
 
         # Create the conditional update_title column
         def format_update_title(row):
-            """Format the update_title field based on status"""
+            """Format the update_title field using markdown syntax for DataTable"""
             if row["status"] == "active":
-                # For active status
-                time_str = row["updated_time"]  # Already formatted by previous steps
+                time_str = row["updated_time"]
                 price_str = row["price_change_formatted"]
             else:
-                # For non-active status
-                # Use unpublished_date if available, otherwise fallback to updated_time
-                # Both are already formatted by previous steps
                 time_str = (
                     row["unpublished_date"]
                     if row["unpublished_date"] and row["unpublished_date"] != "--"
                     else row["updated_time"]
                 )
-                price_str = '<span style="color:gray;">cнято</span>'
+                price_str = "снято"
+        
+            return f"**{time_str}**  \n{price_str}"
 
-            return f'<div style="text-align:center;"><strong>{time_str}</strong>&nbsp;&nbsp;{price_str}</div>'
 
         # Apply the formatting function
         df["update_title"] = df.apply(format_update_title, axis=1)

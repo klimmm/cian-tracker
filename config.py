@@ -45,14 +45,14 @@ CONFIG = {
             "distance",
             #"price_info",
             "price_value_formatted",
-            "commission_info_abbr",
-            "deposit_info_abbr",
+            #"commission_info_abbr",
+            #"deposit_info_abbr",
             #"monthly_burden_formatted",
-            "cian_estimation_formatted",
+            #"cian_estimation_formatted",
             #"price_change_formatted",
             #"title",
             # "rental_period_abbr", "utilities_type_abbr",
-            "metro_station",
+            #"metro_station",
             #"unpublished_date",
         ],
         "headers": {
@@ -168,7 +168,8 @@ STYLE = {
          "height": "auto",
          "width": "auto",
          "overflow": "hidden",
-         "textOverflow": "ellipsis"}
+         "textOverflow": "ellipsis"},
+        {"if": {"column_id": "details_button"}, "width": "80px", "textAlign": "center"}
     ]
 }
 
@@ -232,6 +233,8 @@ COLUMN_STYLES = [
         "backgroundColor": "#f4f4f4",
         "color": "#888",
     },
+    {"if": {"column_id": "details_button"}, "textAlign": "center"}
+    
 
     
 ]
