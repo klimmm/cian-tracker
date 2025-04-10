@@ -212,6 +212,10 @@ class CianScraper:
         page_listings_map = {}
         driver = webdriver.Chrome(options=self.chrome_options)
         total_pages_processed = 0
+        
+        # Create images folder at the beginning
+        image_folder = 'images'
+        os.makedirs(image_folder, exist_ok=True)
     
         try:
             page = 1
@@ -231,6 +235,12 @@ class CianScraper:
     
             # -------- FORWARD LOOP --------
             while len(all_apts) < total_listings and page <= max_pages:
+                
+
+    
+
+
+                
                 visited_pages.add(page)
                 logger.info(f'Parsing page {page}')
                 driver.execute_script('window.scrollTo(0, document.body.scrollHeight/2);')
@@ -266,6 +276,12 @@ class CianScraper:
                         all_apts.append(data)
                         added_ids[offer_id] = page
                         page_new_listings_count += 1
+
+                    # Download images immediately if they exist
+                    if 'image_urls' in data and data['image_urls']:
+                        self._download_images_for_listing(data, image_folder)
+
+                        
     
                 logger.info(f'Page {page}: Collected {page_new_listings_count} new listings')
                 logger.info(f'Collected {len(all_apts)} / {total_listings} so far')
@@ -294,7 +310,9 @@ class CianScraper:
                 except Exception as e:
                     logger.error(f"Failed to load page {page}: {e}")
                     break
-    
+      
+
+            
             # -------- BACKWARD LOOP --------
             logger.info('Starting reverse crawl to fill missing listings...')
             for reverse_page in range(page - 1, 0, -1):
@@ -381,7 +399,7 @@ class CianScraper:
         return all_apts
     
         
-                        
+                            
     def _parse_card(self, card):
         try:
             data = {
@@ -391,7 +409,7 @@ class CianScraper:
                 'distance': None
             }
     
-            # Основная информация
+            # Basic listing information
             if link := card.select_one("a[href*='/rent/flat/']"):
                 url = link.get('href')
                 data['offer_url'] = self.url_base + url if url.startswith('/') else url
@@ -401,6 +419,7 @@ class CianScraper:
             if title := card.select_one('[data-mark="OfferTitle"]'):
                 data['title'] = title.get_text(strip=True)
     
+            # Price information
             if price := card.select_one('[data-mark="MainPrice"]'):
                 data['price'] = price.get_text(strip=True)
                 data['price_value'] = self._extract_price(data['price'])
@@ -409,9 +428,14 @@ class CianScraper:
                 price_info_text = price_info.get_text(strip=True)
                 data['price_info'] = price_info_text
     
-                # Инициализация дополнительных полей
+                # Initialize additional price-related fields
+                data['rental_period'] = '--'
+                data['utilities_type'] = '--'
+                data['commission_info'] = '--'
+                data['deposit_info'] = '--'
                 data['commission_value'] = None
                 data['deposit_value'] = None
+                
                 parts = [p.strip() for p in price_info_text.split(',')]
                 for p in parts:
                     if p in ['От года', 'На несколько месяцев']:
@@ -423,7 +447,7 @@ class CianScraper:
                     elif 'залог' in p or 'без залога' in p:
                         data['deposit_info'] = p
     
-            # Гео
+            # Location information
             if metro := card.select_one('div[data-name="SpecialGeo"]'):
                 text = metro.get_text(strip=True)
                 data['metro_station'] = text.split('мин')[0].strip() if 'мин' in text else text
@@ -439,53 +463,101 @@ class CianScraper:
             building = loc_elems[5].get_text(strip=True) if len(loc_elems) > 5 else ''
             data['address'] = f"{street}, {building}".strip(', ')
     
+            # Description
             if desc := card.select_one('div[data-name="Description"] p'):
                 data['description'] = desc.get_text(strip=True)
     
+            # Time updated
             if time_el := card.select_one('div[data-name="TimeLabel"] div._93444fe79c--absolute--yut0v span'):
                 data['updated_time'] = parse_updated_time(time_el.get_text(strip=True))
     
-            # Replace this in your _parse_card method
-            try:
-                # Instead of looking for a parent, look for the <a> element directly
-                # either within the card or as a surrounding element
-                a_tag = None
-                
-                # Option 1: Try looking for the <a> tag within the card first
-                a_tag = card.select_one('a._93444fe79c--media--9P6wN')
-                
-                # Option 2: If not found, try to find it as a parent or ancestor
-                if not a_tag:
-                    # Get the offer_id and try to find the <a> tag by URL pattern
-                    offer_id = data.get('offer_id')
-                    if offer_id:
-                        # Look in the entire document (or a parent container)
-                        parent_container = card.find_parent('div._93444fe79c--wrapper--W0WqH')
-                        if parent_container:
-                            a_tag = parent_container.select_one(f"a[href*='/rent/flat/{offer_id}/']")
-                
-                # Option 3: Direct approach - just get all images within the card
-                image_urls = [img['src'] for img in card.select('img') if img.get('src')]
-                
-                # If no images found and we have an a_tag, try to get images from there
-                if not image_urls and a_tag:
-                    image_urls = [img['src'] for img in a_tag.select('img') if img.get('src')]
+            # IMAGE EXTRACTION - MULTI-STRATEGY APPROACH
+            image_urls = []
+    
+            # Strategy 1: Find the gallery structure directly
+            gallery_container = None
+            
+            # Try to find the Gallery container within the card
+            gallery_container = card.select_one('div[data-name="Gallery"]')
+            
+            # If not found in card directly, try to find gallery in parent <a> tag
+            if not gallery_container:
+                # Get the offer_id
+                offer_id = data.get('offer_id')
+                if offer_id:
+                    # Look in the document for a container with this offer in the href
+                    gallery_a = card.find_parent('a', href=lambda h: h and f'/rent/flat/{offer_id}/' in h)
+                    if gallery_a:
+                        gallery_container = gallery_a.select_one('div[data-name="Gallery"]')
                     
-                data['image_urls'] = image_urls
-                if image_urls:
-                    logger.info(f"📸 Found {len(image_urls)} images for offer {data['offer_id']}")
-                else:
-                    logger.info(f"📭 No images found for offer {data['offer_id']}")
-            except Exception as e:
-                logger.warning(f"⚠️ Failed to extract images for offer {data.get('offer_id')}: {e}")
-                data['image_urls'] = []
+                    # Alternative approach - look for the gallery relative to the card's parent
+                    if not gallery_container:
+                        parent = card.parent
+                        if parent:
+                            # Look for the closest <a> with the right href
+                            gallery_a = parent.find('a', href=lambda h: h and f'/rent/flat/{offer_id}/' in h)
+                            if gallery_a:
+                                gallery_container = gallery_a.select_one('div[data-name="Gallery"]')
+            
+            # Extract images from gallery container if found
+            if gallery_container:
+                imgs = gallery_container.select('img')
+                image_urls = [img.get('src') for img in imgs if img.get('src')]
+                
+            # Strategy 2: Try to find images by class pattern
+            if not image_urls:
+                # Try direct class search
+                imgs = card.select('div._93444fe79c--cont--hnKQl img')
+                if imgs:
+                    image_urls = [img.get('src') for img in imgs if img.get('src')]
+                    
+            # Strategy 3: Find the parent A tag containing the gallery
+            if not image_urls:
+                try:
+                    parent_a = card.find_parent('a', class_='_93444fe79c--media--9P6wN')
+                    if parent_a:
+                        imgs = parent_a.select('img')
+                        image_urls = [img.get('src') for img in imgs if img.get('src')]
+                except Exception:
+                    pass
+            
+            # Strategy 4: Get images from entire document by offer_id
+            if not image_urls and data.get('offer_id'):
+                offer_id = data.get('offer_id')
+                try:
+                    # Get the root document
+                    root = card
+                    while root.parent:
+                        root = root.parent
+                    
+                    # Look for a tag with the specific offer URL
+                    a_with_images = root.select_one(f'a[href*="/rent/flat/{offer_id}/"]')
+                    if a_with_images:
+                        imgs = a_with_images.select('img')
+                        image_urls = [img.get('src') for img in imgs if img.get('src')]
+                except Exception:
+                    pass
+                    
+            # Strategy 5: Last resort - find any images in the card
+            if not image_urls:
+                imgs = card.select('img')
+                image_urls = [img.get('src') for img in imgs if img.get('src')]
+            
+            # Remove any duplicates while preserving order
+            seen = set()
+            data['image_urls'] = [x for x in image_urls if not (x in seen or seen.add(x))]
+            
+            # Log results
+            if data['image_urls']:
+                logger.info(f"📸 Found {len(data['image_urls'])} images for offer {data.get('offer_id')}")
+            else:
+                logger.info(f"📭 No images found for offer {data.get('offer_id')}")
     
             return data
     
         except Exception as e:
             logger.error(f'Error parsing card: {e}')
             return None
-
 
     def _combine_with_existing(self, new_apts):
         combined_apts = []
@@ -589,7 +661,48 @@ class CianScraper:
         except Exception as e:
             logger.error(f"Error saving data: {e}")
             return apartments
-
+    def _download_images_for_listing(self, listing, image_folder='images'):
+        """Download images for a single listing as soon as they're found"""
+        try:
+            offer_id = listing.get('offer_id')
+            images = listing.get('image_urls', [])
+            
+            if not offer_id or not images:
+                return
+                
+            # Create folder for this specific listing
+            offer_folder = os.path.join(image_folder, str(offer_id))
+            os.makedirs(offer_folder, exist_ok=True)
+            
+            logger.info(f"🖼️ Downloading {len(images)} image(s) for offer {offer_id}")
+            
+            for idx, image_url in enumerate(images):
+                try:
+                    if not image_url:
+                        continue
+                        
+                    # Add headers to avoid being blocked
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+                    }
+                    
+                    response = requests.get(image_url, timeout=10, headers=headers)
+                    
+                    if response.status_code == 200:
+                        filename = os.path.join(offer_folder, f'{idx + 1}.jpg')
+                        with open(filename, 'wb') as f:
+                            f.write(response.content)
+                        logger.info(f"✅ Downloaded image {idx + 1} for {offer_id} → {filename}")
+                    else:
+                        logger.warning(f"❌ Failed to download image {idx + 1} for {offer_id}: status {response.status_code}")
+                    
+                    # Short delay to avoid overwhelming the server
+                    time.sleep(0.2)
+                    
+                except Exception as e:
+                    logger.error(f"⚠️ Error downloading image {idx + 1} for {offer_id}: {e}")
+        except Exception as e:
+            logger.error(f"⚠️ Failed to download images for offer {listing.get('offer_id')}: {e}")
 
     def scrape(self, search_url, max_pages=5, max_distance_km=None, time_filter=None):
         url = f'{search_url}&totime={time_filter * 60}' if time_filter else search_url
@@ -599,7 +712,6 @@ class CianScraper:
         result = self._save_data(combined_apts)
     
         # ➕ Download images here
-        self._download_images(result)
     
         print(f"Changes: +{self.new} new, -{self.removed} removed, {self.price_changes} price changes")
         return result

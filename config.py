@@ -127,7 +127,7 @@ STYLE = {
     "header": {
         "fontFamily": FONT,
         "textAlign": "center",
-        "fontSize": "9px",
+        "fontSize": "8.5px",
         "borderBottom": "1px solid #ddd",
     },
     "update_time": {"fontFamily": FONT, "fontStyle": "bold", "fontSize": "12px"},
