@@ -251,26 +251,24 @@ def format_text(value, formatter, default=""):
 
 
 def format_price_changes(value):
-    """Format price changes with HTML styling but without div wrapper"""
     if value is None or pd.isna(value):
-        return '<span style="color:blue;">new</span>'  # Blue color for "new"
+        return '<span style="color:#5F9EA0;">new</span>'
     if isinstance(value, str) and value.lower() == "new":
-        return '<span style="color:blue;">new</span>'
+        return '<span style="color:#5F9EA0;">new</span>'
     try:
         value = float(value)
     except (ValueError, TypeError):
-        value = pd.to_numeric(value, errors="coerce")
-        if pd.isna(value):
-            return '<span style="color:blue;">new</span>'
-        return '<span style="color:blue;">new</span>'
+        return '<span style="color:#5F9EA0;">new</span>'
     if abs(value) < 1:
-        return '<span style="color:blue;">new</span>'
-    color = "green" if value < 0 else "red"
+        return '<span style="color:#5F9EA0;">new</span>'
+    
+    color = "#006400" if value < 0 else "#8B0000"  # зелёный и красный
     arrow = "↓" if value < 0 else "↑"
     display = (
         f"{abs(int(value))//1000}K" if abs(value) >= 1000 else str(abs(int(value)))
     )
     return f'<span style="color:{color};">{arrow}{display}</span>'
+
 
 
 def extract_deposit_value(deposit_info):

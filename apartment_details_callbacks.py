@@ -3,7 +3,8 @@ import dash
 from dash import callback, html, ctx
 from dash.dependencies import Input, Output, State
 import logging
-import pandas as pd
+import re
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -12,19 +13,31 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Improved implementation for apartment_details_callbacks.py
-def format_price(value):
-    """Format price value with K notation for thousands"""
-    if value is None or pd.isna(value) or value == 0:
-        return "--"
-
-    amount_num = int(value)
-    if amount_num >= 1000000:
-        return f"{amount_num//1000000}M"
-    elif amount_num >= 1000:
-        return f"{amount_num//1000}K"
-    else:
-        return f"{amount_num} ₽"
+# Helper functions for number formatting
+def is_numeric(value):
+    """Check if a value can be converted to a number"""
+    if value is None:
+        return False
+    try:
+        float(str(value).replace(' ', '').replace('₽', ''))
+        return True
+    except (ValueError, TypeError):
+        return False
+        
+def format_number(value):
+    """Format numbers with thousand separators and currency symbol"""
+    if not is_numeric(value):
+        return value
+        
+    # Remove non-numeric characters
+    clean_value = re.sub(r'[^\d.]', '', str(value))
+    try:
+        num = int(float(clean_value))
+        # Format with thousand separators
+        formatted = '{:,}'.format(num).replace(',', ' ')
+        return f"{formatted} ₽"
+    except (ValueError, TypeError):
+        return value
 
 # Improved implementation for apartment_details_callbacks.py
 
@@ -57,7 +70,7 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
     # Define mapping for terms display with proper formatting
     terms_mapping = {
         "utilities_payment": ("ЖКХ", lambda x: x),
-        "security_deposit": ("Залог", lambda x: format_price(x)),
+        "security_deposit": ("Залог", lambda x: format_number(x) if is_numeric(x) else x),
         "commission": ("Комиссия", lambda x: x),
         "prepayment": ("Предоплата", lambda x: x),
         "rental_period": ("Срок аренды", lambda x: x),
@@ -134,28 +147,27 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
             "marginTop": "5px",
             "marginBottom": "8px"
         }),
+        
+        # Rental Terms (Условия) section moved to header
+        html.Div([
+            html.Div("Условия", style={
+                "fontSize": "11px", 
+                "fontWeight": "bold", 
+                "marginBottom": "3px",
+                "color": "#4682B4"
+            }),
+            html.Div(terms_section, style={
+                "paddingLeft": "5px",
+                "borderLeft": "2px solid #eee"
+            })
+        ], style={
+            "marginBottom": "8px"
+        })
     ], style={
         "borderBottom": "1px solid #eee",
         "paddingBottom": "8px",
         "marginBottom": "8px"
     })
-        
-        # Rental Terms (Условия) section moved to header
-    html.Div([
-        html.Div("Условия", style={
-            "fontSize": "11px", 
-            "fontWeight": "bold", 
-            "marginBottom": "3px",
-            "color": "#4682B4"
-        }),
-        html.Div(terms_section, style={
-            "paddingLeft": "5px",
-            "borderLeft": "2px solid #eee"
-        })
-    ], style={
-        "marginBottom": "8px"
-    })
-
 
     def format_section(title, items, is_html_items=False):
         if not items:
@@ -333,7 +345,7 @@ def create_apartment_details_card(apartment_data, table_row_data=None):
                             "borderBottom": "1px dotted #eee" if i < len(price_items)-1 else "none"
                         }
                     ) for i, item in enumerate(price_items)
-                ], style={"fontSize": "10px", "marginBottom": "10px"})
+                ], style={"fontSize": "10px", "marginBottom": "8px"})
                 
         except Exception as e:
             print(f"Error processing price history: {e}")

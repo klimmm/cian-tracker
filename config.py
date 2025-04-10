@@ -131,11 +131,12 @@ STYLE = {
         "borderBottom": "1px solid #ddd",
     },
     "update_time": {"fontFamily": FONT, "fontStyle": "bold", "fontSize": "12px"},
-    "table": {"overflowX": "auto", "width": "100%"},
+    "table": {"overflowX": "auto", "width": "auto"},
     "cell": {
         "fontFamily": FONT,
         "textAlign": "center",
         "padding": "3px",
+        "maxWidth": "auto",
         "fontSize": "9px",
         "whiteSpace": "nowrap",
     },
@@ -166,10 +167,19 @@ STYLE = {
         {"if": {"column_id": "address_title"}, 
          "whiteSpace": "normal", 
          "height": "auto",
-         "width": "auto",
+         "width": "120px",
+         "maxWidth": "120px",
          "overflow": "hidden",
          "textOverflow": "ellipsis"},
-        {"if": {"column_id": "details_button"}, "width": "80px", "textAlign": "center"}
+        {"if": {"column_id": "update_title"}, 
+         "whiteSpace": "normal", 
+         "height": "auto",
+         "maxWidth": "60px",
+         "overflow": "hidden",
+         "textOverflow": "ellipsis"},
+
+        
+        {"if": {"column_id": "details_button"}, "maxWidth": "80px", "textAlign": "center"}
     ]
 }
 
@@ -212,6 +222,7 @@ COLUMN_STYLES = [
         "if": {"column_id": "price_value_formatted"},
         "fontWeight": "bold",
         "textAlign": "center",
+        "maxWidth": "60px"
     },
     {
         "if": {"column_id": "monthly_burden_formatted"},
@@ -219,7 +230,10 @@ COLUMN_STYLES = [
         "textAlign": "center",
     },
     {"if": {"column_id": "address"}, "textAlign": "left"},
+    {"if": {"column_id": "distance"}, "maxWidth": "40px"},
     {"if": {"column_id": "metro_station"}, "textAlign": "left"},
+    {"if": {"column_id": "address_title"}, "maxWidth": "140px"},
+    {"if": {"column_id": "update_title"}, "maxWidth": "60px"},
     {"if": {"column_id": "title"}, "textAlign": "left"},
     # Add styling for the combined column
     {
@@ -233,7 +247,7 @@ COLUMN_STYLES = [
         "backgroundColor": "#f4f4f4",
         "color": "#888",
     },
-    {"if": {"column_id": "details_button"}, "textAlign": "center"}
+    {"if": {"column_id": "details_button"}, "textAlign": "center", "maxWidth": "60px"}
     
 
     
