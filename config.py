@@ -197,10 +197,7 @@ BUTTON_STYLES = {
 
 COLUMN_STYLES = [
 
-    {
-        "if": {"filter_query": '{distance_sort} < 1.5 && {status} ne "non active"'},
-        "backgroundColor": "#d9edf7",
-    },
+
     {
         "if": {
             "filter_query": '{price_difference_value} < -5000 && {status} ne "non active"'
@@ -216,6 +213,13 @@ COLUMN_STYLES = [
         "backgroundColor": "#e6f3e0",
         "fontWeight": "normal",
     },
+    {
+        "if": {"filter_query": '{distance_sort} < 1.5 && {status} ne "non active"'},
+        "backgroundColor": "#d9edf7",
+    },
+
+
+    
     {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
     {"if": {"column_id": "updated_time"}, "fontWeight": "bold", "textAlign": "center"},
     {
@@ -235,6 +239,9 @@ COLUMN_STYLES = [
     {"if": {"column_id": "address_title"}, "maxWidth": "140px"},
     {"if": {"column_id": "update_title"}, "maxWidth": "60px"},
     {"if": {"column_id": "title"}, "textAlign": "left"},
+
+
+    
     # Add styling for the combined column
     {
         "if": {"column_id": "address_title"}, 
