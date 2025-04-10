@@ -716,13 +716,13 @@ class CianScraper:
             error_count = 0
             
             # Process a small batch at a time (5 images) with longer delay between batches
-            batch_size = 5
+            batch_size = 15
             batches = [images[i:i + batch_size] for i in range(0, len(images), batch_size)]
             
             for batch_idx, batch in enumerate(batches):
                 # Add a longer delay between batches (3-7 seconds)
                 if batch_idx > 0:
-                    sleep_time = 3 + random.random() * 4
+                    sleep_time = 1 + random.random() * 1.1
                     logger.info(f"😴 Sleeping for {sleep_time:.1f} seconds between image batches...")
                     time.sleep(sleep_time)
                 
@@ -737,7 +737,7 @@ class CianScraper:
                     session.headers.update({'User-Agent': current_ua})
                     
                     # Add a random delay between requests (0.5-2 seconds)
-                    sleep_time = 0.5 + random.random() * 1.5
+                    sleep_time = 0.5 + random.random() * 1.1
                     time.sleep(sleep_time)
                     
                     # Retry logic
@@ -745,7 +745,7 @@ class CianScraper:
                         try:
                             logger.info(f"⬇️ Downloading image {abs_idx + 1}/{len(images)} for offer {offer_id}")
                             
-                            response = session.get(image_url, timeout=15)
+                            response = session.get(image_url, timeout=7)
                             
                             if response.status_code == 200:
                                 filename = os.path.join(offer_folder, f'{abs_idx + 1}.jpg')
@@ -766,7 +766,7 @@ class CianScraper:
                             error_msg = str(e)
                             if retry < max_retries - 1:
                                 # Increase backoff time for connection errors
-                                backoff_time = 5 + retry * 10  # 5s, 15s, 25s
+                                backoff_time = 5 + retry * 3  # 5s, 15s, 25s
                                 logger.warning(f"⚠️ Error downloading image {abs_idx + 1} for {offer_id} (attempt {retry+1}/{max_retries}): {error_msg}. Retrying in {backoff_time}s...")
                                 time.sleep(backoff_time)
                             else:

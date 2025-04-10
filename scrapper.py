@@ -766,7 +766,7 @@ def main():
     # Read the input CSV with offer IDs and URLs
     # Read the input CSV with offer IDs and URLs
     input_file = "cian_apartments.csv"
-    max_distance = 6.0  # Set your desired maximum distance here
+    max_distance = 10.0  # Set your desired maximum distance here
     
     try:
         # Use pandas to read and filter the CSV

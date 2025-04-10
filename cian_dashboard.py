@@ -155,6 +155,7 @@ app.index_string = """
                 width: 90%;
                 max-width: 500px;
                 max-height: 100%;
+                min-height: 600px;
                 
                 /* Animation settings */
                 transform-origin: center;
