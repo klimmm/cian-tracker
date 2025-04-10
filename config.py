@@ -127,7 +127,7 @@ STYLE = {
     "header": {
         "fontFamily": FONT,
         "textAlign": "center",
-        "fontSize": "8.5px",
+        "fontSize": "8px",
         "borderBottom": "1px solid #ddd",
     },
     "update_time": {"fontFamily": FONT, "fontStyle": "bold", "fontSize": "12px"},
@@ -137,7 +137,7 @@ STYLE = {
         "textAlign": "center",
         "padding": "3px",
         "maxWidth": "auto",
-        "fontSize": "9px",
+        "fontSize": "8px",
         "whiteSpace": "nowrap",
     },
     "header_cell": {
