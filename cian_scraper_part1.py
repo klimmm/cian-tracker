@@ -75,37 +75,69 @@ class CianScraper:
 
     def _download_images(self, offers, image_folder='images'):
         os.makedirs(image_folder, exist_ok=True)
-    
+        
         for offer in offers:
             offer_id = offer.get('offer_id')
-            images = offer.get('image_urls', [])
-    
             if not offer_id:
                 logger.warning("⚠️ Skipping offer with missing ID.")
                 continue
-    
+            
+            # Handle the image_urls properly whether it's a list or JSON string
+            images = offer.get('image_urls', [])
+            
+            # Convert from string representation if needed
+            if isinstance(images, str):
+                try:
+                    # Try to parse as JSON
+                    if images.startswith('[') and images.endswith(']'):
+                        images = json.loads(images)
+                    # Handle single URL case
+                    elif 'http' in images:
+                        images = [images]
+                    else:
+                        images = []
+                except Exception as e:
+                    logger.warning(f"⚠️ Could not parse image URLs for offer {offer_id}: {str(e)}")
+                    images = []
+            
             if not images:
                 logger.info(f"📭 No images found for offer {offer_id}")
                 continue
-    
-            logger.info(f"🖼️ Found {len(images)} image(s) for offer {offer_id}:")
-            for idx, url in enumerate(images, 1):
-                logger.info(f"    [{idx}] {url}")
-    
+            
+            logger.info(f"🖼️ Found {len(images)} image(s) for offer {offer_id}")
+            
+            # Create subfolder for this offer
+            offer_folder = os.path.join(image_folder, str(offer_id))
+            os.makedirs(offer_folder, exist_ok=True)
+            
             for idx, image_url in enumerate(images):
                 try:
-                    response = requests.get(image_url, timeout=10)
+                    # Skip invalid URLs
+                    if not image_url or not isinstance(image_url, str):
+                        continue
+                        
+                    # Add a User-Agent header to avoid being blocked
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+                    }
+                    
+                    logger.info(f"⬇️ Downloading image {idx+1}/{len(images)} for offer {offer_id}")
+                    response = requests.get(image_url, timeout=10, headers=headers)
+                    
                     if response.status_code == 200:
-                        filename = os.path.join(image_folder, f'{offer_id}_{idx + 1}.jpg')
+                        filename = os.path.join(offer_folder, f'{idx + 1}.jpg')
                         with open(filename, 'wb') as f:
                             f.write(response.content)
                         logger.info(f"✅ Downloaded image {idx + 1} for {offer_id} → {filename}")
                     else:
                         logger.warning(f"❌ Failed to download image {idx + 1} for {offer_id}: status {response.status_code}")
+                    
+                    # Add a small delay between requests
+                    time.sleep(0.5)
+                    
                 except Exception as e:
                     logger.error(f"⚠️ Error downloading image {idx + 1} for {offer_id}: {e}")
-    
-
+        
 
         
     def _load_existing_data(self):
