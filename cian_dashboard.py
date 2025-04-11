@@ -404,7 +404,7 @@ def update_table_content(filters, data):
                 "cursor": "pointer !important"
             }
         ],
-        page_size=1000,
+        page_size=50,
         page_action="native",
         markdown_options={"html": True},
         cell_selectable=True,
