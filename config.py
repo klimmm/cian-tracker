@@ -163,7 +163,7 @@ STYLE = {
         "fontFamily": FONT,
         "backgroundColor": "#4682B4",
         "color": "white",
-        #"fontSize": "11px",
+        "fontSize": "9.5px",
     },
 
 
@@ -309,7 +309,12 @@ COLUMN_STYLES = [
         "height": "auto",
         "minHeight": "60px",
     },
-    
+    {
+        "if": {"column_id": "property_tags"},
+        "padding": "1px", 
+        "textAlign": "left",
+        "lineHeight": "1.2"
+    },    
         
     {
         "if": {"column_id": "monthly_burden_formatted"},

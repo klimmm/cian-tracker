@@ -320,11 +320,14 @@ def format_update_title(row):
     return html
 
 # Update the format_property_tags function in utils.py to enhance tag appearance
+# Update the format_property_tags function in utils.py to reduce padding
+
+# Update the format_property_tags function in utils.py for extremely compact tags
 
 def format_property_tags(row):
-    """Format property tags with enhanced styling and larger font"""
-    # Remove the font-size property from the inline style to let CSS handle it
-    tag_style = "display:inline-block; padding:2px 5px; border-radius:4px; margin-right:2px; white-space:nowrap;"
+    """Format property tags with minimal padding and spacing"""
+    # Absolute minimum padding and spacing
+    tag_style = "display:inline-block; padding:0px 2px; border-radius:2px; margin:0; white-space:nowrap;"
     tags = []
     tag_flags = generate_tags_for_row(row)
     distance_value = row.get("distance_sort")
@@ -333,9 +336,9 @@ def format_property_tags(row):
         # Calculate walking time in minutes
         walking_minutes = (distance_value / 5) * 60
         
-        # Format time display with slightly larger text
+        # Ultra-compact time format
         if walking_minutes < 60:
-            time_text = f"{int(walking_minutes)}мин"  # Changed back to "мин" for better readability
+            time_text = f"{int(walking_minutes)}м"
         else:
             hours = int(walking_minutes // 60)
             minutes = int(walking_minutes % 60)
@@ -344,43 +347,42 @@ def format_property_tags(row):
             else:
                 time_text = f"{hours}ч{minutes}м"
         
-        # Different background colors based on time
-        if walking_minutes < 12:  # Less than 12 minutes (1km)
-            bg_color = "#4285f4"  # Bright blue for very close
-            text_color = "#ffffff"  # White text for contrast
-        elif walking_minutes < 20:  # Less than 20 minutes (1.67km)
-            bg_color = "#aecbfa"  # Medium blue for nearby
-            text_color = "#174ea6"  # Dark blue text
-        elif walking_minutes < 30:  # Less than 40 minutes (3.33km)
-            bg_color = "#aecbfa"  # Light blue for moderate distance
-            text_color = "#174ea6"  # Dark blue text
+        # Background colors as before
+        if walking_minutes < 12:
+            bg_color = "#4285f4"
+            text_color = "#ffffff"
+        elif walking_minutes < 20:
+            bg_color = "#aecbfa"
+            text_color = "#174ea6"
+        elif walking_minutes < 30:
+            bg_color = "#aecbfa"
+            text_color = "#174ea6"
         else:
-            bg_color = "#dadce0"  # Gray for farther distances
-            text_color = "#3c4043"  # Dark gray text
+            bg_color = "#dadce0"
+            text_color = "#3c4043"
             
         tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{time_text}</span>')
     
-    # Add neighborhood tag if available
+    # Add neighborhood tag if available - extremely compact
     if tag_flags.get("neighborhood"):
         neighborhood = tag_flags["neighborhood"]
         
         # Special style for Хамовники
         if tag_flags["is_hamovniki"]:
-            bg_color = "#e0f7f7"  # Teal
-            text_color = "#0c5460"  # Dark teal
+            bg_color = "#e0f7f7"
+            text_color = "#0c5460"
         # Special style for Арбат
         elif tag_flags["is_arbat"]:
-            bg_color = "#d0d1ff"  # Light indigo/purple
-            text_color = "#3f3fa3"  # Dark indigo/purple
+            bg_color = "#d0d1ff"
+            text_color = "#3f3fa3"
         else:
-            # Default style for all other neighborhoods
-            bg_color = "#dadce0"  # Gray
-            text_color = "#3c4043"  # Dark gray
+            bg_color = "#dadce0"
+            text_color = "#3c4043"
             
         tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{neighborhood}</span>')
     
-    # Use more vertical space with increased gap
-    return f'<div style="display:flex; flex-wrap:wrap; gap:3px; justify-content:flex-start; padding:2px 0;">{"".join(tags)}</div>' if tags else ""
+    # Absolute minimum spacing in the container
+    return f'<div style="display:flex; flex-wrap:wrap; gap:0; padding:0; margin:0; line-height:1.1;">{"".join(tags)}</div>' if tags else ""
 
 def format_price_changes(value):
     """Enhanced format for price changes with better responsive styling"""

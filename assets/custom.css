@@ -513,3 +513,62 @@ td[data-dash-column="details"] {
         padding: 1px 3px !important;
     }
 }
+/* Add these CSS rules to decrease padding in property_tags column */
+
+/* Reduce cell padding */
+.dash-spreadsheet td[data-dash-column="property_tags"] {
+    padding: 1px !important; /* Reduced from 3px */
+}
+
+/* Reduce padding in the tags */
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value span {
+    padding: 1px 4px !important; /* Reduced from 2px 5px */
+    margin-right: 1px !important; /* Reduced from 2px */
+    border-radius: 3px !important; /* Slightly smaller radius */
+}
+
+/* Tighten the container */
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value div[style*="display:flex"] {
+    gap: 1px !important; /* Reduced from 3px */
+    padding: 0 !important; /* Removed padding */
+}
+
+/* Add these more aggressive CSS rules to override inline styles */
+
+/* Target the inline style with !important and a high-specificity selector */
+.dash-spreadsheet table tr td[data-dash-column="property_tags"],
+.dash-spreadsheet table tr td.dash-cell[data-dash-column="property_tags"] {
+    padding: 0px !important; /* Force zero padding */
+    padding-top: 0px !important;
+    padding-bottom: 0px !important;
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+    line-height: 1.2 !important; /* Reduce line height */
+    font-size: 10px !important; /* Adjusted font size */
+}
+
+/* !important on all child elements */
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value,
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value.cell-markdown,
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value div {
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+}
+
+/* Override flex container styles with high specificity */
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value div[style*="display:flex"],
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value.cell-markdown div[style*="display:flex"] {
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 1px !important;
+}
+
+/* Override tag styles with high specificity */
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value span,
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value.cell-markdown span {
+    padding: 1px 3px !important;
+    margin: 0 1px 0 0 !important;
+    line-height: 1.1 !important;
+    font-size: 0.9em !important;
+}
