@@ -341,6 +341,7 @@ def update_table_content(filters, data):
     numeric_cols = {
         "distance",
         "price_value_formatted",
+        
         "cian_estimation_formatted",
         "price_difference_formatted",
         "monthly_burden_formatted",
@@ -362,6 +363,14 @@ def update_table_content(filters, data):
         "if": {"column_id": "details"},
         "className": "details-column",
     }
+    markdown_style = [
+        {
+            "if": {"column_id": col},
+            "textAlign": "center"
+        }
+        for col in markdown_cols
+    ]
+
     
     # Create the DataTable
     # In cian_dashboard.py, find the update_table_content function and update the DataTable configuration
@@ -390,7 +399,7 @@ def update_table_content(filters, data):
         },
         
         style_cell=STYLE["cell"],
-        style_cell_conditional=STYLE.get("cell_conditional", []) + [details_style],
+        style_cell_conditional=STYLE.get("cell_conditional", []) + [details_style] + markdown_style,
         
         style_header=STYLE["header_cell"],
         style_header_conditional=HEADER_STYLES,
@@ -400,11 +409,11 @@ def update_table_content(filters, data):
             {
                 "if": {"column_id": "details"},
                 "fontWeight": "normal",
-                "backgroundColor": "transparent",
+                #"backgroundColor": "transparent",
                 "cursor": "pointer !important"
             }
         ],
-        page_size=50,
+        page_size=100,
         page_action="native",
         markdown_options={"html": True},
         cell_selectable=True,

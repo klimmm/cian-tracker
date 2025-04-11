@@ -48,6 +48,7 @@ CONFIG = {
             #"address",
             #"updated_time",
             "update_title",
+            "property_tags",
             "address_title",  # Add the combined column
             #"distance",
             #"price_info",
@@ -64,7 +65,6 @@ CONFIG = {
             #"metro_station",
             #"unpublished_date",
             #"tags"
-            "property_tags",
             #'price_change'
         ],
         "headers": {
@@ -91,13 +91,14 @@ CONFIG = {
             "update_title": "Посл. обновление",
             "neighborhood": "Район",
             "price_text": "Цена",
-            "property_tags": "Метки"  # Add header for tags
+            "property_tags": "Теги"  # Add header for tags
             
         },
         "sort_map": {
             "updated_time": "date_sort_combined",
             "price_value_formatted": "price_value",
             'price_text': 'price_value',
+            "property_tags": "distance_sort",
             "price_change_formatted": "price_change_value",
             "cian_estimation_formatted": "cian_estimation_value",
             "price_difference_formatted": "price_difference_value",
@@ -161,7 +162,7 @@ STYLE = {
         "fontFamily": FONT,
         "backgroundColor": "#4682B4",
         "color": "white",
-        "fontSize": "9px",
+        "fontSize": "11px",
     },
 
 
@@ -181,6 +182,17 @@ STYLE = {
         "cursor": "pointer",
     },
     "cell_conditional": [
+
+        {
+            "if": {"column_id": "update_title"},
+            "textAlign": "center",
+            "whiteSpace": "normal",
+            "padding": "2px 4px",
+            "lineHeight": "1.2"
+        },
+
+
+        
         {"if": {"column_id": "address_title"}, 
          "whiteSpace": "normal", 
          "height": "auto",
@@ -262,6 +274,22 @@ COLUMN_STYLES = [
     # Keep specific column styles
     {"if": {"column_id": "tags"}, "textAlign": "left", "whiteSpace": "normal"},
     {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
+    {
+        "if": {"column_id": "price_text"},
+        "textAlign": "center",
+        "padding": "0 4px",
+        "whiteSpace": "normal",  # allow line breaks
+        "lineHeight": "1.2"
+    },
+    {
+        "if": {"column_id": "update_title"},
+        "textAlign": "center",
+        "whiteSpace": "normal",
+        "padding": "2px 4px",
+        "lineHeight": "1.2"
+    },
+
+    
     {"if": {"column_id": "updated_time"}, "fontWeight": "bold", "textAlign": "center"},
     {
         "if": {"column_id": "price_value_formatted"},
@@ -269,6 +297,17 @@ COLUMN_STYLES = [
         "textAlign": "center",
         #"maxWidth": "60px"
     },
+    {
+        "if": {"column_id": "update_title"},
+        "textAlign": "center",
+        "whiteSpace": "normal",
+        "padding": "2px 4px",
+        "lineHeight": "1.2",
+        "height": "auto",
+        "minHeight": "60px",
+    },
+    
+        
     {
         "if": {"column_id": "monthly_burden_formatted"},
         "fontWeight": "bold",
@@ -300,6 +339,8 @@ HEADER_STYLES = [
         "price_value_formatted",
         "cian_estimation_formatted",
         "price_change_formatted",
+        "price_text",
+
         "status",
         "monthly_burden_formatted",
     ]
