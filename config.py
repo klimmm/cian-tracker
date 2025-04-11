@@ -36,26 +36,36 @@ CONFIG = {
             "monthly_burden_formatted",
             "address_title",
             "price_info",
-            "update_title"
+            "update_title",
+            "price_text",
+            "property_tags",
+            'price_change'
+            #"tags"  # Add the new tags column
+            
+            
         ],
         "visible": [
             #"address",
             #"updated_time",
             "update_title",
             "address_title",  # Add the combined column
-            "distance",
+            #"distance",
             #"price_info",
             "price_value_formatted",
-            "neighborhood",
+            #"price_text",
+            #"neighborhood",
             #"commission_info_abbr",
             #"deposit_info_abbr",
             #"monthly_burden_formatted",
-            "cian_estimation_formatted",
+            #"cian_estimation_formatted",
             #"price_change_formatted",
             #"title",
             # "rental_period_abbr", "utilities_type_abbr",
             #"metro_station",
             #"unpublished_date",
+            #"tags"
+            "property_tags",
+            #'price_change'
         ],
         "headers": {
             "offer_id": "ID",
@@ -79,11 +89,15 @@ CONFIG = {
             "address_title": "Адрес / Описание",
             "price_info": "Цена",
             "update_title": "Посл. обновление",
-            "neighborhood": "Район"
+            "neighborhood": "Район",
+            "price_text": "Цена",
+            "property_tags": "Метки"  # Add header for tags
+            
         },
         "sort_map": {
             "updated_time": "date_sort_combined",
             "price_value_formatted": "price_value",
+            'price_text': 'price_value',
             "price_change_formatted": "price_change_value",
             "cian_estimation_formatted": "cian_estimation_value",
             "price_difference_formatted": "price_difference_value",
@@ -170,66 +184,90 @@ STYLE = {
         {"if": {"column_id": "address_title"}, 
          "whiteSpace": "normal", 
          "height": "auto",
-         "width": "120px",
-         "maxWidth": "120px",
+         #"width": "120px",
+         #"maxWidth": "120px",
          "overflow": "hidden",
          "textOverflow": "ellipsis"},
         {"if": {"column_id": "update_title"}, 
          "whiteSpace": "normal", 
          "height": "auto",
-         "maxWidth": "60px",
-         "overflow": "hidden",
-         "textOverflow": "ellipsis"},
-
-        
+         "minHeight": "65px",
+         "width": "75px",
+         #"maxWidth": "75px",
+         "overflow": "visible",
+         "padding": "3px 4px",
+         "lineHeight": "1.2"},
+        {"if": {"column_id": "tags"}, 
+         "whiteSpace": "normal", 
+         "height": "auto",
+         "width": "120px", 
+         "overflow": "visible",
+         "textOverflow": "clip"},
         {"if": {"column_id": "details_button"}, "maxWidth": "80px", "textAlign": "center"}
     ]
 }
-
 # Button styles
 BUTTON_STYLES = {
     "nearest": {"backgroundColor": "#d9edf7", **STYLE["button_base"]},
     "below_estimate": {"backgroundColor": "#fef3d5", **STYLE["button_base"]},
     "updated_today": {"backgroundColor": "#dff0d8", **STYLE["button_base"]},
-    "inactive": {"backgroundColor": "#f4f4f4", **STYLE["button_base"]},
+    "inactive": {"backgroundColor": "#f4f4f4", **STYLE["button_base"]},  # Keep the key the same for compatibility
     "price": {"backgroundColor": "#e8e8e0", **STYLE["button_base"]},
     "distance": {"backgroundColor": "#e0e4e8", **STYLE["button_base"]},
 }
+# In config.py, update the styling for the update_title column:
+
+# Find in COLUMN_STYLES:
+
+# Update to:
+
 
 # In config.py, update the COLUMN_STYLES list:
 
+# In config.py, update the COLUMN_STYLES list:
+
+# In config.py, update the COLUMN_STYLES list:
+
+# In config.py, update the COLUMN_STYLES list to restore non-active background:
+
 COLUMN_STYLES = [
-
-
-    {
-        "if": {
-            "filter_query": '{price_difference_value} > 0 && {status} ne "non active"'
-        },
-        "backgroundColor": "#fef3d5",
-    },
-    {
-        "if": {
-            "filter_query": '{updated_time_sort} > "'
-            + (pd.Timestamp.now() - pd.Timedelta(hours=24)).isoformat()
-            + '"'
-        },
-        "backgroundColor": "#e6f3e0",
-        "fontWeight": "normal",
-    },
-    {
-        "if": {"filter_query": '{distance_sort} < 1.5 && {status} ne "non active"'},
-        "backgroundColor": "#d9edf7",
-    },
-
-
+    # Keep some background color conditions
+    # {
+    #     "if": {
+    #         "filter_query": '{price_difference_value} > 0 && {status} ne "non active"'
+    #     },
+    #     "backgroundColor": "#fef3d5",
+    # },
+    # {
+    #     "if": {
+    #         "filter_query": '{updated_time_sort} > "'
+    #         + (pd.Timestamp.now() - pd.Timedelta(hours=24)).isoformat()
+    #         + '"'
+    #     },
+    #     "backgroundColor": "#e6f3e0",
+    #     "fontWeight": "normal",
+    # },
+    # {
+    #     "if": {"filter_query": '{distance_sort} < 1.5 && {status} ne "non active"'},
+    #     "backgroundColor": "#d9edf7",
+    # },
     
+    # Restore background color for non-active listings
+    {
+        "if": {"filter_query": '{status} contains "non active"'},
+        "backgroundColor": "#f4f4f4",
+        "color": "#888",
+    },
+    
+    # Keep specific column styles
+    {"if": {"column_id": "tags"}, "textAlign": "left", "whiteSpace": "normal"},
     {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
     {"if": {"column_id": "updated_time"}, "fontWeight": "bold", "textAlign": "center"},
     {
         "if": {"column_id": "price_value_formatted"},
         "fontWeight": "bold",
         "textAlign": "center",
-        "maxWidth": "60px"
+        #"maxWidth": "60px"
     },
     {
         "if": {"column_id": "monthly_burden_formatted"},
@@ -239,31 +277,19 @@ COLUMN_STYLES = [
     {"if": {"column_id": "address"}, "textAlign": "left"},
     {"if": {"column_id": "distance"}, "maxWidth": "40px"},
     {"if": {"column_id": "metro_station"}, "textAlign": "left"},
-    {"if": {"column_id": "address_title"}, "maxWidth": "140px"},
-    {"if": {"column_id": "update_title"}, "maxWidth": "60px"},
+    #{"if": {"column_id": "address_title"}, "maxWidth": "140px"},
+    #{"if": {"column_id": "update_title"}, "maxWidth": "75px", "whiteSpace": "normal", "height": "auto", "minHeight": "65px"},
     {"if": {"column_id": "title"}, "textAlign": "left"},
-
-
     
-    # Add styling for the combined column
+    # Keep other styling
     {
         "if": {"column_id": "address_title"}, 
         "textAlign": "left",
         "whiteSpace": "normal", 
         "height": "auto"
     },
-    {
-        "if": {"filter_query": '{status} contains "non active"'},
-        "backgroundColor": "#f4f4f4",
-        "color": "#888",
-    },
     {"if": {"column_id": "details_button"}, "textAlign": "center", "maxWidth": "60px"}
-    
-
-    
 ]
-
-
 
 HEADER_STYLES = [
     {"if": {"column_id": col}, "textAlign": "center"}

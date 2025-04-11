@@ -103,6 +103,9 @@ if isinstance(base_layout, html.Div) and hasattr(base_layout, 'children'):
 # Set the app layout
 app.layout = base_layout
 
+
+
+
 # =====================================================================
 # OPTIMIZED DATA LOADING 
 # =====================================================================
@@ -342,7 +345,7 @@ def update_table_content(filters, data):
         "price_difference_formatted",
         "monthly_burden_formatted",
     }
-    markdown_cols = {"price_change_formatted", "address_title", "offer_link", 'price_info', 'update_title'}
+    markdown_cols = {"price_change_formatted", "address_title", "offer_link", 'price_info', 'update_title', 'property_tags', 'price_change', 'walking_time', 'price_text'}
     
     columns = [
         {
@@ -361,6 +364,14 @@ def update_table_content(filters, data):
     }
     
     # Create the DataTable
+    # In cian_dashboard.py, find the update_table_content function and update the DataTable configuration
+    # Replace the current table definition with this:
+    
+    # In cian_dashboard.py, update the style_table property in your DataTable definition
+    # Look for the update_table_content function and modify it:
+    
+    # In cian_dashboard.py, update the DataTable configuration:
+    
     table = dash_table.DataTable(
         id="apartment-table",
         columns=columns,
@@ -369,11 +380,18 @@ def update_table_content(filters, data):
         sort_mode="multi",
         sort_by=[],
         hidden_columns=CONFIG["hidden_cols"] + ["offer_id"],
-        style_table=STYLE["table"],
+        
+        # Updated style_table for responsive behavior
+        style_table={
+            "overflowX": "auto",     # Enable horizontal scrolling
+            "maxWidth": "1200px",    # Maximum width
+            "width": "100%",         # Use full width up to the max
+            "margin": "0 auto",      # Center the table
+        },
+        
         style_cell=STYLE["cell"],
-        style_cell_conditional=STYLE.get("cell_conditional", []) + [
-            {"if": {"column_id": c["id"]}, "width": "auto"} for c in columns
-        ] + [details_style],
+        style_cell_conditional=STYLE.get("cell_conditional", []) + [details_style],
+        
         style_header=STYLE["header_cell"],
         style_header_conditional=HEADER_STYLES,
         style_data=STYLE["data"],
@@ -390,41 +408,13 @@ def update_table_content(filters, data):
         page_action="native",
         markdown_options={"html": True},
         cell_selectable=True,
+        
+        # CSS snippets WITHOUT media queries
         css=[
-            {
-                "selector": ".dash-cell:nth-child(n+1):nth-child(-n+15)",
-                "rule": "padding: 5px !important;"
-            },
-            {
-                "selector": "td.details-column",
-                "rule": "background-color: transparent !important; text-align: center !important; padding: 3px 5px !important;"
-            },
-            {
-                "selector": "td.details-column .dash-cell-value",
-                "rule": """
-                    background-color: #4682B4 !important; 
-                    color: white !important;
-                    border-radius: 4px !important;
-                    padding: 3px 8px !important;
-                    display: inline-block !important;
-                    font-size: 11px !important;
-                    cursor: pointer !important;
-                    transition: background-color 0.2s !important;
-                    font-weight: normal !important;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
-                """
-            },
-            {
-                "selector": "td.details-column .dash-cell-value:hover",
-                "rule": "background-color: #365F8A !important;"
-            },
-            {
-                "selector": ".dash-spreadsheet td.cell-clickable",
-                "rule": "cursor: pointer !important;"
-            }
+            {"selector": ".dash-cell:nth-child(n+1):nth-child(-n+15)", "rule": "padding: 5px !important;"},
+            {"selector": "td.details-column", "rule": "background-color: transparent !important; text-align: center !important; padding: 3px 5px !important;"},
         ]
     )
-    
     return table
 
 # Simplified callback for table sorting

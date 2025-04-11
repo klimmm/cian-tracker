@@ -169,6 +169,7 @@ def load_apartment_details(offer_id):
             print(f"Error processing data from {filepath}: {e}")
     
     return apartment_data
+    
 def pluralize_ru_accusative(number, forms, word):
     """Подбирает правильную форму слова в винительном падеже"""
     n = abs(number) % 100
@@ -202,6 +203,7 @@ def format_date(dt):
             minutes, ["минута", "минуты", "минут"], "минута"
         )
         return f"{minutes} {minutes_text} назад"
+        #return f"{minutes} мин. назад"
     elif delta < timedelta(hours=6):
         hours = int(delta.total_seconds() // 3600)
         hours_text = pluralize_ru_accusative(hours, ["час", "часа", "часов"], "час")
@@ -221,46 +223,17 @@ def format_text(value, formatter, default=""):
         return default
     return formatter(value)
 
-
-'''def format_price_changes(value):
-    """Format price changes with HTML styling with improved error handling"""
-    if value is None or pd.isna(value):
-        return "<div style='text-align:center;'><span></span></div>"
-
-    if isinstance(value, str) and value.lower() == "new":
-        return "<div style='text-align:center;'><span></span></div>"
-
-    try:
-        value = float(value)
-    except (ValueError, TypeError):
-        value = pd.to_numeric(value, errors="coerce")
-        if pd.isna(value):
-            return "<div style='text-align:center;'><span>—</span></div>"
-        return "<div style='text-align:center;'><span>—</span></div>"
-
-    if abs(value) < 1:
-        return "<div style='text-align:center;'><span>—</span></div>"
-
-    color = "green" if value < 0 else "red"
-    arrow = "↓" if value < 0 else "↑"
-    display = (
-        f"{abs(int(value))//1000}K" if abs(value) >= 1000 else str(abs(int(value)))
-    )
-
-    return f"<div style='text-align:center;'><span style='color:{color};'>{arrow}{display}</span></div>"'''
-
-
 def format_price_changes(value):
     if value is None or pd.isna(value):
-        return '<span style="color:#5F9EA0;">new</span>'
+        return ''  # Empty instead of "new"
     if isinstance(value, str) and value.lower() == "new":
-        return '<span style="color:#5F9EA0;">new</span>'
+        return ''  # Empty instead of "new"
     try:
         value = float(value)
     except (ValueError, TypeError):
-        return '<span style="color:#5F9EA0;">new</span>'
+        return ''  # Empty instead of "new"
     if abs(value) < 1:
-        return '<span style="color:#5F9EA0;">new</span>'
+        return ''  # Empty instead of "new"
     
     color = "#006400" if value < 0 else "#8B0000"  # зелёный и красный
     arrow = "↓" if value < 0 else "↑"
@@ -269,8 +242,149 @@ def format_price_changes(value):
     )
     return f'<span style="color:{color};">{arrow}{display}</span>'
 
+def format_update_title(row):
+    """Format the update_title field with standardized tags in compact 2-row layout"""
+    # Define tag style for consistent appearance
+    tag_style = "display:inline-block; padding:1px 4px; border-radius:8px; margin-right:2px; font-size:7px; white-space:nowrap;"
+    
+    # Get tag flags
+    tag_flags = generate_tags_for_row(row)
+    
+    # Start with the update time
+    if row["status"] == "active":
+        time_str = row["updated_time"]
+    else:
+        # For non-active status
+        time_str = (
+            row["unpublished_date"]
+            if row["unpublished_date"] and row["unpublished_date"] != "--"
+            else row["updated_time"]
+        )
+    
+    # First row: timestamp
+    html = f'<div style="text-align:center;"><strong>{time_str}</strong><br>'
+    
+    # Initialize tags collection
+    tags = []
+    
+    # Add price change info for active listings (if any)
+    if row["status"] == "active":
+        price_change = row["price_change_formatted"]
+        if price_change:
+            html += price_change
+            html += ' '  # Add space after price change
+        
+        # Add "сегодня" tag for recent listings
+        #if tag_flags["updated_today"]:
+        #    tags.append(f'<span style="{tag_style} background-color:#d4edda; color:#155724;">сегодня</span>')
+    else:
+        # For inactive listings, add "снято" as a tag with consistent styling
+        tags.append(f'<span style="{tag_style} background-color:#f5f5f5; color:#666;">снято</span>')
+    
+    
+    # Add all tags to the HTML
+    html += ''.join(tags)
+    
+    # Close the div
+    html += '</div>'
+    
+    return html
+    
+
+def format_property_tags(row):
+    """Format property tags in a flex container, including walking time"""
+    tag_style = "display:inline-block; padding:1px 4px; border-radius:8px; margin-right:2px; font-size:8px; white-space:nowrap;"
+    tags = []
+    tag_flags = generate_tags_for_row(row)
+    distance_value = row.get("distance_sort")
+    
+    if distance_value is not None and not pd.isna(distance_value):
+        # Calculate walking time in minutes
+        walking_minutes = (distance_value / 5) * 60
+        
+        # Format time display
+        if walking_minutes < 60:
+            time_text = f"{int(walking_minutes)}мин"
+        else:
+            hours = int(walking_minutes // 60)
+            minutes = int(walking_minutes % 60)
+            if minutes == 0:
+                time_text = f"{hours}ч"
+            else:
+                time_text = f"{hours}ч{minutes}м"
+        
+        # Different background colors based on time
+        if walking_minutes < 12:  # Less than 12 minutes (1km)
+            bg_color = "#d4edda"  # Bright blue for very close
+            text_color = "#155724"  # White text for contrast
+        elif walking_minutes < 20:  # Less than 20 minutes (1.67km)
+            bg_color = "#4285f4"  # Medium blue for nearby
+            text_color = "#ffffff"  # White text
+        elif walking_minutes < 40:  # Less than 40 minutes (3.33km)
+            bg_color = "#aecbfa"  # Light blue for moderate distance
+            text_color = "#174ea6"  # Dark blue text
+        else:
+            bg_color = "#dadce0"  # Gray for farther distances
+            text_color = "#3c4043"  # Dark gray text
+            
+        tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{time_text}</span>')
+    
+    # Non-active status tag
+    '''if row["status"] != "active":
+        tags.append(f'<span style="{tag_style} background-color:#f5f5f5; color:#666;">снято</span>')'''
+    
+    # Property feature tags
+    if tag_flags["below_estimate"]:
+        tags.append(f'<span style="{tag_style} background-color:#fcf3cd; color:#856404;">хорошая цена</span>')
+    
+    if tag_flags["hamovniki"]:
+        #tags.append(f'<span style="{tag_style} background-color:#e0f7f7; color:#0c5460;">Хамовники</span>')
+        tags.append(f'<span style="{tag_style} background-color:#e0f7f7; color:#0c5460;">Хамовники</span>')
+    # Add walking time tag
+    
+    return f'<div style="display:flex; flex-wrap:wrap; gap:2px; justify-content:flex-start;">{"".join(tags)}</div>' if tags else ""
 
 
+def generate_tags_for_row(row):
+    """Generate tag flags for various row conditions"""
+    # Instead of HTML, return a dictionary of tag flags
+    tags = {
+        "below_estimate": False,
+        "nearby": False,
+        "updated_today": False,
+        "hamovniki": False
+    }
+    
+    # Check for "below estimate" condition
+    if row.get("price_difference_value", 0) > 0 and row.get("status") != "non active":
+        tags["below_estimate"] = True
+    
+    # Check for "nearby" condition (within 1.5km)
+    if row.get("distance_sort", 999) < 1.5 and row.get("status") != "non active":
+        tags["nearby"] = True
+    
+    # Check for "updated today" condition
+    import pandas as pd
+    try:
+        # Get the timestamp from 24 hours ago
+        recent_time = pd.Timestamp.now() - pd.Timedelta(hours=24)
+        
+        # Get the row's timestamp (or a default far past date if not available)
+        row_time = row.get("updated_time_sort")
+        if row_time and not pd.isna(row_time):
+            # Compare timestamps directly, not strings
+            if pd.to_datetime(row_time) > recent_time:
+                tags["updated_today"] = True
+    except Exception as e:
+        # Add error handling to prevent crashes
+        print(f"Error processing timestamp: {e}")
+        
+    # Check for neighborhood - Хамовники
+    if "р-н Хамовники" in str(row.get("neighborhood", "")):
+        tags["hamovniki"] = True
+    
+    return tags
+    
 def extract_deposit_value(deposit_info):
     """Extract numeric deposit value from deposit_info string"""
     if deposit_info is None or pd.isna(deposit_info) or deposit_info == "--":
@@ -424,27 +538,6 @@ def format_burden(row):
         return "--"
 
 
-def format_update_title(row):
-    """Format the update_title field based on status"""
-    if row["status"] == "active":
-        # For active status
-        time_str = row["updated_time"]
-        price_str = row["price_change_formatted"]
-    else:
-        # For non-active status
-        # Use unpublished_date if available, otherwise fallback to updated_time
-        time_str = (
-            row["unpublished_date"]
-            if row["unpublished_date"] and row["unpublished_date"] != "--"
-            else row["updated_time"]
-        )
-        price_str = '<span style="color:gray;">cнято</span>'
-
-    return f'<div style="text-align:center;"><strong>{time_str}<br></strong>&nbsp;&nbsp;{price_str}</div>'
-
-
-# Then in your data processing code:
-
 
 def load_and_process_data():
     """Load and process data with improved price change handling and new columns"""
@@ -506,35 +599,7 @@ def load_and_process_data():
         df["price_change_formatted"] = df["price_change_value"].apply(
             format_price_changes
         )
-        # Process date-time fields
-        # df["updated_time_sort"] = pd.to_datetime(df["updated_time"], errors="coerce")
-        # df["updated_time"] = df["updated_time_sort"].apply(
-        #    lambda x: format_text(x, format_date, "")
-        # )
 
-        """df["update_title"] = df.apply(
-            lambda r: f'<strong>{r["updated_time"]}</strong>&nbsp;{r["price_change_formatted"]}', 
-            axis=1
-        )
-        """
-        # Then use this modified function in your data processing
-        # df["price_change_formatted"] = df["price_change_value"].apply(format_price_changes)
-        # df["update_title"] = df.apply(format_update_title, axis=1)
-
-        """# And create the combined column
-        df["update_title"] = df.apply(
-            lambda r: f'<div style="text-align:center;"><strong>{r["updated_time"]}</strong>&nbsp;&nbsp;{r["price_change_formatted"]}</div>', 
-            axis=1
-        )"""
-
-        """df["unpublished_date_sort"] = pd.to_datetime(
-            df["unpublished_date"], errors="coerce"
-        )
-        df["unpublished_date"] = df["unpublished_date_sort"].apply(
-            lambda x: format_text(x, format_date, "--")
-        )"""
-
-        # Process date-time fields
         df["updated_time_sort"] = pd.to_datetime(df["updated_time"], errors="coerce")
         df["updated_time"] = df["updated_time_sort"].apply(
             lambda x: format_text(x, format_date, "")
@@ -555,24 +620,6 @@ def load_and_process_data():
             format_price_changes
         )
 
-        # Create the conditional update_title column
-        def format_update_title(row):
-            """Format the update_title field using markdown syntax for DataTable"""
-            if row["status"] == "active":
-                time_str = row["updated_time"]
-                price_str = row["price_change_formatted"]
-            else:
-                time_str = (
-                    row["unpublished_date"]
-                    if row["unpublished_date"] and row["unpublished_date"] != "--"
-                    else row["updated_time"]
-                )
-                price_str = "снято"
-        
-            return f"**{time_str}**  \n{price_str}"
-
-
-        # Apply the formatting function
         df["update_title"] = df.apply(format_update_title, axis=1)
 
         # Process new columns with improved abbreviations
@@ -594,7 +641,7 @@ def load_and_process_data():
 
         # Create temporary variables with the formatted strings
         df["price_text"] = df.apply(
-            lambda r: f'<strong>{r["price_value_formatted"]}</strong>', axis=1
+            lambda r: f'<strong>{r["price_value_formatted"]}</strong> {r["price_change_formatted"]}', axis=1
         )
         df["cian_text"] = df.apply(
             lambda r: f'оценка циан: {r["cian_estimation_formatted"]}', axis=1
@@ -614,7 +661,7 @@ def load_and_process_data():
 
         # Optionally remove the temporary variables
         df = df.drop(
-            columns=["price_text", "cian_text", "commission_text", "deposit_text"]
+            columns=["cian_text", "commission_text", "deposit_text"]
         )
 
         df["date_sort_combined"] = df.apply(
@@ -626,13 +673,26 @@ def load_and_process_data():
             axis=1,
         )
 
-        # Default sorting
-        # df["sort_key"] = df["status"].apply(lambda x: 1 if x == "active" else 2)
-        df["sort_key"] = df["status"].apply(lambda x: 1)
+        df["update_time"] = df.apply(
+            lambda r: f'<strong>{r["updated_time" if r["status"] == "active" else "unpublished_date"]}</strong>', 
+            axis=1
+        )
+        
+        df["price_change"] = df["price_change_formatted"]  # Keep as is
+        
+        # Create a dedicated tags column with flex layout
+        df["property_tags"] = df.apply(format_property_tags, axis=1)
+        
+        # Create a dedicated walking time column with consistent styling
+        #df["walking_time"] = df.apply(format_walking_time, axis=1)
+
+        df["sort_key"] = df["status"].apply(lambda x: 1 if x == "active" else 2)
+        #df["sort_key"] = df["status"].apply(lambda x: 1)
 
         df = df.sort_values(
             ["sort_key", "date_sort_combined"], ascending=[True, False]
         ).drop(columns="sort_key")
+        df["tags"] = df.apply(generate_tags_for_row, axis=1)
 
         return df, update_time
     except Exception as e:
@@ -642,7 +702,10 @@ def load_and_process_data():
         print(traceback.format_exc())
         return pd.DataFrame(), f"Error: {e}"
 
+# In cian_dashboard.py, find the filter_and_sort_data function in utils.py 
+# and modify it to change the "inactive" filter to "active":
 
+# In utils.py:
 def filter_and_sort_data(df, filters=None, sort_by=None):
     """Filter and sort data in a single function"""
     if df.empty:
@@ -671,8 +734,11 @@ def filter_and_sort_data(df, filters=None, sort_by=None):
             mask |= df["distance_sort"] < 1.5
         if filters.get("below_estimate"):
             mask |= df["price_difference_value"] >= 0
+        # Change the inactive filter to active (show only active listings)
         if filters.get("inactive"):
-            mask |= df["status"] == "non active"
+            # Old behavior was to show inactive listings
+            # New behavior is to filter to only active listings
+            mask |= df["status"] == "active"
         if filters.get("updated_today"):
             mask |= df["updated_time_sort"] > (
                 pd.Timestamp.now() - pd.Timedelta(hours=24)
@@ -689,5 +755,4 @@ def filter_and_sort_data(df, filters=None, sort_by=None):
             )
             df = df.sort_values(col, ascending=item["direction"] == "asc")
 
-    #df = df[df["distance_sort"] <= 6]
     return df

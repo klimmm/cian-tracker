@@ -1,45 +1,149 @@
-.dash-table-container .dash-cell-value p {
-    margin-block-start: 0;
-    margin-block-end: 0;
+/* ===== BASE RESET ===== */
+.dash-table-container .dash-cell-value p,
+.dash-table-container td[data-dash-column="update_title"] p {
     margin: 0;
     padding: 0;
+    display: inline;
 }
 
-/* Hide the DataTable menu */
-.dash-spreadsheet-menu {
-    display: none !important;
-}
-
-/* Ensure address column text wraps properly */
-.dash-cell.column-address {
+.dash-cell-value {
+    font-size: 12px !important;
     white-space: normal !important;
     word-break: break-word !important;
-    max-width: 300px !important;
-}
-.dash-filter.column-0 {
-    display: none !important;
-    max-height: '1px'
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.2 !important;
 }
 
-/* Make table columns auto-width */
+/* Header styling */
+.dash-spreadsheet th[data-dash-column] .dash-header-cell-value {
+    font-size: 13px !important;
+    font-weight: bold !important;
+    white-space: normal !important;
+    line-height: 1.2 !important;
+    font-family: Arial, sans-serif !important;
+}
+
+/* Inline display for tags or special columns */
+.dash-table-container td[data-dash-column="update_title"] * {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.dash-table-container td .dash-cell-value div[style*="display:flex"],
+.dash-table-container td .dash-cell-value div[style*="display: flex"] {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    line-height: 1.2 !important;
+}
+
+.dash-cell-value span[style*="display:inline-block"],
+.dash-cell-value span[style*="display: inline-block"] {
+    font-size: 0.75rem !important;
+    padding: 2px 6px !important;
+}
+
+/* ===== TABLE LAYOUT ===== */
+#table-container,
+.dash-spreadsheet-container {
+    max-width: 100%;
+    width: 100%;
+    margin: 0 auto;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
 .dash-spreadsheet-container .dash-spreadsheet-inner table {
-    table-layout: auto !important;
+    table-layout: fixed !important;
     width: 100% !important;
 }
 
-/* Default to auto width for all cells */
-.dash-spreadsheet-container .dash-spreadsheet-inner td,
-.dash-spreadsheet-container .dash-spreadsheet-inner th {
-    width: auto !important;
+/* Hide DataTable menu and some filters */
+.dash-spreadsheet-menu,
+.dash-filter.column-0 {
+    display: none !important;
 }
 
-/* Ensure text doesn't wrap but shows ellipsis */
-.dash-cell-value {
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+/* Column-specific widths */
+.dash-spreadsheet td[data-dash-column="address_title"],
+.dash-spreadsheet th[data-dash-column="address_title"] {
+    width: 220px !important;
+    max-width: 240px !important;
+    min-width: 180px !important;
 }
-/* Completely disable all hover effects on table cells */
+
+.dash-spreadsheet td[data-dash-column="price_value_formatted"],
+.dash-spreadsheet th[data-dash-column="price_value_formatted"],
+.dash-spreadsheet td[data-dash-column="updated_time"],
+.dash-spreadsheet th[data-dash-column="updated_time"] {
+    width: 80px !important;
+    max-width: 90px !important;
+    min-width: 70px !important;
+}
+
+.dash-spreadsheet td[data-dash-column="details"],
+.dash-spreadsheet th[data-dash-column="details"],
+.dash-spreadsheet td[data-dash-column="distance"],
+.dash-spreadsheet th[data-dash-column="distance"],
+.dash-spreadsheet td[data-dash-column="walking_time"],
+.dash-spreadsheet th[data-dash-column="walking_time"],
+.dash-spreadsheet td[data-dash-column="metro_station"],
+.dash-spreadsheet th[data-dash-column="metro_station"],
+.dash-spreadsheet td[data-dash-column="property_tags"],
+.dash-spreadsheet th[data-dash-column="property_tags"] {
+    width: 80px !important;
+    max-width: 100px !important;
+    min-width: 70px !important;
+}
+
+/* ===== BUTTON-LIKE DETAILS COLUMN ===== */
+td.details-column .dash-cell-value {
+    display: inline-block !important;
+    background-color: #4682B4 !important;
+    color: white !important;
+    border: none !important;
+    padding: 3px 10px !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    position: relative !important;
+    min-width: 80px !important;
+    transition: background-color 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+td.details-column .dash-cell-value:hover {
+    background-color: #365F8A !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+}
+
+td.details-column .dash-cell-value:before,
+td.details-column .dash-cell-value:after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+}
+td.details-column .dash-cell-value:before {
+    top: 0;
+    background: rgba(255,255,255,0.3);
+}
+td.details-column .dash-cell-value:after {
+    bottom: 0;
+    background: rgba(0,0,0,0.1);
+}
+
+/* Clickable cell behavior */
+.dash-spreadsheet td.cell-clickable,
+td.details-column, 
+td[data-dash-column="details"] {
+    cursor: pointer !important;
+}
+
+/* Hover disable (global) */
 .dash-cell:hover,
 .dash-cell:hover *,
 .dash-header:hover,
@@ -54,21 +158,28 @@
     transform: none !important;
     transition: none !important;
 }
-/* Add this to your custom CSS (in assets/custom.css or using dangerouslySetInnerHTML) */
 
-/* Make sure the update_title column content stays on one line */
-.dash-table-container td[data-dash-column="update_title"] * {
-  display: inline-block;
-  white-space: nowrap;
+/* ===== FILTERS & INPUTS ===== */
+#filters-container {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin: 3px 0 !important;
+    padding: 4px 5px !important;
+    border-bottom: 1px solid #ddd !important;
+    background-color: #f8f8f8 !important;
 }
 
-/* Remove any paragraph margins in this column */
-.dash-table-container td[data-dash-column="update_title"] p {
-  margin: 0;
-  padding: 0;
-  display: inline;
+label.dash-label {
+    font-size: 10px !important;
+    font-family: Arial, sans-serif !important;
+    font-weight: normal !important;
+    margin: 0 3px 0 0 !important;
+    padding: 0 !important;
+    color: #333 !important;
 }
-/* Base styles for both inputs */
+
 input[type="number"]#price-threshold,
 input[type="number"]#distance-threshold {
     padding: 2px 14px 2px 4px !important;
@@ -84,19 +195,14 @@ input[type="number"]#distance-threshold {
     margin-left: 2px !important;
 }
 
-/* Price input - wider */
 input[type="number"]#price-threshold {
     width: 65px !important;
 }
-
-/* Distance input - narrower */
 input[type="number"]#distance-threshold {
     width: 35px !important;
 }
 
-/* Spinner buttons */
-input[type="number"]#price-threshold::-webkit-inner-spin-button,
-input[type="number"]#distance-threshold::-webkit-inner-spin-button {
+input[type="number"]::-webkit-inner-spin-button {
     height: 15px !important;
     width: 14px !important;
     position: absolute !important;
@@ -104,42 +210,6 @@ input[type="number"]#distance-threshold::-webkit-inner-spin-button {
     top: 0 !important;
     bottom: 0 !important;
     opacity: 1 !important;
-}
-
-/* Labels */
-label.dash-label {
-    font-size: 10px !important;
-    font-family: Arial, sans-serif !important;
-    font-weight: normal !important;
-    margin: 0 3px 0 0 !important;
-    padding: 0 !important;
-    color: #333 !important;
-}
-
-/* Filter container */
-#filters-container {
-    display: flex !important;
-    align-items: center !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-    margin: 3px 0 !important;
-    padding: 4px 5px !important;
-    border-bottom: 1px solid #ddd !important;
-    background-color: #f8f8f8 !important;
-}
-
-/* For touch devices */
-@media (pointer: coarse) {
-    input[type="number"]#price-threshold,
-    input[type="number"]#distance-threshold {
-        height: 22px !important;
-        font-size: 9px !important;
-    }
-    
-    input[type="number"]#price-threshold::-webkit-inner-spin-button,
-    input[type="number"]#distance-threshold::-webkit-inner-spin-button {
-        height: 22px !important;
-    }
 }
 
 /* Firefox support */
@@ -152,206 +222,7 @@ label.dash-label {
     }
 }
 
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-#apartment-details-panel {
-    transition: all 0.3s ease-in-out;
-    transform-origin: center;
-}
-
-#apartment-details-panel[style*="display: block"] {
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-
-
-/* Style for the dash app container */
-.dash-container {
-  position: relative;
-  overflow-x: hidden; /* Prevent horizontal scrolling during animations */
-}
-
-/* Smooth transition for the details panel */
-#apartment-details-panel {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1000;
-  background-color: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  border-radius: 5px;
-  padding: 15px;
-  overflow: auto;
-  
-  /* Improved transition */
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.25s ease, visibility 0.25s ease;
-  transform: translateZ(0); /* Force hardware acceleration */
-  will-change: opacity, visibility; /* Hint to the browser */
-}
-
-/* When the panel is visible */
-#apartment-details-panel[style*="display: block"] {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* Improved row highlighting */
-.highlighted-row td {
-  background-color: #e6f3ff !important;
-  border-bottom: 2px solid #4682B4 !important;
-  transition: background-color 0.3s ease;
-}
-
-/* Details button styling */
-.detail-button {
-  background-color: #4682B4;
-  color: white;
-  border: none;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 10px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.detail-button:hover {
-  background-color: #365F8A;
-}
-
-/* Remove any margins on paragraph elements in cells */
-.dash-cell-value p {
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-/* Animation keyframes */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
-    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-
-/* Dash container */
-.dash-container {
-  position: relative;
-  overflow-x: hidden; /* Prevent horizontal scrolling during animations */
-}
-
-/* Remove margins from paragraph elements */
-.dash-cell-value p {
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-/* Details button styling - more prominent */
-td.details-column .dash-cell-value {
-    display: inline-block !important;
-    background-color: #4682B4 !important;
-    color: white !important;
-    border: none !important;
-    padding: 3px 10px !important;
-    border-radius: 4px !important;
-    font-size: 11px !important;
-    cursor: pointer !important;
-    transition: background-color 0.2s !important;
-    text-align: center !important;
-    font-weight: normal !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
-}
-
-td.details-column .dash-cell-value:hover {
-    background-color: #365F8A !important;
-}
-
-/* Fix cursor for clickable cells */
-.dash-spreadsheet td.cell-clickable,
-td.details-column, 
-td[data-dash-column="details"] {
-    cursor: pointer !important;
-}
-
-/* Animation keyframes */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
-    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-
-/* Dash container */
-.dash-container {
-  position: relative;
-  overflow-x: hidden; /* Prevent horizontal scrolling during animations */
-}
-
-/* Remove margins from paragraph elements */
-.dash-cell-value p {
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-# Details button styling - more prominent */
-td.details-column .dash-cell-value {
-    display: inline-block !important;
-    background-color: #4682B4 !important;
-    color: white !important;
-    border: none !important;
-    padding: 3px 10px !important;
-    border-radius: 4px !important;
-    font-size: 11px !important;
-    cursor: pointer !important;
-    transition: background-color 0.2s !important;
-    text-align: center !important;
-    font-weight: normal !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
-    position: relative !important;
-    min-width: 80px !important;
-}
-
-/* Add button-like appearance */
-td.details-column .dash-cell-value:before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: rgba(255,255,255,0.3);
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-}
-
-td.details-column .dash-cell-value:after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: rgba(0,0,0,0.1);
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 4px;
-}
-
-td.details-column .dash-cell-value:hover {
-    background-color: #365F8A !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-}
-
-/* Fix cursor for clickable cells */
-.dash-spreadsheet td.cell-clickable,
-td.details-column, 
-td[data-dash-column="details"] {
-    cursor: pointer !important;
-}
-
-/* Apartment details panel */
+/* ===== DETAILS PANEL ===== */
 #apartment-details-panel {
     position: fixed;
     top: 50%;
@@ -367,20 +238,13 @@ td[data-dash-column="details"] {
     max-width: 500px;
     max-height: 100%;
     min-height: 600px;
-    
-    /* Animation settings */
-    transform-origin: center;
-    will-change: opacity, visibility, transform;
     transition: opacity 0.25s ease, visibility 0.25s ease;
-    
-    /* Initial state - hidden */
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
 }
-
-/* When panel is visible */
-#apartment-details-panel[style*="visibility: visible"] {
+#apartment-details-panel[style*="visibility: visible"],
+#apartment-details-panel[style*="display: block"] {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
@@ -394,8 +258,67 @@ td[data-dash-column="details"] {
     transition: background-color 0.3s ease;
 }
 
-/* Make details column transparent */
-.details-column {
-    background-color: transparent !important;
-    padding: 3px 5px !important;
+/* ===== MEDIA QUERIES (FULLY MERGED & CLEAN) ===== */
+@media screen and (max-width: 768px) {
+    .dash-spreadsheet th[data-dash-column] .dash-header-cell-value {
+        font-size: 12px !important;
+    }
+    .dash-cell-value {
+        font-size: 11.5px !important;
+    }
+
+    .dash-spreadsheet td[data-dash-column="address_title"],
+    .dash-spreadsheet th[data-dash-column="address_title"] {
+        width: 200px !important;
+        max-width: 220px !important;
+        min-width: 160px !important;
+    }
+
+    .dash-spreadsheet td[data-dash-column="price_value_formatted"],
+    .dash-spreadsheet th[data-dash-column="price_value_formatted"],
+    .dash-spreadsheet td[data-dash-column="updated_time"],
+    .dash-spreadsheet th[data-dash-column="updated_time"] {
+        width: 75px !important;
+        max-width: 80px !important;
+        min-width: 65px !important;
+    }
+
+    .dash-spreadsheet td[data-dash-column="details"],
+    .dash-spreadsheet th[data-dash-column="details"] {
+        width: 55px !important;
+        max-width: 60px !important;
+        min-width: 50px !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .dash-spreadsheet th[data-dash-column] .dash-header-cell-value {
+        font-size: 11px !important;
+    }
+    .dash-cell-value {
+        font-size: 10.5px !important;
+    }
+
+    .dash-spreadsheet td[data-dash-column="address_title"],
+    .dash-spreadsheet th[data-dash-column="address_title"] {
+        width: 180px !important;
+        max-width: 200px !important;
+        min-width: 150px !important;
+    }
+
+    .dash-spreadsheet td[data-dash-column="price_value_formatted"],
+    .dash-spreadsheet th[data-dash-column="price_value_formatted"],
+    .dash-spreadsheet td[data-dash-column="updated_time"],
+    .dash-spreadsheet th[data-dash-column="updated_time"] {
+        width: 65px !important;
+        max-width: 75px !important;
+        min-width: 60px !important;
+    }
+
+    .dash-spreadsheet td[data-dash-column="details"],
+    .dash-spreadsheet th[data-dash-column="details"] {
+        width: 50px !important;
+        max-width: 55px !important;
+        min-width: 45px !important;
+    }
 }

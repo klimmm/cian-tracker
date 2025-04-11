@@ -297,8 +297,8 @@ def create_app_layout(app):
                                 style={**BUTTON_STYLES["below_estimate"], "opacity": "0.6", "flex": "1"},
                             ),
                             html.Button(
-                                "Неактивные",
-                                id="btn-inactive",
+                                "Активные",  # Changed from "Неактивные" to "Активные"
+                                id="btn-inactive",  # ID stays the same for compatibility
                                 style={**BUTTON_STYLES["inactive"], "opacity": "0.6", "flex": "1"},
                             ),
                         ],
