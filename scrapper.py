@@ -10,14 +10,16 @@ import csv
 import re
 import os
 import datetime
-from selenium.common.exceptions import TimeoutException
 import json
+import pandas as pd
+
 
 def save_cookies(driver, path="cookies.json"):
     cookies = driver.get_cookies()
     with open(path, "w") as f:
         json.dump(cookies, f)
     print(f"Saved {len(cookies)} cookies to {path}")
+
 
 def load_cookies(driver, path="cookies.json", domain=".cian.ru"):
     try:
@@ -30,6 +32,7 @@ def load_cookies(driver, path="cookies.json", domain=".cian.ru"):
         print(f"Loaded {len(cookies)} cookies from {path}")
     except Exception as e:
         print(f"Failed to load cookies: {e}")
+
 
 # Define mapping of Russian month abbreviations to numbers
 russian_months = {
@@ -1310,11 +1313,10 @@ def main():
 
     # Read the input CSV with offer IDs and URLs
     input_file = "cian_apartments.csv"
-    max_distance = 3.0  # Set your desired maximum distance here
+    max_distance = 5.0  # Set your desired maximum distance here
 
     try:
         # Use pandas to read and filter the CSV
-        import pandas as pd
 
         apartments_df = pd.read_csv(input_file, encoding="utf-8")
         print(f"Loaded {len(apartments_df)} apartments from {input_file}")
