@@ -223,56 +223,7 @@ def format_text(value, formatter, default=""):
         return default
     return formatter(value)
 
-def format_price_changes(value):
-    if value is None or pd.isna(value):
-        return ''
-    if isinstance(value, str) and value.lower() == "new":
-        return ''
-    try:
-        value = float(value)
-    except (ValueError, TypeError):
-        return ''
-    if abs(value) < 1:
-        return ''
-    
-    # 🎨 Новые цвета
-    color = "#2a9d8f" if value < 0 else "#d62828"
-    arrow = "↓" if value < 0 else "↑"
-    display = f"{abs(int(value))//1000}K" if abs(value) >= 1000 else str(abs(int(value)))
 
-    return (
-        f'<span style="color:{color}; font-weight:bold;">'
-        f'<span style="font-size:11px;">{arrow}</span>{display}</span>'
-    )
-
-
-def format_update_title(row):
-    tag_style = "display:inline-block; padding:1px 4px; border-radius:8px; margin:0 1px; font-size:7px; white-space:nowrap;"
-    tag_flags = generate_tags_for_row(row)
-
-    # Показываем дату
-    if row["status"] == "active":
-        time_str = row["updated_time"]
-    else:
-        time_str = row["unpublished_date"] or row["updated_time"]
-
-    html = f'<span style="display:inline-block; text-align:center;">'
-    html += f'<strong>{time_str}</strong>'
-
-    # ⬇️ Показываем изменение цены только если статус активный
-    if row["status"] == "active" and row.get("price_change_formatted"):
-        html += f'<br>{row["price_change_formatted"]}'
-
-    # Теги
-    tags = []
-    if row["status"] != "active":
-        tags.append(f'<span style="{tag_style} background-color:#f5f5f5; color:#666;">📦 архив</span>')
-
-    if tags:
-        html += "<br>" + "".join(tags)
-
-    html += "</span>"
-    return html
 
 
 def generate_tags_for_row(row):
@@ -332,9 +283,45 @@ def generate_tags_for_row(row):
     
     return tags
 
+# Update these functions in utils.py
+
+# Update this function in utils.py to make price changes more prominent
+
+# Update these formatting functions in utils.py for better responsive behavior
+
+def format_update_title(row):
+    """Format the update_title column with enhanced responsive design"""
+    tag_style = "display:inline-block; padding:1px 4px; border-radius:6px; margin:0; white-space:nowrap;"
+    tag_flags = generate_tags_for_row(row)
+
+    # Showing date
+    if row["status"] == "active":
+        time_str = row["updated_time"]
+    else:
+        time_str = row["unpublished_date"] or row["updated_time"]
+
+    # Use a more compact layout with better centering
+    html = f'<div style="text-align:center; width:100%; display:block; padding:0; margin:0;">'
+    html += f'<strong>{time_str}</strong>'
+
+    # Show price change only if status is active
+    if row["status"] == "active" and row.get("price_change_formatted"):
+        html += f'<br>{row["price_change_formatted"]}'
+
+    # Tags with improved styling
+    tags = []
+    if row["status"] != "active":
+        tags.append(f'<span style="{tag_style} background-color:#f5f5f5; color:#666;">📦 архив</span>')
+
+    if tags:
+        html += "<br>" + "".join(tags)
+
+    html += "</div>"
+    return html
+
 def format_property_tags(row):
-    """Format property tags in a flex container, including walking time"""
-    tag_style = "display:inline-block; padding:1px 4px; border-radius:8px; margin-right:2px; font-size:8px; white-space:nowrap;"
+    """Format property tags with enhanced responsive styling"""
+    tag_style = "display:inline-block; padding:1px 4px; border-radius:6px; margin-right:1px; white-space:nowrap;"
     tags = []
     tag_flags = generate_tags_for_row(row)
     distance_value = row.get("distance_sort")
@@ -343,9 +330,9 @@ def format_property_tags(row):
         # Calculate walking time in minutes
         walking_minutes = (distance_value / 5) * 60
         
-        # Format time display
+        # Format time display more compactly
         if walking_minutes < 60:
-            time_text = f"{int(walking_minutes)}мин"
+            time_text = f"{int(walking_minutes)}м"  # Shortened to just "м" for minutes
         else:
             hours = int(walking_minutes // 60)
             minutes = int(walking_minutes % 60)
@@ -370,7 +357,7 @@ def format_property_tags(row):
             
         tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{time_text}</span>')
     
-    # Add neighborhood tag if available
+    # Add neighborhood tag if available - more compact
     if tag_flags.get("neighborhood"):
         neighborhood = tag_flags["neighborhood"]
         
@@ -378,7 +365,7 @@ def format_property_tags(row):
         if tag_flags["is_hamovniki"]:
             bg_color = "#e0f7f7"  # Teal
             text_color = "#0c5460"  # Dark teal
-        # Special style for Арбат - purple-ish to distinguish from walking minutes blues
+        # Special style for Арбат
         elif tag_flags["is_arbat"]:
             bg_color = "#d0d1ff"  # Light indigo/purple
             text_color = "#3f3fa3"  # Dark indigo/purple
@@ -389,8 +376,34 @@ def format_property_tags(row):
             
         tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{neighborhood}</span>')
     
-    return f'<div style="display:flex; flex-wrap:wrap; gap:2px; justify-content:flex-start;">{"".join(tags)}</div>' if tags else ""
+    return f'<div style="display:flex; flex-wrap:wrap; gap:1px; justify-content:flex-start;">{"".join(tags)}</div>' if tags else ""
+
+def format_price_changes(value):
+    """Enhanced format for price changes with better responsive styling"""
+    if value is None or pd.isna(value):
+        return ''
+    if isinstance(value, str) and value.lower() == "new":
+        return ''
+    try:
+        value = float(value)
+    except (ValueError, TypeError):
+        return ''
+    if abs(value) < 1:
+        return ''
     
+    # Colors for price changes
+    color = "#2a9d8f" if value < 0 else "#d62828"
+    bg_color = "#e6f7f5" if value < 0 else "#fbe9e7"  # Light background for better contrast
+    arrow = "↓" if value < 0 else "↑"
+    display = f"{abs(int(value))//1000}K" if abs(value) >= 1000 else str(abs(int(value)))
+
+    return (
+        f'<span style="color:{color}; font-weight:bold; background-color:{bg_color}; '
+        f'padding:2px 4px; border-radius:4px; display:inline-block; margin-top:2px;">'
+        f'{arrow} {display}</span>'
+    )
+
+ 
 def extract_deposit_value(deposit_info):
     """Extract numeric deposit value from deposit_info string"""
     if deposit_info is None or pd.isna(deposit_info) or deposit_info == "--":
@@ -649,21 +662,23 @@ def load_and_process_data():
                         
         # Update the price_text calculation to remove price change information
         # Update the price_text calculation to correctly check for below_estimate condition
+        # Update this part in utils.py - the price_text calculation in load_and_process_data function
+        
+        
+        # Replace it with this more responsive version:
         df["price_text"] = df.apply(
             lambda r: (
                 f'<div style="display:block; text-align:center; margin:0; padding:0;">'
                 f'<strong style="margin:0; padding:0;">{r["price_value_formatted"]}</strong>'
                 + (
-                    # Check the actual condition used in generate_tags_for_row instead of using the tags column
-                    f'<br><span style="display:inline-block; padding:1px 4px; border-radius:8px; margin-top:2px; font-size:8px; background-color:#fcf3cd; color:#856404;">хорошая цена</span>'
+                    f'<br><span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-top:2px; background-color:#fcf3cd; color:#856404;">хорошая цена</span>'
                     if r.get("price_difference_value", 0) > 0 and r.get("status") != "non active" else ""
                 )
                 + '</div>'
             ),
             axis=1
-        )        
-                        
-
+        )
+   
 
 
         df["cian_text"] = df.apply(

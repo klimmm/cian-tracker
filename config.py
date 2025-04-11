@@ -49,12 +49,12 @@ CONFIG = {
             #"address",
             #"updated_time",
             "update_title",
-            "property_tags",
             "address_title",  # Add the combined column
             #"distance",
             #"price_info",
             #"price_value_formatted",
             "price_text",
+            "property_tags",
             #"neighborhood",
             #"commission_info_abbr",
             #"deposit_info_abbr",
@@ -87,7 +87,7 @@ CONFIG = {
             "commission_info_abbr": "Коммис",
             "deposit_info_abbr": "Залог",
             "monthly_burden_formatted": "Нагрузка/мес",
-            "address_title": "Адрес / Описание",
+            "address_title": "Квартира",
             "price_info": "Цена",
             "update_title": "Посл. обновление",
             "neighborhood": "Район",
@@ -163,7 +163,7 @@ STYLE = {
         "fontFamily": FONT,
         "backgroundColor": "#4682B4",
         "color": "white",
-        "fontSize": "11px",
+        #"fontSize": "11px",
     },
 
 
@@ -183,15 +183,25 @@ STYLE = {
         "cursor": "pointer",
     },
     "cell_conditional": [
-
-        {
-            "if": {"column_id": "update_title"},
-            "textAlign": "center",
-            "whiteSpace": "normal",
-            "padding": "2px 4px",
-            "lineHeight": "1.2"
-        },
-
+        
+        {"if": {"column_id": "update_title"}, 
+         "whiteSpace": "normal", 
+         "height": "auto",
+         "minHeight": "60px",
+         "width": "75px",
+         "maxWidth": "85px",  # Uncomment and set this value
+         "overflow": "visible",
+         "padding": "3px 4px",
+         "lineHeight": "1.2"},
+        {"if": {"column_id": "details"}, 
+         "whiteSpace": "normal", 
+         "height": "auto",
+         "minHeight": "60px",
+         "width": "75px",
+         "maxWidth": "85px",  # Uncomment and set this value
+         "overflow": "visible",
+         "padding": "3px 4px",
+         "lineHeight": "1.2"},
 
         
         {"if": {"column_id": "address_title"}, 
@@ -201,15 +211,7 @@ STYLE = {
          #"maxWidth": "120px",
          "overflow": "hidden",
          "textOverflow": "ellipsis"},
-        {"if": {"column_id": "update_title"}, 
-         "whiteSpace": "normal", 
-         "height": "auto",
-         "minHeight": "65px",
-         "width": "75px",
-         #"maxWidth": "75px",
-         "overflow": "visible",
-         "padding": "3px 4px",
-         "lineHeight": "1.2"},
+
         {"if": {"column_id": "tags"}, 
          "whiteSpace": "normal", 
          "height": "auto",
