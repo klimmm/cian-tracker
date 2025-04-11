@@ -100,7 +100,7 @@ def run_scraper_with_optional_part2():
 run_scraper_with_optional_part2()
 
 # Schedule to run every 10 minutes
-schedule.every(10).minutes.do(run_scraper_with_optional_part2)
+schedule.every(30).minutes.do(run_scraper_with_optional_part2)
 logger.info("Scheduler started: part1.py every 10 min, part2.py every 30 min")
 
 # Keep the scheduler running

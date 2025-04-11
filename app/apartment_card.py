@@ -6,13 +6,11 @@ import os
 import base64
 from app.components import PillFactory, ContainerFactory
 from app.formatters import FormatUtils
-
+from app.app_config import get_data_dir  # Use the new function
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] - %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
 
-# Get the root directory (where main.py is located)
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class ImageHandler:
     """Handle apartment image processing with robust error handling."""
@@ -20,11 +18,12 @@ class ImageHandler:
     @staticmethod
     def get_apartment_images(offer_id):
         """Get base64 encoded images for apartment with robust path handling."""
-        # Use the ROOT_DIR to access images directly
-        base_image_dir = os.path.join(ROOT_DIR, "images")
+        # Get the images directory from DATA_DIR
+        base_image_dir = os.path.join(get_data_dir(), "images")
         image_dir = os.path.join(base_image_dir, str(offer_id))
         
         logger.info(f"Looking for images in: {image_dir}")
+        # Rest of the method remains the same
 
         # Try multiple path options to find images
         image_paths = []

@@ -5,6 +5,7 @@ from dash import dcc
 import logging
 from app.layout import create_app_layout
 from app.dashboard_callbacks import register_all_callbacks
+from app.app_config import set_data_dir, get_data_dir, logger
 
 # Configure logging
 logging.basicConfig(
@@ -14,15 +15,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Get the root directory (where main.py is located)
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Define a global variable for the data directory that can be accessed by other modules
+DATA_DIR = None
 
-                
-def initialize_app():
+def initialize_app(data_dir=None):
     """Initialize the Dash application with proper configuration."""
+    # Set the data directory if provided
+    if data_dir:
+        set_data_dir(data_dir)
+        logger.info(f"Using data directory: {get_data_dir()}")
+    else:
+        # Default is already set in app_config.py
+        logger.info(f"Using default data directory: {get_data_dir()}")
+    
     # Get current directory to set up assets properly
     current_dir = os.path.dirname(os.path.abspath(__file__))
     assets_path = os.path.join(current_dir, "assets")
+    
+    # Log the paths for debugging
+    logger.info(f"Current directory: {current_dir}")
+    logger.info(f"Assets path: {assets_path}")
+    logger.info(f"DATA_DIR: {get_data_dir()}")
 
     # Initialize the app with proper assets configuration
     app = dash.Dash(
@@ -38,7 +51,7 @@ def initialize_app():
         os.makedirs(assets_path)
 
     # Link the root images directory to the assets folder
-    setup_image_directory(ROOT_DIR, assets_path)
+    setup_image_directory(get_data_dir(), assets_path)
 
     server = app.server
 
@@ -135,12 +148,13 @@ def run_server(app, debug=True, port=8050):
     app.run_server(debug=debug, host="0.0.0.0", port=port)
 
 
-if __name__ == "__main__":
-    # Initialize the application
-    app = initialize_app()
-    
-    # Register all callbacks
+def register_callbacks(app):
+    """Import and register all callbacks after app creation to avoid circular imports"""
     register_all_callbacks(app)
-    
-    # Run the server
-    run_server(app, debug=True)
+
+
+if __name__ == "__main__":
+    app = initialize_app()
+    # Register callbacks after app initialization
+    register_callbacks(app)
+    app.run_server(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8050)))

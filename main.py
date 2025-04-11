@@ -1,3 +1,4 @@
+# main.py
 import subprocess
 import logging
 import os
@@ -46,6 +47,9 @@ def run_dashboard():
             env["PYTHONPATH"] = os.getcwd() + os.pathsep + env["PYTHONPATH"]
         else:
             env["PYTHONPATH"] = os.getcwd()
+            
+        # Set the DATA_DIR environment variable
+        env["DATA_DIR"] = os.getcwd()
 
         # Run the dashboard from the app directory
         subprocess.run(["python", "app/cian_dashboard.py"], check=True, env=env)

@@ -1,0 +1,12 @@
+# render.yaml
+services:
+  - type: web
+    name: cian-dashboard
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:server
+    envVars:
+      - key: PYTHONPATH
+        value: .
+      - key: DATA_DIR
+        value: .

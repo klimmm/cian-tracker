@@ -5,6 +5,7 @@ from app.config import CONFIG, MOSCOW_TZ
 import os
 import logging
 from app.formatters import PriceFormatter, TimeFormatter, DataExtractor
+from app.app_config import get_data_dir  # Use the new function
 
 logger = logging.getLogger(__name__)
 
@@ -126,8 +127,10 @@ def load_apartment_details(offer_id):
     Load all details for a specific apartment by offer_id,
     combining data from multiple CSV files with robust error handling.
     """
-    # Get the data directory path relative to ROOT_DIR
-    data_dir = os.path.join(ROOT_DIR, "cian_data")
+    # Get the data directory path
+    data_dir = os.path.join(get_data_dir(), "cian_data")
+    
+    logger.info(f"Loading apartment details from: {data_dir}")
 
     # Initialize the result dictionary
     apartment_data = {"offer_id": offer_id}
@@ -410,25 +413,38 @@ def format_burden(row):
         return "--"
 
 
+# app/utils.py (update the load_and_process_data function)
 def load_and_process_data():
     """Load and process data with improved price change handling and new columns"""
     try:
-        # Update path to be relative to ROOT_DIR
-        path = os.path.join(ROOT_DIR, "cian_apartments.csv")
+        # Update path to use DATA_DIR
+        path = os.path.join(get_data_dir(), "cian_apartments.csv")
+        logger.info(f"Attempting to load data from: {path}")
+        
+        if not os.path.exists(path):
+            logger.error(f"Data file not found: {path}")
+            return pd.DataFrame(), "Data file not found"
+            
         df = pd.read_csv(path, encoding="utf-8", comment="#")
+        logger.info(f"Successfully loaded data with {len(df)} rows")
 
-        # Extract update time from metadata file - also relative to ROOT_DIR
+        # Extract update time from metadata file - also using DATA_DIR
         try:
-            meta_path = os.path.join(ROOT_DIR, "cian_apartments.meta.json")
-            with open(meta_path, "r", encoding="utf-8") as f:
-                metadata = json.load(f)
-                update_time_str = metadata.get("last_updated", "Unknown")
-
-                try:
-                    dt = pd.to_datetime(update_time_str)
-                    update_time = dt.strftime("%d.%m.%Y %H:%M:%S")
-                except:
-                    update_time = update_time_str
+            meta_path = os.path.join(get_data_dir(), "cian_apartments.meta.json")
+            logger.info(f"Attempting to read metadata from: {meta_path}")
+            
+            if not os.path.exists(meta_path):
+                logger.warning(f"Metadata file not found: {meta_path}")
+                update_time = "Unknown"
+            else:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    metadata = json.load(f)
+                    update_time_str = metadata.get("last_updated", "Unknown")
+                    try:
+                        dt = pd.to_datetime(update_time_str)
+                        update_time = dt.strftime("%d.%m.%Y %H:%M:%S")
+                    except:
+                        update_time = update_time_str
         except Exception as e:
             logger.error(f"Error reading metadata file: {e}")
             with open(path, encoding="utf-8") as f:
@@ -438,6 +454,7 @@ def load_and_process_data():
                     if "last_updated=" in first_line
                     else "Unknown"
                 )
+        
 
         # Process core columns
         df["offer_id"] = df["offer_id"].astype(str)

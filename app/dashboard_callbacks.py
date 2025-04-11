@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 def register_data_callbacks(app):
     """Register callbacks for data loading and management."""
     
+    # In app/dashboard_callbacks.py, update the load_apartment_data function
     @app.callback(
         [
             Output("apartment-data-store", "data"),
@@ -29,30 +30,41 @@ def register_data_callbacks(app):
         """Load apartment data and update the data store."""
         try:
             # Load data from files
+            logger.info("Callback triggered: Loading apartment data")
             df, update_time = load_and_process_data()
+            
+            if df.empty:
+                logger.error("Loaded DataFrame is empty!")
+                return [], f"Error: No data loaded"
+                
+            logger.info(f"Successfully loaded {len(df)} rows of data")
             
             # Add details indicator column if not present
             if "details" not in df.columns:
                 df["details"] = "🔍"
-
+    
             # Make sure all required columns are included
             required_columns = CONFIG["columns"]["display"] + [
                 "details",
                 "offer_id",
                 "date_sort_combined",
             ]
-
+    
             # Get columns that exist in the dataframe
             available_columns = [col for col in required_columns if col in df.columns]
-
+            logger.info(f"Available columns: {len(available_columns)} of {len(required_columns)} required")
+    
             # Convert to dict for storage
             df_dict = df[available_columns].to_dict("records") if not df.empty else []
-
+            logger.info(f"Prepared {len(df_dict)} records for data store")
+    
             # Return data for storage and update time display
             return df_dict, f"Актуально на: {update_time}"
             
         except Exception as e:
+            import traceback
             logger.error(f"Error loading data: {e}")
+            logger.error(traceback.format_exc())
             return [], f"Ошибка загрузки данных: {str(e)}"
 
 
