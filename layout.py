@@ -34,14 +34,14 @@ def create_app_layout(app):
         id="apartment-details-panel",
         style={
             "display": "none",
-            "position": "fixed",  # Fixed position for better centering
+            "position": "fixed",
             "top": "50%",
             "left": "50%",
-            "transform": "translate(-50%, -50%)",  # Center in viewport
+            "transform": "translate(-50%, -50%)",
             "width": "345px",
             "minWidth": "345px",
-            "maxWidth": "345px",  # Limit width
-            "maxHeight": "100%",  # Limit height
+            "maxWidth": "345px",
+            "maxHeight": "100%",
             "zIndex": "1000",
             "backgroundColor": "#fff",
             "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",
@@ -50,20 +50,20 @@ def create_app_layout(app):
             "overflow": "auto"
         },
         children=[
-            # Close button in top right corner with improved styling
+            # Top right close button
             html.Div(
                 style={
                     "display": "flex",
                     "justifyContent": "flex-end",
                     "padding": "0px",
-                    "position": "absolute",  # Absolute position in top-right
+                    "position": "absolute",
                     "top": "10px",
                     "right": "10px",
-                    "zIndex": "1001"  # One higher than the panel
+                    "zIndex": "1001"
                 },
                 children=[
                     html.Button(
-                        "×", 
+                        "×",
                         id="close-details-button",
                         style={
                             "backgroundColor": "transparent",
@@ -85,11 +85,46 @@ def create_app_layout(app):
                     )
                 ]
             ),
-            # Details content - will be populated by the callback
+    
+            # Navigation buttons
+            html.Div(
+                style={
+                    "display": "flex",
+                    "justifyContent": "space-between",
+                    "alignItems": "center",
+                    "marginBottom": "10px",
+                    "marginTop": "30px"  # push down from close button
+                },
+                children=[
+                    html.Button("←", id="prev-apartment-button", style={
+                        "backgroundColor": "#4682B4",
+                        "color": "white",
+                        "border": "none",
+                        "borderRadius": "4px",
+                        "padding": "3px 8px",
+                        "fontSize": "12px",
+                        "fontWeight": "bold",
+                        "cursor": "pointer"
+                    }),
+                    html.Button("→", id="next-apartment-button", style={
+                        "backgroundColor": "#4682B4",
+                        "color": "white",
+                        "border": "none",
+                        "borderRadius": "4px",
+                        "padding": "3px 8px",
+                        "fontSize": "12px",
+                        "fontWeight": "bold",
+                        "cursor": "pointer"
+                    }),
+                ]
+            ),
+    
+            # Dynamic content
             html.Div(id="apartment-details-card", style={"marginTop": "0px"})
         ]
     )
     
+        
         
     # App layout
     original_layout = [

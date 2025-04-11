@@ -1,7 +1,10 @@
 cian_apartments_large.csv
 cian_parser-Copy1.p
 cian_parser_large.py
-
+backups/
+logs/
+meh/
+scrapper/
 
 # Python
 

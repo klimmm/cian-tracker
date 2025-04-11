@@ -670,7 +670,7 @@ def filter_and_sort_data(df, filters=None, sort_by=None):
         if filters.get("nearest"):
             mask |= df["distance_sort"] < 1.5
         if filters.get("below_estimate"):
-            mask |= df["price_difference_value"] < -5000
+            mask |= df["price_difference_value"] >= 0
         if filters.get("inactive"):
             mask |= df["status"] == "non active"
         if filters.get("updated_today"):

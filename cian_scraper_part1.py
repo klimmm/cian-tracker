@@ -1,5 +1,11 @@
-import os, re, json, time, logging
+import os
+import re
+import json
+import time
+import logging
+import random
 from datetime import datetime
+from datetime import timedelta
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -9,12 +15,10 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
 from distance import get_coordinates, calculate_distance
+import requests
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('CianScraper')
-import re
-from datetime import datetime, timedelta
-import requests
-import os, re, json, time, logging, random  # Add random to the imports at the top
+
 
 def parse_updated_time(time_str):
     """Parse Cian time format to datetime string"""
@@ -204,51 +208,138 @@ class CianScraper:
         except Exception as e:
             logger.warning(f"Could not extract total listings: {e}")
         return None
-    
-                
+        
+                        
     def collect_listings(self, url, max_pages=1000):
         all_apts = []
         added_ids = {}
         visited_pages = set()
         page_listings_map = {}
-        driver = webdriver.Chrome(options=self.chrome_options)
         total_pages_processed = 0
+        driver = None
         
         # Create images folder at the beginning
         image_folder = 'images'
         os.makedirs(image_folder, exist_ok=True)
-    
+        
+        # Store original headless setting
+        headless_mode = False
+        for arg in self.chrome_options.arguments:
+            if arg == '--headless':
+                headless_mode = True
+                break
+        
+        # Max number of retries for initial connection
+        max_retries = 5
+        
+        for retry in range(max_retries):
+            try:
+                # Close any existing driver instance if it exists
+                if driver:
+                    try:
+                        driver.quit()
+                    except:
+                        pass
+                
+                # Initialize a new driver with correct headless setting
+                chrome_options = Options()
+                
+                # Restore headless mode if it was enabled
+                if headless_mode:
+                    chrome_options.add_argument('--headless')
+                    
+                # Core arguments
+                for arg in ['--disable-gpu', '--window-size=1920,1080', '--disable-extensions', 
+                            '--no-sandbox', '--disable-dev-shm-usage']:
+                    chrome_options.add_argument(arg)
+                
+                # User agent rotation
+                user_agents = [
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0',
+                    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0'
+                ]
+                random_ua = random.choice(user_agents)
+                chrome_options.add_argument(f'user-agent={random_ua}')
+                
+                # Create new driver with our options
+                driver = webdriver.Chrome(options=chrome_options)
+                
+                # Log retry information
+                if retry > 0:
+                    logger.info(f"🔄 Retry attempt {retry+1}/{max_retries} with User-Agent: {random_ua[:30]}...")
+                else:
+                    logger.info(f"🌐 Initial connection attempt with User-Agent: {random_ua[:30]}...")
+                    
+                # Add some random delay before accessing the site
+                delay = 2 + random.random() * 5  # 2-7 seconds
+                time.sleep(delay)
+                
+                # Set page load timeout
+                driver.set_page_load_timeout(30 + (retry * 10))  # Increasing timeout with retries
+                
+                # Log the attempt
+                logger.info(f"🔗 Connecting to {url}")
+                
+                # Try to load the page
+                driver.get(url)
+                
+                # Wait for content with increasing timeout on retries
+                timeout = 10 + (retry * 5)  # 10s, 15s, 20s, 25s, 30s
+                logger.info(f"⏳ Waiting for content with {timeout}s timeout...")
+                
+                WebDriverWait(driver, timeout).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-name='CardComponent']"))
+                )
+                
+                logger.info('✅ Successfully connected to the site and found listing elements!')
+                
+                # If we get here, we've successfully connected
+                page = 1
+                
+                # Get the total listings count
+                total_listings = self._get_total_listings(driver)
+                if not total_listings:
+                    logger.warning("Total listing count not found. Defaulting to max_pages logic.")
+                    total_listings = float('inf')
+                
+                logger.info(f'Total listings to collect: {total_listings}')
+                previous_page_ids = set()
+                
+                # Successfully connected and started processing, break the retry loop
+                break
+                
+            except Exception as e:
+                logger.error(f'Connection error during attempt {retry+1}/{max_retries}: {str(e)}')
+                
+                # If we're at the last retry, re-raise the exception
+                if retry == max_retries - 1:
+                    logger.error(f'Failed to connect after {max_retries} attempts. Giving up.')
+                    try:
+                        if driver:
+                            driver.quit()
+                    except:
+                        pass
+                    return []  # Return empty list if all retries fail
+                
+                # Otherwise wait with exponential backoff before retrying
+                wait_time = 10 * (2 ** retry)  # 10, 20, 40, 80, 160 seconds
+                logger.info(f'Waiting {wait_time} seconds before next attempt...')
+                time.sleep(wait_time)
+        
+        # If we're here, we've either connected successfully or exhausted all retries
         try:
-            page = 1
-            driver.get(url)
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-name='CardComponent']"))
-            )
-            logger.info('Starting collection of apartment listings')
-    
-            total_listings = self._get_total_listings(driver)
-            if not total_listings:
-                logger.warning("Total listing count not found. Defaulting to max_pages logic.")
-                total_listings = float('inf')
-    
-            logger.info(f'Total listings to collect: {total_listings}')
-            previous_page_ids = set()
-    
             # -------- FORWARD LOOP --------
             while len(all_apts) < total_listings and page <= max_pages:
-                
-
-    
-
-
-                
                 visited_pages.add(page)
                 logger.info(f'Parsing page {page}')
                 driver.execute_script('window.scrollTo(0, document.body.scrollHeight/2);')
                 time.sleep(1.5)
     
                 soup = BeautifulSoup(driver.page_source, 'html.parser')
-
+    
                 cards = soup.select("div._93444fe79c--wrapper--W0WqH[data-name='Offers'] article[data-name='CardComponent']")
                 if not cards:
                     logger.info('No cards found on page. Stopping forward loop.')
@@ -277,12 +368,10 @@ class CianScraper:
                         all_apts.append(data)
                         added_ids[offer_id] = page
                         page_new_listings_count += 1
-
+    
                     # Download images immediately if they exist
                     if 'image_urls' in data and data['image_urls']:
                         self._download_images_for_listing(data, image_folder)
-
-                        
     
                 logger.info(f'Page {page}: Collected {page_new_listings_count} new listings')
                 logger.info(f'Collected {len(all_apts)} / {total_listings} so far')
@@ -303,17 +392,24 @@ class CianScraper:
                 page += 1
                 next_url = re.sub(r'p=\d+', f'p={page}', driver.current_url) if 'p=' in driver.current_url else f"{driver.current_url}{'&' if '?' in driver.current_url else '?'}p={page}"
                 logger.info(f'Navigating to next page: {next_url}')
-                try:
-                    driver.get(next_url)
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-name='CardComponent']"))
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to load page {page}: {e}")
-                    break
-      
-
-            
+                
+                # Add retry logic for page navigation
+                page_retry_count = 3
+                for page_retry in range(page_retry_count):
+                    try:
+                        driver.get(next_url)
+                        WebDriverWait(driver, 10).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-name='CardComponent']"))
+                        )
+                        break  # Success, exit retry loop
+                    except Exception as e:
+                        if page_retry < page_retry_count - 1:
+                            logger.warning(f"Failed to load page {page} (attempt {page_retry+1}/{page_retry_count}): {e}")
+                            time.sleep(5 + page_retry * 5)  # 5s, 10s, 15s
+                        else:
+                            logger.error(f"Failed to load page {page} after {page_retry_count} attempts: {e}")
+                            break
+    
             # -------- BACKWARD LOOP --------
             logger.info('Starting reverse crawl to fill missing listings...')
             for reverse_page in range(page - 1, 0, -1):
@@ -328,14 +424,32 @@ class CianScraper:
                 logger.info(f'Revisiting page {reverse_page}: {back_url}')
     
                 try:
-                    driver.get(back_url)
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-name='CardComponent']"))
-                    )
+                    # Add retry logic for backward page navigation
+                    back_retry_count = 3
+                    back_success = False
+                    
+                    for back_retry in range(back_retry_count):
+                        try:
+                            driver.get(back_url)
+                            WebDriverWait(driver, 10).until(
+                                EC.presence_of_element_located((By.CSS_SELECTOR, "article[data-name='CardComponent']"))
+                            )
+                            back_success = True
+                            break  # Success, exit retry loop
+                        except Exception as e:
+                            if back_retry < back_retry_count - 1:
+                                logger.warning(f"Failed to load backward page {reverse_page} (attempt {back_retry+1}/{back_retry_count}): {e}")
+                                time.sleep(5 + back_retry * 5)
+                            else:
+                                logger.error(f"Failed to load backward page {reverse_page} after {back_retry_count} attempts: {e}")
+                    
+                    if not back_success:
+                        continue  # Skip this page if loading failed
+                    
                     driver.execute_script('window.scrollTo(0, document.body.scrollHeight/2);')
                     time.sleep(1.5)
                     soup = BeautifulSoup(driver.page_source, 'html.parser')
-                    # Replace with this more specific selector in both places
+                    
                     cards = soup.select("div._93444fe79c--wrapper--W0WqH[data-name='Offers'] article[data-name='CardComponent']")
                     if not cards:
                         logger.warning(f"No cards found on page {reverse_page}")
@@ -369,10 +483,11 @@ class CianScraper:
                     continue
     
         except Exception as e:
-            logger.error(f'Unexpected error: {e}')
+            logger.error(f'Unexpected error during collection: {e}')
         finally:
             try:
-                driver.quit()
+                if driver:
+                    driver.quit()
             except:
                 pass
     
@@ -398,8 +513,8 @@ class CianScraper:
     
         logger.info(f'✅ Collection complete: {len(all_apts)} listings collected after {total_pages_processed} pages')
         return all_apts
-    
-        
+            
+            
                             
     def _parse_card(self, card):
         try:
@@ -662,6 +777,7 @@ class CianScraper:
         except Exception as e:
             logger.error(f"Error saving data: {e}")
             return apartments
+            
     def _download_images_for_listing(self, listing, image_folder='images', max_retries=3):
         """Download images for a single listing with retry and anti-block measures"""
         try:
@@ -783,17 +899,20 @@ class CianScraper:
             
         except Exception as e:
             logger.error(f"⚠️ Failed to process image download for offer {listing.get('offer_id')}: {e}")
-                    
+                        
     def scrape(self, search_url, max_pages=5, max_distance_km=None, time_filter=None):
         url = f'{search_url}&totime={time_filter * 60}' if time_filter else search_url
         parsed_apts = self.collect_listings(url, max_pages)
         
-        # Immediately save what we've collected, just in case
-        backup_file = f'backup_{int(time.time())}_listings.json'
+        # Create backup directory if it doesn't exist
+        backup_dir = "backups"
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        # Save the backup file in the backup directory
+        backup_file = os.path.join(backup_dir, f'backup_{int(time.time())}_listings.json')
         with open(backup_file, 'w', encoding='utf-8') as f:
             json.dump([{k: v for k, v in apt.items() if k != 'image_urls'} for apt in parsed_apts], f, ensure_ascii=False)
         logger.info(f"💾 Backup of listings saved to {backup_file}")
-        
         # Download images independently, with better error handling
         logger.info(f"🖼️ Starting batch download of images for {len(parsed_apts)} listings")
         image_folder = 'images'

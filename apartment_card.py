@@ -226,57 +226,6 @@ def create_slideshow(offer_id):
     return slideshow
 
 
-def create_navigation_buttons(current_idx, total_rows):
-    """Create previous/next navigation buttons for the apartment card"""
-    return html.Div(
-        [
-            html.Button(
-                "← Previous",
-                id="prev-apartment-button",
-                disabled=current_idx == 0,
-                style={
-                    "backgroundColor": "#4682B4" if current_idx > 0 else "#cccccc",
-                    "color": "white",
-                    "border": "none",
-                    "borderRadius": "4px",
-                    "padding": "8px 15px",
-                    "marginRight": "10px",
-                    "cursor": "pointer" if current_idx > 0 else "not-allowed",
-                    "fontSize": "12px",
-                    "fontWeight": "bold",
-                },
-            ),
-            html.Button(
-                "Next →",
-                id="next-apartment-button",
-                disabled=current_idx >= total_rows - 1,
-                style={
-                    "backgroundColor": (
-                        "#4682B4" if current_idx < total_rows - 1 else "#cccccc"
-                    ),
-                    "color": "white",
-                    "border": "none",
-                    "borderRadius": "4px",
-                    "padding": "8px 15px",
-                    "cursor": (
-                        "pointer" if current_idx < total_rows - 1 else "not-allowed"
-                    ),
-                    "fontSize": "12px",
-                    "fontWeight": "bold",
-                },
-            ),
-        ],
-        style={
-            "display": "flex",
-            "justifyContent": "center",
-            "marginTop": "15px",
-            "marginBottom": "5px",
-            "padding": "5px 0",
-            "borderTop": "1px solid #eee",
-        },
-    )
-
-
 def create_apartment_details_card(
     apartment_data, table_row_data=None, row_idx=None, total_rows=None
 ):
@@ -289,6 +238,7 @@ def create_apartment_details_card(
     
     # Extract address and other info from table_row_data if available
     address = ""
+    distance = ""
     metro = ""
     title = ""
     cian_est = ""
@@ -303,6 +253,7 @@ def create_apartment_details_card(
             if "<br>" in table_row_data.get("address_title", "")
             else ""
         )
+        distance = table_row_data.get("distance", "")
         metro = table_row_data.get("metro_station", "")
         title = (
             table_row_data.get("address_title", "").split("<br>")[1]
@@ -409,7 +360,10 @@ def create_apartment_details_card(
                 metro,
                 style={"fontSize": "11px", "color": "#4682B4", "marginRight": "8px"}
             ) if metro else None,
-            html.Span(title, style={"fontSize": "11px"}) if title else None
+            html.Span(title, style={"fontSize": "11px", "marginRight": "8px"}) if title else None,
+            html.Span(distance, style={"fontSize": "11px", "fontWeight": "bold"}) if distance else None
+
+            
         ], style={"marginBottom": "5px"})
     ])
     
@@ -582,7 +536,7 @@ def create_apartment_details_card(
     
     # Assemble all sections in the correct order
     all_sections = [
-        navigation_header,
+        #navigation_header,
         slideshow,
         address_section,
         price_section,     # Price first
@@ -641,145 +595,11 @@ def create_price_comparison_pill(price, cian_est):
         percent = round((diff / est_val) * 100)
         
         if diff == 0:
-            return create_pill("Соответствует оценке", "#f0f0f0", "#333")
+            return create_pill("Соответствует оценке ЦИАН", "#f0f0f0", "#333")
         
         if diff < 0:
-            return create_pill(f"На {abs(percent)}% ниже оценки", "#e1f5e1", "#2e7d32")
+            return create_pill(f"На {abs(percent)}% ниже оценки ЦИАН", "#e1f5e1", "#2e7d32")
         else:
-            return create_pill(f"На {percent}% выше оценки", "#ffebee", "#c62828")
+            return create_pill(f"На {percent}% выше оценки ЦИАН", "#ffebee", "#c62828")
     except:
         return None
-
-def create_price_history_visualization(price_history):
-    """Create a modern visualization for price history"""
-    if not price_history:
-        return html.Div("Нет данных о истории цен", style={"fontSize": "12px", "color": "#666", "textAlign": "center"})
-    
-    try:
-        # Sort by date
-        sorted_history = sorted(price_history, key=lambda x: x.get("date_iso", ""))
-        
-        # Process price history for visualization
-        price_points = []
-        for entry in sorted_history:
-            if "price_clean" in entry and "date" in entry:
-                try:
-                    price_value = float(entry["price_clean"])
-                    price_points.append({
-                        "date": entry["date"],
-                        "price": price_value,
-                        "display_price": entry.get("price", str(price_value))
-                    })
-                except:
-                    continue
-        
-        if not price_points:
-            return html.Div("Нет данных для визуализации", style={"fontSize": "12px", "color": "#666", "textAlign": "center"})
-        
-        # Find min and max prices
-        prices = [p["price"] for p in price_points]
-        min_price = min(prices) * 0.95  # Add 5% padding
-        max_price = max(prices) * 1.05
-        price_range = max_price - min_price
-        
-        # Create timeline points
-        timeline_items = []
-        for i, point in enumerate(price_points):
-            # Calculate vertical position based on price
-            position = 100 - ((point["price"] - min_price) / price_range * 100) if price_range > 0 else 50
-            
-            timeline_items.append(html.Div([
-                # Price point
-                html.Div(style={
-                    "width": "10px",
-                    "height": "10px",
-                    "backgroundColor": "#4682B4",
-                    "borderRadius": "50%",
-                    "position": "absolute",
-                    "top": f"{position}%",
-                    "left": "50%",
-                    "transform": "translate(-50%, -50%)",
-                    "zIndex": "2"
-                }),
-                
-                # Price label
-                html.Div(point["display_price"], style={
-                    "position": "absolute",
-                    "top": f"{position - 15}%",
-                    "left": "50%",
-                    "transform": "translateX(-50%)",
-                    "fontSize": "9px",
-                    "fontWeight": "bold",
-                    "backgroundColor": "rgba(255,255,255,0.8)",
-                    "padding": "2px 4px",
-                    "borderRadius": "2px"
-                }),
-                
-                # Date label
-                html.Div(point["date"], style={
-                    "position": "absolute",
-                    "bottom": "-20px",
-                    "left": "50%",
-                    "transform": "translateX(-50%)",
-                    "fontSize": "9px",
-                    "color": "#666"
-                })
-            ], style={
-                "position": "relative",
-                "flex": "1",
-                "height": "100%"
-            }))
-            
-            # Add connecting line if not last point
-            if i < len(price_points) - 1:
-                next_position = 100 - ((price_points[i+1]["price"] - min_price) / price_range * 100) if price_range > 0 else 50
-                
-                # Calculate line angle
-                line_style = {
-                    "position": "absolute",
-                    "height": "2px",
-                    "backgroundColor": "#4682B4",
-                    "top": f"{position}%",
-                    "left": "50%",
-                    "width": "100%",
-                    "zIndex": "1"
-                }
-                
-                if position != next_position:
-                    # For sloped lines we use a rotated div
-                    height_diff = next_position - position
-                    width = 100  # percent of the container width
-                    angle = math.atan2(height_diff, width) * (180 / math.pi)
-                    length = math.sqrt(width**2 + height_diff**2)
-                    
-                    line_style.update({
-                        "transform": f"rotate({angle}deg)",
-                        "transformOrigin": "left center",
-                        "width": f"{length}%"
-                    })
-                
-                timeline_items[-1].children.append(html.Div(style=line_style))
-        
-        return html.Div([
-            html.Div("История цен", style={
-                "fontSize": "11px",
-                "fontWeight": "bold",
-                "marginBottom": "10px",
-                "color": "#4682B4"
-            }),
-            html.Div(timeline_items, style={
-                "display": "flex",
-                "height": "120px",
-                "position": "relative",
-                "marginBottom": "30px",  # Space for date labels
-                "borderTop": "1px solid #eee",
-                "borderBottom": "1px solid #eee",
-                "padding": "10px 0"
-            })
-        ])
-    except Exception as e:
-        # Handle any errors that might occur during price history processing
-        return html.Div(
-            f"Ошибка при визуализации истории цен: {str(e)}", 
-            style={"fontSize": "11px", "color": "#c62828", "textAlign": "center"}
-        )

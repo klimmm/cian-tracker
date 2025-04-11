@@ -19,6 +19,7 @@ CONFIG = {
             "price_difference_formatted",
             "address",
             "metro_station",
+            "neighborhood",
             "offer_link",
             "distance",
             "distance_sort",
@@ -45,10 +46,11 @@ CONFIG = {
             "distance",
             #"price_info",
             "price_value_formatted",
+            "neighborhood",
             #"commission_info_abbr",
             #"deposit_info_abbr",
             #"monthly_burden_formatted",
-            #"cian_estimation_formatted",
+            "cian_estimation_formatted",
             #"price_change_formatted",
             #"title",
             # "rental_period_abbr", "utilities_type_abbr",
@@ -76,7 +78,8 @@ CONFIG = {
             "monthly_burden_formatted": "Нагрузка/мес",
             "address_title": "Адрес / Описание",
             "price_info": "Цена",
-            "update_title": "Посл. обновление"
+            "update_title": "Посл. обновление",
+            "neighborhood": "Район"
         },
         "sort_map": {
             "updated_time": "date_sort_combined",
@@ -200,7 +203,7 @@ COLUMN_STYLES = [
 
     {
         "if": {
-            "filter_query": '{price_difference_value} < -5000 && {status} ne "non active"'
+            "filter_query": '{price_difference_value} > 0 && {status} ne "non active"'
         },
         "backgroundColor": "#fef3d5",
     },
