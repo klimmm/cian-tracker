@@ -332,8 +332,8 @@ td[data-dash-column="details"] {
     /* Column widths */
     .dash-spreadsheet td[data-dash-column="address_title"],
     .dash-spreadsheet th[data-dash-column="address_title"] {
-        width: 210px !important;
-        max-width: 230px !important;
+        width: 200px !important;
+        max-width: 200px !important;
         min-width: 190px !important;
     }
 
@@ -411,7 +411,7 @@ td[data-dash-column="details"] {
     .dash-spreadsheet td[data-dash-column="address_title"],
     .dash-spreadsheet th[data-dash-column="address_title"] {
         width: 180px !important;
-        max-width: 200px !important;
+        max-width: 180px !important;
         min-width: 160px !important;
     }
 
@@ -457,7 +457,7 @@ td[data-dash-column="details"] {
     .dash-spreadsheet td[data-dash-column="address_title"],
     .dash-spreadsheet th[data-dash-column="address_title"] {
         width: 140px !important;
-        max-width: 160px !important;
+        max-width: 140px !important;
         min-width: 130px !important;
     }
 
@@ -476,5 +476,40 @@ td[data-dash-column="details"] {
         width: 65px !important;
         max-width: 70px !important;
         min-width: 60px !important;
+    }
+}
+
+/* Add these CSS rules to increase the font size of tags in property_tags column */
+
+/* Increase font size for property tags */
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value span {
+    font-size: 0.95em !important; /* Increased from 0.8em */
+    font-weight: 500 !important; /* Add a bit more weight */
+    white-space: nowrap !important;
+    padding: 2px 5px !important; /* Slightly larger padding to accommodate larger font */
+    border-radius: 4px !important;
+    margin: 1px 2px !important;
+    display: inline-block !important;
+    line-height: 1.2 !important;
+}
+
+/* Make sure the container has enough space */
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value {
+    line-height: 1.4 !important;
+    padding: 3px 2px !important;
+}
+
+/* Media query adjustments to maintain proportionality */
+@media screen and (max-width: 768px) {
+    .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value span {
+        font-size: 0.9em !important;
+        padding: 2px 4px !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value span {
+        font-size: 0.85em !important;
+        padding: 1px 3px !important;
     }
 }

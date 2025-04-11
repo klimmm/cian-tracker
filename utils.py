@@ -319,9 +319,12 @@ def format_update_title(row):
     html += "</div>"
     return html
 
+# Update the format_property_tags function in utils.py to enhance tag appearance
+
 def format_property_tags(row):
-    """Format property tags with enhanced responsive styling"""
-    tag_style = "display:inline-block; padding:1px 4px; border-radius:6px; margin-right:1px; white-space:nowrap;"
+    """Format property tags with enhanced styling and larger font"""
+    # Remove the font-size property from the inline style to let CSS handle it
+    tag_style = "display:inline-block; padding:2px 5px; border-radius:4px; margin-right:2px; white-space:nowrap;"
     tags = []
     tag_flags = generate_tags_for_row(row)
     distance_value = row.get("distance_sort")
@@ -330,9 +333,9 @@ def format_property_tags(row):
         # Calculate walking time in minutes
         walking_minutes = (distance_value / 5) * 60
         
-        # Format time display more compactly
+        # Format time display with slightly larger text
         if walking_minutes < 60:
-            time_text = f"{int(walking_minutes)}м"  # Shortened to just "м" for minutes
+            time_text = f"{int(walking_minutes)}мин"  # Changed back to "мин" for better readability
         else:
             hours = int(walking_minutes // 60)
             minutes = int(walking_minutes % 60)
@@ -347,7 +350,7 @@ def format_property_tags(row):
             text_color = "#ffffff"  # White text for contrast
         elif walking_minutes < 20:  # Less than 20 minutes (1.67km)
             bg_color = "#aecbfa"  # Medium blue for nearby
-            text_color = "#174ea6"  # White text
+            text_color = "#174ea6"  # Dark blue text
         elif walking_minutes < 30:  # Less than 40 minutes (3.33km)
             bg_color = "#aecbfa"  # Light blue for moderate distance
             text_color = "#174ea6"  # Dark blue text
@@ -357,7 +360,7 @@ def format_property_tags(row):
             
         tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{time_text}</span>')
     
-    # Add neighborhood tag if available - more compact
+    # Add neighborhood tag if available
     if tag_flags.get("neighborhood"):
         neighborhood = tag_flags["neighborhood"]
         
@@ -376,7 +379,8 @@ def format_property_tags(row):
             
         tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{neighborhood}</span>')
     
-    return f'<div style="display:flex; flex-wrap:wrap; gap:1px; justify-content:flex-start;">{"".join(tags)}</div>' if tags else ""
+    # Use more vertical space with increased gap
+    return f'<div style="display:flex; flex-wrap:wrap; gap:3px; justify-content:flex-start; padding:2px 0;">{"".join(tags)}</div>' if tags else ""
 
 def format_price_changes(value):
     """Enhanced format for price changes with better responsive styling"""
