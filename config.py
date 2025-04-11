@@ -11,6 +11,7 @@ CONFIG = {
         "display": [
             "offer_id",
             "title",
+            'description',
             "updated_time",
             "updated_time_sort",
             "price_value_formatted",
@@ -52,13 +53,13 @@ CONFIG = {
             "address_title",  # Add the combined column
             #"distance",
             #"price_info",
-            "price_value_formatted",
-            #"price_text",
+            #"price_value_formatted",
+            "price_text",
             #"neighborhood",
             #"commission_info_abbr",
             #"deposit_info_abbr",
             #"monthly_burden_formatted",
-            #"cian_estimation_formatted",
+            #"cian_estimation_formatted"
             #"price_change_formatted",
             #"title",
             # "rental_period_abbr", "utilities_type_abbr",
@@ -91,7 +92,7 @@ CONFIG = {
             "update_title": "Посл. обновление",
             "neighborhood": "Район",
             "price_text": "Цена",
-            "property_tags": "Теги"  # Add header for tags
+            "property_tags": "Пешком"  # Add header for tags
             
         },
         "sort_map": {

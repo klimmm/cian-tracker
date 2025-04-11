@@ -275,6 +275,62 @@ def format_update_title(row):
     return html
 
 
+def generate_tags_for_row(row):
+    """Generate tag flags for various row conditions"""
+    # Initialize tag dictionary
+    tags = {
+        "below_estimate": False,
+        "nearby": False,
+        "updated_today": False,
+        "neighborhood": None,  # Store the neighborhood name
+        "is_hamovniki": False, # Special flag for Хамовники
+        "is_arbat": False      # Special flag for Арбат
+    }
+    
+    # Check for "below estimate" condition
+    if row.get("price_difference_value", 0) > 0 and row.get("status") != "non active":
+        tags["below_estimate"] = True
+    
+    # Check for "nearby" condition (within 1.5km)
+    if row.get("distance_sort", 999) < 1.5 and row.get("status") != "non active":
+        tags["nearby"] = True
+    
+    # Check for "updated today" condition
+    import pandas as pd
+    try:
+        # Get the timestamp from 24 hours ago
+        recent_time = pd.Timestamp.now() - pd.Timedelta(hours=24)
+        
+        # Get the row's timestamp (or a default far past date if not available)
+        row_time = row.get("updated_time_sort")
+        if row_time and not pd.isna(row_time):
+            row_dt = pd.to_datetime(row_time)
+            if row_dt.date() == pd.Timestamp.now().date():
+                tags["updated_today"] = True
+    except Exception as e:
+        # Add error handling to prevent crashes
+        print(f"Error processing timestamp: {e}")
+    
+    # Extract neighborhood if available
+    neighborhood = str(row.get("neighborhood", ""))
+    if neighborhood and neighborhood != "nan" and neighborhood != "None":
+        # Extract just the neighborhood name if it follows a pattern like "р-н Хамовники"
+        if "р-н " in neighborhood:
+            neighborhood_name = neighborhood.split("р-н ")[1].strip()
+        else:
+            neighborhood_name = neighborhood.strip()
+        
+        tags["neighborhood"] = neighborhood_name
+        
+        # Check if this is Хамовники
+        if "Хамовники" in neighborhood:
+            tags["is_hamovniki"] = True
+        
+        # Check if this is Арбат
+        if "Арбат" in neighborhood:
+            tags["is_arbat"] = True
+    
+    return tags
 
 def format_property_tags(row):
     """Format property tags in a flex container, including walking time"""
@@ -305,7 +361,7 @@ def format_property_tags(row):
         elif walking_minutes < 20:  # Less than 20 minutes (1.67km)
             bg_color = "#aecbfa"  # Medium blue for nearby
             text_color = "#174ea6"  # White text
-        elif walking_minutes < 20:  # Less than 40 minutes (3.33km)
+        elif walking_minutes < 30:  # Less than 40 minutes (3.33km)
             bg_color = "#aecbfa"  # Light blue for moderate distance
             text_color = "#174ea6"  # Dark blue text
         else:
@@ -314,70 +370,26 @@ def format_property_tags(row):
             
         tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{time_text}</span>')
     
-    # Non-active status tag
-    '''if row["status"] != "active":
-        tags.append(f'<span style="{tag_style} background-color:#f5f5f5; color:#666;">снято</span>')'''
-    
-    # Property feature tags
-    if tag_flags["below_estimate"]:
-        tags.append(f'<span style="{tag_style} background-color:#fcf3cd; color:#856404;">хорошая цена</span>')
-    
-    if tag_flags["hamovniki"]:
-        #tags.append(f'<span style="{tag_style} background-color:#e0f7f7; color:#0c5460;">Хамовники</span>')
-        tags.append(f'<span style="{tag_style} background-color:#e0f7f7; color:#0c5460;">Хамовники</span>')
-    # Add walking time tag
-    if tag_flags["dorogomilovo"]:
-        tags.append(f'<span style="{tag_style} background-color:#dadce0; color:#3c4043;">Дорогомилово</span>')
-
-    return f'<div style="display:flex; flex-wrap:wrap; gap:2px; justify-content:flex-start;">{"".join(tags)}</div>' if tags else ""
-
-
-def generate_tags_for_row(row):
-    """Generate tag flags for various row conditions"""
-    # Instead of HTML, return a dictionary of tag flags
-    tags = {
-        "below_estimate": False,
-        "nearby": False,
-        "updated_today": False,
-        "hamovniki": False,
-        "dorogomilovo": False
-    }
-    
-    # Check for "below estimate" condition
-    if row.get("price_difference_value", 0) > 0 and row.get("status") != "non active":
-        tags["below_estimate"] = True
-    
-    # Check for "nearby" condition (within 1.5km)
-    if row.get("distance_sort", 999) < 1.5 and row.get("status") != "non active":
-        tags["nearby"] = True
-    
-    # Check for "updated today" condition
-    import pandas as pd
-    try:
-        # Get the timestamp from 24 hours ago
-        recent_time = pd.Timestamp.now() - pd.Timedelta(hours=24)
+    # Add neighborhood tag if available
+    if tag_flags.get("neighborhood"):
+        neighborhood = tag_flags["neighborhood"]
         
-        # Get the row's timestamp (or a default far past date if not available)
-        row_time = row.get("updated_time_sort")
-        if row_time and not pd.isna(row_time):
-            row_dt = pd.to_datetime(row_time)
-            if row_dt.date() == pd.Timestamp.now().date():
-                tags["updated_today"] = True
-
+        # Special style for Хамовники
+        if tag_flags["is_hamovniki"]:
+            bg_color = "#e0f7f7"  # Teal
+            text_color = "#0c5460"  # Dark teal
+        # Special style for Арбат - purple-ish to distinguish from walking minutes blues
+        elif tag_flags["is_arbat"]:
+            bg_color = "#d0d1ff"  # Light indigo/purple
+            text_color = "#3f3fa3"  # Dark indigo/purple
+        else:
+            # Default style for all other neighborhoods
+            bg_color = "#dadce0"  # Gray
+            text_color = "#3c4043"  # Dark gray
             
-            '''# Compare timestamps directly, not strings
-            if pd.to_datetime(row_time) > recent_time:
-                tags["updated_today"] = True'''
-    except Exception as e:
-        # Add error handling to prevent crashes
-        print(f"Error processing timestamp: {e}")
-        
-    # Check for neighborhood - Хамовники
-    if "р-н Хамовники" in str(row.get("neighborhood", "")):
-        tags["hamovniki"] = True
-    elif "Дорогомилово" in str(row.get("neighborhood", "")):
-        tags["dorogomilovo"] = True
-    return tags
+        tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{neighborhood}</span>')
+    
+    return f'<div style="display:flex; flex-wrap:wrap; gap:2px; justify-content:flex-start;">{"".join(tags)}</div>' if tags else ""
     
 def extract_deposit_value(deposit_info):
     """Extract numeric deposit value from deposit_info string"""
@@ -635,20 +647,22 @@ def load_and_process_data():
 
         # Create temporary variables with the formatted strings
                         
+        # Update the price_text calculation to remove price change information
+        # Update the price_text calculation to correctly check for below_estimate condition
         df["price_text"] = df.apply(
             lambda r: (
                 f'<div style="display:block; text-align:center; margin:0; padding:0;">'
                 f'<strong style="margin:0; padding:0;">{r["price_value_formatted"]}</strong>'
                 + (
-                    f'<br><span style="margin:0; padding:0;">{r["price_change_formatted"]}</span>'
-                    if r["price_change_formatted"] else ""
-                ) +
-                '</div>'
+                    # Check the actual condition used in generate_tags_for_row instead of using the tags column
+                    f'<br><span style="display:inline-block; padding:1px 4px; border-radius:8px; margin-top:2px; font-size:8px; background-color:#fcf3cd; color:#856404;">хорошая цена</span>'
+                    if r.get("price_difference_value", 0) > 0 and r.get("status") != "non active" else ""
+                )
+                + '</div>'
             ),
             axis=1
-        )
-
-        
+        )        
+                        
 
 
 

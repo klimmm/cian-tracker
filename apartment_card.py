@@ -262,6 +262,8 @@ def create_apartment_details_card(
         )
         cian_est = table_row_data.get("cian_estimation_formatted", "")
         price = table_row_data.get("price_value_formatted", "")
+        description = table_row_data.get("description", "")  # Add this line
+
 
     # ============= TOP BAR WITH NAVIGATION AND CONTROLS =============
     
@@ -542,6 +544,7 @@ def create_apartment_details_card(
         price_section,     # Price first
         terms_section,     # Then terms
         property_section,  # All properties and features combined
+        description
     ]
     
     # Filter out None sections
