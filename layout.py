@@ -6,7 +6,7 @@ from dash import dcc, html
 from dash.dependencies import Input, Output, State
 
 from config import BUTTON_STYLES
-from config import PRICE_BUTTONS, DISTANCE_BUTTONS  # New imports
+from config import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS  # New imports
 from config import CONFIG, STYLE, BUTTON_STYLES, COLUMN_STYLES, HEADER_STYLES
 
 
@@ -143,6 +143,10 @@ def create_app_layout(app):
                     "distance_value": default_distance,
                     "active_price_btn": default_price_btn,
                     "active_dist_btn": default_distance_btn,
+                    # Set distance as the default sort
+                    "sort_column": "distance_sort",  # Changed from price_value
+                    "sort_direction": "asc",         # Keep ascending for distance
+                    "active_sort_btn": "btn-sort-distance",  # Changed from btn-sort-price
                 },
             ),
             # Outer container for all button rows with fixed width of 375px
@@ -273,6 +277,7 @@ def create_app_layout(app):
                         ],
                         style={
                             "margin": "2px", 
+                            "display": "none",
                             "marginTop": "5px",
                             "textAlign": "left", 
                             "width": "100%",
@@ -304,11 +309,75 @@ def create_app_layout(app):
                         ],
                         style={
                             "margin": "2px",
-                            "display": "flex",
+                            #"display": "flex",
+                            "display": "none",
                             "width": "100%",
                             "gap": "0px",  # No gap between buttons
                         },
                     ),
+
+                    html.Div(
+                        [
+                            # Label on the left
+                            html.Label(
+                                "Сортировать:",
+                                className="dash-label",
+                                style={
+                                    "marginBottom": "2px", 
+                                    "marginRight": "5px", 
+                                    "minWidth": "110px",  # Fixed identical width using minWidth
+                                    "width": "110px",     # Both width and minWidth for consistency
+                                    "display": "inline-block",
+                                    "whiteSpace": "nowrap"
+                                },
+                            ),
+                            # Buttons on the right - completely joined
+                            html.Div(
+                                [
+                                    html.Button(
+                                        btn["label"],
+                                        id=btn["id"],
+                                        style={
+                                            **BUTTON_STYLES["sort"],
+                                            "opacity": 1.0 if btn.get("default", False) else 0.6,
+                                            "boxShadow": "0 0 5px #4682B4" if btn.get("default", False) else None,
+                                            "flex": "1",  # Each button flex equally
+                                            "margin": "0",  # Zero margin
+                                            "padding": "2px 0",  # Reduced vertical padding for shorter height
+                                            "fontSize": "10px",  # Smaller font size
+                                            "lineHeight": "1",  # Tighter line height
+                                            "borderRadius": "0",  # No rounded corners
+                                            "borderLeft": "none" if i > 0 else "1px solid #ccc",  # Remove left border for all but first button
+                                            "position": "relative",  # For z-index to work
+                                            "zIndex": "1" if btn.get("default", False) else "0",  # Active button appears on top
+                                        },
+                                    )
+                                    for i, btn in enumerate(SORT_BUTTONS)
+                                ],
+                                style={
+                                    "display": "flex",
+                                    "flex": "1",  # Take all remaining space
+                                    "width": "100%",
+                                    "gap": "0",  # No gap between buttons
+                                    "border-collapse": "collapse",  # Collapse borders
+                                },
+                            ),
+                        ],
+                        style={
+                            "margin": "2px", 
+                            "marginBottom": "6px",  # Add space between rows
+                            "textAlign": "left", 
+                            "width": "100%",
+                            "display": "flex", 
+                            "alignItems": "center"
+                        },
+                    ),
+                    
+
+
+
+
+                    
                 ],
                 style={"textAlign": "left", "width": "355px", "padding": "0px"},  # Fixed width with no padding
             ),

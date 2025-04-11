@@ -365,3 +365,12 @@ DISTANCE_BUTTONS = [
     {"id": "btn-dist-5km", "label": "5", "value": 5.0},
     {"id": "btn-dist-5km-plus", "label": "любое", "value": float('inf')}
 ]
+# Add this to config.py alongside the existing button definitions
+# Modify the SORT_BUTTONS definition in config.py
+SORT_BUTTONS = [
+    {"id": "btn-sort-price", "label": "По цене", "value": "price_value", "default_direction": "asc"},
+    {"id": "btn-sort-time", "label": "По дате", "value": "updated_time_sort", "default_direction": "desc"},
+    {"id": "btn-sort-distance", "label": "По расстоянию", "value": "distance_sort", "default": True, "default_direction": "asc"},  # Make this the default
+]
+# Add a style for sort buttons
+BUTTON_STYLES["sort"] = {"backgroundColor": "#e0e0e8", **STYLE["button_base"]}

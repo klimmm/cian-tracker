@@ -10,7 +10,7 @@ from config import CONFIG, STYLE, COLUMN_STYLES, HEADER_STYLES
 from utils import load_and_process_data, filter_and_sort_data
 from layout import create_app_layout
 import logging
-from config import BUTTON_STYLES, PRICE_BUTTONS, DISTANCE_BUTTONS
+from config import BUTTON_STYLES, PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS
 from layout import default_price, default_price_btn, default_distance, default_distance_btn
 from apartment_card import create_apartment_details_card
 from utils import load_apartment_details
@@ -127,8 +127,14 @@ def load_apartment_data(_):
         if "details" not in df.columns:
             df["details"] = "🔍"
 
+        # Make sure all sorting columns are included
+        required_columns = CONFIG["columns"]["display"] + ["details", "offer_id", "date_sort_combined"]
+        
+        # Get columns that exist in the dataframe
+        available_columns = [col for col in required_columns if col in df.columns]
+        
         # Convert to dict for storage
-        df_dict = df[CONFIG["columns"]["display"] + ["details", "offer_id"]].to_dict("records") if not df.empty else []
+        df_dict = df[available_columns].to_dict("records") if not df.empty else []
         
         # Return data for storage and update time display
         return df_dict, f"Актуально на: {update_time}"
@@ -150,12 +156,14 @@ def load_apartment_data(_):
         Input("btn-below-estimate", "n_clicks"),
         Input("btn-inactive", "n_clicks"),
         Input("btn-updated-today", "n_clicks"),
+        # Add sort buttons
+        *[Input(btn["id"], "n_clicks") for btn in SORT_BUTTONS],
     ],
     [State("filter-store", "data")],
     prevent_initial_call=True
 )
 def unified_filter_update(*args):
-    """Consolidated callback that handles all filter button clicks"""
+    """Consolidated callback that handles all filter and sort button clicks"""
     # Get the triggered input
     ctx_msg = ctx.triggered[0] if ctx.triggered else None
     if not ctx_msg:
@@ -200,8 +208,53 @@ def unified_filter_update(*args):
         filter_key = filter_toggle_map[trigger_id]
         current_filters[filter_key] = not current_filters[filter_key]
     
+    # Handle sort buttons - NEW CODE
+    # Handle sort buttons in the unified_filter_update callback
+    sort_button_ids = [btn["id"] for btn in SORT_BUTTONS]
+    if trigger_id in sort_button_ids:
+        # Get the selected sort column
+        active_sort_btn = trigger_id
+        sort_button = next((btn for btn in SORT_BUTTONS if btn["id"] == trigger_id), None)
+        
+        if sort_button:
+            sort_column = sort_button["value"]
+            
+            # If the same button is clicked again, toggle the direction
+            if current_filters.get("active_sort_btn") == active_sort_btn:
+                # Toggle sort direction
+                current_filters["sort_direction"] = "desc" if current_filters.get("sort_direction") == "asc" else "asc"
+            else:
+                # New sort button, set as active and use its default direction
+                current_filters["active_sort_btn"] = active_sort_btn
+                current_filters["sort_column"] = sort_column
+                current_filters["sort_direction"] = sort_button.get("default_direction", "asc")
+        
     return [current_filters]
-
+    
+@app.callback(
+    [
+        *[Output(f"{btn['id']}-text", "children") for btn in SORT_BUTTONS]
+    ],
+    [Input("filter-store", "data")],
+    prevent_initial_call=True
+)
+def update_sort_button_text(filters):
+    """Update sort button text with direction indicators"""
+    if not filters:
+        return [btn["label"] for btn in SORT_BUTTONS]
+    
+    button_texts = []
+    active_btn = filters.get("active_sort_btn")
+    sort_direction = filters.get("sort_direction", "asc")
+    
+    for btn in SORT_BUTTONS:
+        if btn["id"] == active_btn:
+            arrow = "↑" if sort_direction == "asc" else "↓"
+            button_texts.append(f"{btn['label']} {arrow}")
+        else:
+            button_texts.append(btn["label"])
+    
+    return button_texts
 # =====================================================================
 # BUTTON STYLES UPDATE
 # =====================================================================
@@ -214,6 +267,8 @@ def unified_filter_update(*args):
         Output("btn-below-estimate", "style"),
         Output("btn-inactive", "style"),
         Output("btn-updated-today", "style"),
+        # Add sort button outputs
+        *[Output(btn["id"], "style") for btn in SORT_BUTTONS],
     ],
     [Input("filter-store", "data")],
 )
@@ -310,6 +365,40 @@ def update_button_styles(filters):
         else:
             base_style.update({
                 "opacity": 0.6
+            })
+            
+        styles.append(base_style)
+    
+    # Sort button styles - in update_button_styles function
+    for i, btn in enumerate(SORT_BUTTONS):
+        base_style = {
+            **BUTTON_STYLES["sort"],
+            "flex": "1",
+            "margin": "0",
+            "padding": "2px 0",
+            "fontSize": "10px",
+            "lineHeight": "1",
+            "borderRadius": "0",
+            "borderLeft": "none" if i > 0 else "1px solid #ccc",
+        }
+        
+        # Apply active styling if this is the active button
+        if btn["id"] == filters.get("active_sort_btn"):
+            # Get current direction indicator
+            direction = filters.get("sort_direction", btn.get("default_direction", "asc"))
+            
+            base_style.update({
+                "opacity": 1.0,
+                "boxShadow": "0 0 5px #4682B4",
+                "position": "relative",
+            })
+            
+            # Create the button label with the appropriate arrow
+            arrow = "↑" if direction == "asc" else "↓"
+            base_style["label"] = f"{btn['label']} {arrow}"
+        else:
+            base_style.update({
+                "opacity": 0.6,
             })
             
         styles.append(base_style)
@@ -628,6 +717,10 @@ app.clientside_callback(
     ],
     prevent_initial_call=True
 )
+
+
+
+
 
 # Run the app
 if __name__ == "__main__":

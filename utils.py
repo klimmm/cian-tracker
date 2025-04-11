@@ -733,7 +733,6 @@ def load_and_process_data():
 # In cian_dashboard.py, find the filter_and_sort_data function in utils.py 
 # and modify it to change the "inactive" filter to "active":
 
-# In utils.py:
 def filter_and_sort_data(df, filters=None, sort_by=None):
     """Filter and sort data in a single function"""
     if df.empty:
@@ -745,10 +744,12 @@ def filter_and_sort_data(df, filters=None, sort_by=None):
         distance_value = filters.get("distance_value")
 
         if price_value and price_value != float("inf"):
-            df = df[df["price_value"] <= price_value]
+            if "price_value" in df.columns:
+                df = df[df["price_value"] <= price_value]
 
         if distance_value and distance_value != float("inf"):
-            df = df[df["distance_sort"] <= distance_value]
+            if "distance_sort" in df.columns:
+                df = df[df["distance_sort"] <= distance_value]
 
     # Apply button filters
     if filters and any(
@@ -758,19 +759,15 @@ def filter_and_sort_data(df, filters=None, sort_by=None):
     ):
         mask = pd.Series(False, index=df.index)
 
-        if filters.get("nearest"):
+        if filters.get("nearest") and "distance_sort" in df.columns:
             mask |= df["distance_sort"] < 1.5
-        if filters.get("below_estimate"):
+        if filters.get("below_estimate") and "price_difference_value" in df.columns:
             mask |= df["price_difference_value"] >= 5000
-        # Change the inactive filter to active (show only active listings)
-        if filters.get("inactive"):
-            # Old behavior was to show inactive listings
-            # New behavior is to filter to only active listings
+        if filters.get("inactive") and "status" in df.columns:
             mask |= df["status"] == "active"
         
-        if filters.get("updated_today"):
+        if filters.get("updated_today") and "updated_time_sort" in df.columns:
             df["updated_time_sort"] = pd.to_datetime(df["updated_time_sort"], errors='coerce')
-
             mask |= df["updated_time_sort"] > (
                 pd.Timestamp.now() - pd.Timedelta(hours=24)
             )
@@ -778,12 +775,27 @@ def filter_and_sort_data(df, filters=None, sort_by=None):
         if any(mask):
             df = df[mask]
 
-    # Apply sorting
-    if sort_by:
+    # Apply sorting from filter store
+    if filters and "sort_column" in filters and "sort_direction" in filters:
+        sort_column = filters["sort_column"]
+        
+        # Make sure the sort column exists in the DataFrame
+        if sort_column in df.columns:
+            sort_ascending = filters["sort_direction"] == "asc"
+            df = df.sort_values(sort_column, ascending=sort_ascending)
+        else:
+            print(f"Warning: Sort column '{sort_column}' not found in DataFrame")
+            # Fallback to default sort if column doesn't exist
+            if "price_value" in df.columns:
+                df = df.sort_values("price_value", ascending=True)
+    
+    # Backward compatibility for table sort_by parameter
+    elif sort_by:
         for item in sort_by:
             col = CONFIG["columns"]["sort_map"].get(
                 item["column_id"], item["column_id"]
             )
-            df = df.sort_values(col, ascending=item["direction"] == "asc")
+            if col in df.columns:
+                df = df.sort_values(col, ascending=item["direction"] == "asc")
 
     return df
