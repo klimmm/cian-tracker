@@ -4,20 +4,26 @@ from dash.dependencies import Input, Output, State, MATCH
 import dash
 import logging
 import pandas as pd
-from app.utils import load_and_process_data, filter_and_sort_data, load_apartment_details
+from app.utils import DataManager, load_apartment_details
 from app.apartment_card import create_apartment_details_card
 from app.config import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS
-from dash import dash_table, html
-from app.config import CONFIG, STYLE, COLUMN_STYLES, HEADER_STYLES
-from app.config import BUTTON_STYLES
+from dash import html
+from app.components import ButtonFactory
 
 logger = logging.getLogger(__name__)
+
+
+def register_all_callbacks(app):
+    """Register all callbacks for the application."""
+    register_data_callbacks(app)
+    register_filter_callbacks(app)
+    register_style_callbacks(app)
+    register_details_callbacks(app)
 
 
 def register_data_callbacks(app):
     """Register callbacks for data loading and management."""
     
-    # In app/dashboard_callbacks.py, update the load_apartment_data function
     @app.callback(
         [
             Output("apartment-data-store", "data"),
@@ -29,21 +35,23 @@ def register_data_callbacks(app):
     def load_apartment_data(_):
         """Load apartment data and update the data store."""
         try:
-            # Load data from files
-            logger.info("Callback triggered: Loading apartment data")
-            df, update_time = load_and_process_data()
+            # Load data using the data manager
+            df, update_time = DataManager.load_data()
             
             if df.empty:
                 logger.error("Loaded DataFrame is empty!")
                 return [], f"Error: No data loaded"
-                
-            logger.info(f"Successfully loaded {len(df)} rows of data")
+            
+            # Process the data    
+            df = DataManager.process_data(df)
+            logger.info(f"Successfully processed {len(df)} rows of data")
             
             # Add details indicator column if not present
             if "details" not in df.columns:
                 df["details"] = "🔍"
     
             # Make sure all required columns are included
+            from app.config import CONFIG
             required_columns = CONFIG["columns"]["display"] + [
                 "details",
                 "offer_id",
@@ -118,103 +126,13 @@ def register_filter_callbacks(app):
             return [html.Div("Нет данных")]
 
         # Convert list of records back to DataFrame for filtering
-
-
         df = pd.DataFrame(data)
 
-        # Apply filtering
-        df = filter_and_sort_data(df, filters)
+        # Apply filtering using DataManager
+        df = DataManager.filter_data(df, filters)
 
-        # Define column properties
-        visible = CONFIG["columns"]["visible"] + ["details"]
-        numeric_cols = {
-            "distance",
-            "price_value_formatted",
-            "cian_estimation_formatted",
-            "price_difference_formatted",
-            "monthly_burden_formatted",
-        }
-        markdown_cols = {
-            "price_change_formatted",
-            "address_title",
-            "offer_link",
-            "price_info",
-            "update_title",
-            "property_tags",
-            "price_change",
-            "walking_time",
-            "price_text",
-        }
-
-        columns = [
-            {
-                "name": CONFIG["columns"]["headers"].get(
-                    c, "Детали" if c == "details" else c
-                ),
-                "id": c,
-                "type": "numeric" if c in numeric_cols else "text",
-                "presentation": "markdown" if c in markdown_cols else None,
-            }
-            for c in visible
-        ]
-
-        # Details column styling
-        details_style = {
-            "if": {"column_id": "details"},
-            "className": "details-column",
-        }
-        markdown_style = [
-            {"if": {"column_id": col}, "textAlign": "center"} for col in markdown_cols
-        ]
-
-        # Create the DataTable
-        table = dash_table.DataTable(
-            id="apartment-table",
-            columns=columns,
-            data=df.to_dict("records") if not df.empty else [],
-            sort_action="custom",
-            sort_mode="multi",
-            sort_by=[],
-            hidden_columns=CONFIG["hidden_cols"] + ["offer_id"],
-            # Responsive styling
-            style_table={
-                "overflowX": "auto",
-                "maxWidth": "1200px",
-                "width": "100%",
-                "margin": "0 auto",
-            },
-            style_cell=STYLE["cell"],
-            style_cell_conditional=STYLE.get("cell_conditional", [])
-            + [details_style]
-            + markdown_style,
-            style_header=STYLE["header_cell"],
-            style_header_conditional=HEADER_STYLES,
-            style_data=STYLE["data"],
-            style_filter=STYLE["filter"],
-            style_data_conditional=COLUMN_STYLES
-            + [
-                {
-                    "if": {"column_id": "details"},
-                    "fontWeight": "normal",
-                    "cursor": "pointer !important",
-                }
-            ],
-            page_size=100,
-            page_action="native",
-            markdown_options={"html": True},
-            cell_selectable=True,
-            # CSS snippets
-            css=[
-                {
-                    "selector": ".dash-cell:nth-child(n+1):nth-child(-n+15)",
-                    "rule": "padding: 5px !important;",
-                },
-                {
-                    "selector": "td.details-column",
-                    "rule": "background-color: transparent !important; text-align: center !important; padding: 3px 5px !important;",
-                },
-            ],
-        )
+        # Create the table with the filtered data
+        table = create_data_table(df)
         return [table]
     
     
@@ -231,8 +149,8 @@ def register_filter_callbacks(app):
         # Convert to DataFrame for sorting
         df = pd.DataFrame(data)
 
-        # Apply filters and sorting
-        df = filter_and_sort_data(df, filters, sort_by)
+        # Apply filters and sorting through DataManager
+        df = DataManager.filter_and_sort_data(df, filters, sort_by)
 
         # Return data for table
         return df.to_dict("records")
@@ -248,18 +166,7 @@ def register_filter_callbacks(app):
         if not filters:
             return [btn["label"] for btn in SORT_BUTTONS]
 
-        button_texts = []
-        active_btn = filters.get("active_sort_btn")
-        sort_direction = filters.get("sort_direction", "asc")
-
-        for btn in SORT_BUTTONS:
-            if btn["id"] == active_btn:
-                arrow = "↑" if sort_direction == "asc" else "↓"
-                button_texts.append(f"{btn['label']} {arrow}")
-            else:
-                button_texts.append(btn["label"])
-
-        return button_texts
+        return [get_button_text(btn, filters) for btn in SORT_BUTTONS]
 
 
 def register_style_callbacks(app):
@@ -279,31 +186,21 @@ def register_style_callbacks(app):
     )
     def update_button_styles(filters):
         """Update button styles based on filter store state."""
-        
         if not filters:
             return dash.no_update
 
+        # Create all button styles with a helper function
         styles = []
 
         # Price button styles
         for i, btn in enumerate(PRICE_BUTTONS):
-            base_style = create_button_style(
-                btn, 
-                i, 
-                "price", 
-                is_active=(btn["id"] == filters.get("active_price_btn"))
-            )
-            styles.append(base_style)
+            styles.append(create_button_style(btn, i, "price", 
+                is_active=(btn["id"] == filters.get("active_price_btn"))))
 
         # Distance button styles
         for i, btn in enumerate(DISTANCE_BUTTONS):
-            base_style = create_button_style(
-                btn, 
-                i, 
-                "distance", 
-                is_active=(btn["id"] == filters.get("active_dist_btn"))
-            )
-            styles.append(base_style)
+            styles.append(create_button_style(btn, i, "distance", 
+                is_active=(btn["id"] == filters.get("active_dist_btn"))))
 
         # Filter toggle button styles
         for filter_name, button_id in [
@@ -312,37 +209,15 @@ def register_style_callbacks(app):
             ("inactive", "btn-inactive"),
             ("updated_today", "btn-updated-today"),
         ]:
-            button_type = filter_name
-            if button_type == "below_estimate":
-                button_type = "below_estimate"
-            elif button_type == "updated_today":
-                button_type = "updated_today"
-
-            base_style = {**BUTTON_STYLES[button_type], "flex": "1"}
-
-            if filters.get(filter_name):
-                base_style.update({"opacity": 1.0, "boxShadow": "0 0 5px #4682B4"})
-            else:
-                base_style.update({"opacity": 0.6})
-
-            styles.append(base_style)
+            styles.append(create_toggle_button_style(
+                filter_name, 
+                button_id, 
+                is_active=filters.get(filter_name, False)))
 
         # Sort button styles
         for i, btn in enumerate(SORT_BUTTONS):
-            base_style = create_button_style(
-                btn, 
-                i, 
-                "sort", 
-                is_active=(btn["id"] == filters.get("active_sort_btn"))
-            )
-            
-            # Add direction indicator to active button
-            if btn["id"] == filters.get("active_sort_btn"):
-                direction = filters.get("sort_direction", btn.get("default_direction", "asc"))
-                arrow = "↑" if direction == "asc" else "↓"
-                base_style["label"] = f"{btn['label']} {arrow}"
-                
-            styles.append(base_style)
+            styles.append(create_button_style(btn, i, "sort", 
+                is_active=(btn["id"] == filters.get("active_sort_btn"))))
 
         return styles
 
@@ -375,39 +250,9 @@ def register_details_callbacks(app):
         
         triggered_id = ctx.triggered_id
         
-        # Panel style presets
-        hidden_style = {
-            "opacity": "0",
-            "visibility": "hidden",
-            "pointer-events": "none",
-            "display": "none",
-        }
-        visible_style = {
-            "opacity": "1",
-            "visibility": "visible",
-            "pointer-events": "auto",
-            "display": "block",
-            "position": "fixed",
-            "top": "50%",
-            "left": "50%",
-            "transform": "translate(-50%, -50%)",
-            "width": "90%",
-            "maxWidth": "500px",
-            "maxHeight": "100%",
-            "zIndex": "1000",
-            "backgroundColor": "#fff",
-            "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",
-            "borderRadius": "8px",
-            "padding": "15px",
-            "overflow": "auto",
-            "transformOrigin": "center",
-            "willChange": "opacity, visibility",
-            "animation": "fadeIn 0.3s ease-in-out",
-        }
-
-        # Handle close
+        # Handle close button
         if triggered_id == "close-details-button":
-            return hidden_style, dash.no_update, None
+            return get_panel_style(False), dash.no_update, None
 
         # Handle clicking a table row
         if (
@@ -416,7 +261,7 @@ def register_details_callbacks(app):
             and active_cell.get("column_id") == "details"
         ):
             return handle_apartment_selection(
-                active_cell["row"], table_data, visible_style
+                active_cell["row"], table_data, True
             )
 
         # Handle prev/next navigation
@@ -425,7 +270,7 @@ def register_details_callbacks(app):
             and selected_data
         ):
             return handle_apartment_navigation(
-                triggered_id, selected_data, visible_style
+                triggered_id, selected_data, True
             )
 
         # Fallback
@@ -491,15 +336,7 @@ def register_details_callbacks(app):
 # ==================== HELPER FUNCTIONS ====================
 
 def handle_button_click(trigger_id, current_filters):
-    """Handle a button click based on the button type.
-    
-    Args:
-        trigger_id: The ID of the clicked button
-        current_filters: Current filter state dictionary
-        
-    Returns:
-        bool: Whether filters were updated
-    """
+    """Handle a button click based on the button type."""
     # Handle price buttons
     price_button_ids = [btn["id"] for btn in PRICE_BUTTONS]
     if trigger_id in price_button_ids:
@@ -533,55 +370,66 @@ def handle_button_click(trigger_id, current_filters):
     if trigger_id in filter_toggle_map:
         # Toggle the filter state
         filter_key = filter_toggle_map[trigger_id]
-        current_filters[filter_key] = not current_filters[filter_key]
+        current_filters[filter_key] = not current_filters.get(filter_key, False)
         return True
 
     # Handle sort buttons
     sort_button_ids = [btn["id"] for btn in SORT_BUTTONS]
     if trigger_id in sort_button_ids:
-        # Get the selected sort column
-        active_sort_btn = trigger_id
-        sort_button = next(
-            (btn for btn in SORT_BUTTONS if btn["id"] == trigger_id), None
-        )
-
-        if sort_button:
-            sort_column = sort_button["value"]
-
-            # If the same button is clicked again, toggle the direction
-            if current_filters.get("active_sort_btn") == active_sort_btn:
-                # Toggle sort direction
-                current_filters["sort_direction"] = (
-                    "desc" if current_filters.get("sort_direction") == "asc" else "asc"
-                )
-            else:
-                # New sort button, set as active and use its default direction
-                current_filters["active_sort_btn"] = active_sort_btn
-                current_filters["sort_column"] = sort_column
-                current_filters["sort_direction"] = sort_button.get(
-                    "default_direction", "asc"
-                )
-            return True
+        return handle_sort_button_click(trigger_id, current_filters)
     
     return False
 
 
-def create_button_style(btn, index, button_type, is_active=False):
-    """Create a consistent button style.
-    
-    Args:
-        btn: Button configuration dictionary
-        index: Button index in its group
-        button_type: Type of button (price, distance, etc.)
-        is_active: Whether the button is active
+def handle_sort_button_click(trigger_id, current_filters):
+    """Handle sort button click with direction toggling."""
+    # Get the selected sort column
+    active_sort_btn = trigger_id
+    sort_button = next(
+        (btn for btn in SORT_BUTTONS if btn["id"] == trigger_id), None
+    )
+
+    if sort_button:
+        sort_column = sort_button["value"]
+
+        # If the same button is clicked again, toggle the direction
+        if current_filters.get("active_sort_btn") == active_sort_btn:
+            # Toggle sort direction
+            current_filters["sort_direction"] = (
+                "desc" if current_filters.get("sort_direction") == "asc" else "asc"
+            )
+        else:
+            # New sort button, set as active and use its default direction
+            current_filters["active_sort_btn"] = active_sort_btn
+            current_filters["sort_column"] = sort_column
+            current_filters["sort_direction"] = sort_button.get(
+                "default_direction", "asc"
+            )
+        return True
         
-    Returns:
-        dict: Style dictionary for the button
-    """
+    return False
+
+
+def get_button_text(btn, filters):
+    """Get button text with direction indicator if active."""
+    active_btn = filters.get("active_sort_btn")
+    sort_direction = filters.get("sort_direction", "asc")
+
+    if btn["id"] == active_btn:
+        arrow = "↑" if sort_direction == "asc" else "↓"
+        return f"{btn['label']} {arrow}"
+    else:
+        return btn["label"]
+
+
+def create_button_style(btn, index, button_type, is_active=False):
+    """Create a consistent button style."""
+    # Import button styles from our central location
+    from app.components import ButtonFactory
     
     # Base style
     base_style = {
-        **BUTTON_STYLES.get(button_type, {}),
+        **(ButtonFactory.BUTTON_STYLES.get(button_type, {})),
         "flex": "1",
         "margin": "0",
         "padding": "2px 0",
@@ -608,18 +456,63 @@ def create_button_style(btn, index, button_type, is_active=False):
     return base_style
 
 
-def handle_apartment_selection(row_idx, table_data, visible_style):
-    """Handle selection of an apartment from the table.
+def create_toggle_button_style(filter_name, button_id, is_active=False):
+    """Create style for a toggle-type button."""
+    from app.components import ButtonFactory
     
-    Args:
-        row_idx: Index of the selected row
-        table_data: Table data as list of dictionaries
-        visible_style: Style dictionary for the visible panel
-        
-    Returns:
-        tuple: (panel_style, panel_content, selected_data)
-    """
-    
+    # Map filter names to button types
+    button_type = filter_name
+    if filter_name == "below_estimate":
+        button_type = "below_estimate"
+    elif filter_name == "updated_today":
+        button_type = "updated_today"
+
+    base_style = {**(ButtonFactory.BUTTON_STYLES.get(button_type, {})), "flex": "1"}
+
+    if is_active:
+        base_style.update({"opacity": 1.0, "boxShadow": "0 0 5px #4682B4"})
+    else:
+        base_style.update({"opacity": 0.6})
+
+    return base_style
+
+
+def get_panel_style(visible=True):
+    """Get style for panel visibility state."""
+    if visible:
+        return {
+            "opacity": "1",
+            "visibility": "visible",
+            "pointer-events": "auto",
+            "display": "block",
+            "position": "fixed",
+            "top": "50%",
+            "left": "50%",
+            "transform": "translate(-50%, -50%)",
+            "width": "90%",
+            "maxWidth": "500px",
+            "maxHeight": "100%",
+            "zIndex": "1000",
+            "backgroundColor": "#fff",
+            "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",
+            "borderRadius": "8px",
+            "padding": "15px",
+            "overflow": "auto",
+            "transformOrigin": "center",
+            "willChange": "opacity, visibility",
+            "animation": "fadeIn 0.3s ease-in-out",
+        }
+    else:
+        return {
+            "opacity": "0",
+            "visibility": "hidden",
+            "pointer-events": "none",
+            "display": "none",
+        }
+
+
+def handle_apartment_selection(row_idx, table_data, visible=True):
+    """Handle selection of an apartment from the table."""
     row_data = table_data[row_idx]
     offer_id = row_data.get("offer_id")
 
@@ -638,42 +531,34 @@ def handle_apartment_selection(row_idx, table_data, visible_style):
             "table_data": table_data,
         }
 
-        return visible_style, details_card, selected
+        return get_panel_style(visible), details_card, selected
 
     except Exception as e:
         logger.error(f"Error loading apartment details: {e}")
         return (
-            visible_style,
+            get_panel_style(visible),
             html.Div(f"Ошибка загрузки: {e}", style={"color": "red"}),
             None,
         )
 
 
-def handle_apartment_navigation(trigger_id, selected_data, visible_style):
-    """Handle navigation between apartments.
-    
-    Args:
-        trigger_id: ID of the triggered button (prev/next)
-        selected_data: Currently selected apartment data
-        visible_style: Style dictionary for the visible panel
-        
-    Returns:
-        tuple: (panel_style, panel_content, selected_data)
-    """
-    
+def handle_apartment_navigation(trigger_id, selected_data, visible=True):
+    """Handle navigation between apartments."""
     current_idx = selected_data["row_idx"]
     table_data = selected_data["table_data"]
     total_rows = len(table_data)
 
+    # Calculate new index based on navigation direction
     new_idx = current_idx
     if trigger_id == "prev-apartment-button" and current_idx > 0:
-        new_idx -= 1
+        new_idx = current_idx - 1
     elif trigger_id == "next-apartment-button" and current_idx < total_rows - 1:
-        new_idx += 1
+        new_idx = current_idx + 1
 
     if new_idx == current_idx:
         return dash.no_update, dash.no_update, dash.no_update
 
+    # Load details for the new apartment
     new_row = table_data[new_idx]
     offer_id = new_row.get("offer_id")
 
@@ -692,6 +577,7 @@ def handle_apartment_navigation(trigger_id, selected_data, visible_style):
             "table_data": table_data,
         }
 
+        # Only update the card content and selection data, not the panel style
         return dash.no_update, details_card, selected
 
     except Exception as e:
@@ -703,9 +589,101 @@ def handle_apartment_navigation(trigger_id, selected_data, visible_style):
         )
 
 
-def register_all_callbacks(app):
-    """Register all callbacks for the application."""
-    register_data_callbacks(app)
-    register_filter_callbacks(app)
-    register_style_callbacks(app)
-    register_details_callbacks(app)
+def create_data_table(df):
+    """Create a DataTable with consistent configuration."""
+    from dash import dash_table
+    from app.config import CONFIG, STYLE, COLUMN_STYLES, HEADER_STYLES
+    
+    if df.empty:
+        return html.Div("Нет данных")
+    
+    # Define column properties
+    visible = CONFIG["columns"]["visible"] + ["details"]
+    numeric_cols = {
+        "distance",
+        "price_value_formatted",
+        "cian_estimation_formatted",
+        "price_difference_formatted",
+        "monthly_burden_formatted",
+    }
+    markdown_cols = {
+        "price_change_formatted",
+        "address_title",
+        "offer_link",
+        "price_info",
+        "update_title",
+        "property_tags",
+        "price_change",
+        "walking_time",
+        "price_text",
+    }
+
+    columns = [
+        {
+            "name": CONFIG["columns"]["headers"].get(
+                c, "Детали" if c == "details" else c
+            ),
+            "id": c,
+            "type": "numeric" if c in numeric_cols else "text",
+            "presentation": "markdown" if c in markdown_cols else None,
+        }
+        for c in visible
+    ]
+
+    # Details column styling
+    details_style = {
+        "if": {"column_id": "details"},
+        "className": "details-column",
+    }
+    markdown_style = [
+        {"if": {"column_id": col}, "textAlign": "center"} for col in markdown_cols
+    ]
+
+    # Create the DataTable
+    return dash_table.DataTable(
+        id="apartment-table",
+        columns=columns,
+        data=df.to_dict("records") if not df.empty else [],
+        sort_action="custom",
+        sort_mode="multi",
+        sort_by=[],
+        hidden_columns=CONFIG["hidden_cols"] + ["offer_id"],
+        # Responsive styling
+        style_table={
+            "overflowX": "auto",
+            "maxWidth": "1200px",
+            "width": "100%",
+            "margin": "0 auto",
+        },
+        style_cell=STYLE["cell"],
+        style_cell_conditional=STYLE.get("cell_conditional", [])
+        + [details_style]
+        + markdown_style,
+        style_header=STYLE["header_cell"],
+        style_header_conditional=HEADER_STYLES,
+        style_data=STYLE["data"],
+        style_filter=STYLE["filter"],
+        style_data_conditional=COLUMN_STYLES
+        + [
+            {
+                "if": {"column_id": "details"},
+                "fontWeight": "normal",
+                "cursor": "pointer !important",
+            }
+        ],
+        page_size=100,
+        page_action="native",
+        markdown_options={"html": True},
+        cell_selectable=True,
+        # CSS snippets
+        css=[
+            {
+                "selector": ".dash-cell:nth-child(n+1):nth-child(-n+15)",
+                "rule": "padding: 5px !important;",
+            },
+            {
+                "selector": "td.details-column",
+                "rule": "background-color: transparent !important; text-align: center !important; padding: 3px 5px !important;",
+            },
+        ],
+    )

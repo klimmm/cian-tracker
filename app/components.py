@@ -4,22 +4,28 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class UIComponentFactory:
+    """Base factory for all UI components with consistent styling."""
+    
+    @staticmethod
+    def create_container(children, style=None, custom_class=None, **kwargs):
+        """Create a generic container with consistent styling."""
+        base_style = {
+            "margin": "0",
+            "padding": "0",
+        }
+        
+        if style:
+            base_style.update(style)
+            
+        return html.Div(children, style=base_style, className=custom_class, **kwargs)
+
 class PillFactory:
     """Factory for creating pill/tag components with consistent styling."""
     
     @staticmethod
     def create(text, bg_color="#f0f0f0", text_color="#333", custom_style=None):
-        """Create a pill/tag component with standard styling.
-        
-        Args:
-            text: Text content for the pill
-            bg_color: Background color (hex or named)
-            text_color: Text color (hex or named)
-            custom_style: Additional style attributes (dict)
-        
-        Returns:
-            html.Div component with pill styling
-        """
+        """Create a pill/tag component with standard styling."""
         base_style = {
             "display": "inline-block",
             "fontSize": "10px", 
@@ -69,21 +75,21 @@ class PillFactory:
 class ButtonFactory:
     """Factory for creating styled buttons with consistent appearance."""
     
+    # Define button type style mappings once
+    BUTTON_STYLES = {
+        "default": {"backgroundColor": "#f5f5f5"},
+        "price": {"backgroundColor": "#e8e8e0"},
+        "distance": {"backgroundColor": "#e0e4e8"},
+        "nearest": {"backgroundColor": "#d9edf7"},
+        "below_estimate": {"backgroundColor": "#fef3d5"},
+        "updated_today": {"backgroundColor": "#dff0d8"},
+        "inactive": {"backgroundColor": "#f4f4f4"},
+        "sort": {"backgroundColor": "#e0e0e8"}
+    }
+    
     @staticmethod
     def create(label, button_id, button_type="default", is_active=False, custom_style=None, **kwargs):
-        """Create a styled button.
-        
-        Args:
-            label: Button text
-            button_id: HTML ID for the button
-            button_type: Type identifier for style (default, price, distance, etc.)
-            is_active: Whether the button should have active styling
-            custom_style: Additional style attributes (dict)
-            **kwargs: Additional HTML attributes
-            
-        Returns:
-            html.Button component
-        """
+        """Create a styled button."""
         # Base style for all buttons
         base_style = {
             "display": "inline-block",
@@ -96,19 +102,8 @@ class ButtonFactory:
         }
         
         # Apply type-specific styling
-        type_styles = {
-            "default": {"backgroundColor": "#f5f5f5"},
-            "price": {"backgroundColor": "#e8e8e0"},
-            "distance": {"backgroundColor": "#e0e4e8"},
-            "nearest": {"backgroundColor": "#d9edf7"},
-            "below_estimate": {"backgroundColor": "#fef3d5"},
-            "updated_today": {"backgroundColor": "#dff0d8"},
-            "inactive": {"backgroundColor": "#f4f4f4"},
-            "sort": {"backgroundColor": "#e0e0e8"}
-        }
-        
-        if button_type in type_styles:
-            base_style.update(type_styles[button_type])
+        if button_type in ButtonFactory.BUTTON_STYLES:
+            base_style.update(ButtonFactory.BUTTON_STYLES[button_type])
             
         # Apply active styling if button is active
         if is_active:
@@ -128,6 +123,72 @@ class ButtonFactory:
             base_style.update(custom_style)
             
         return html.Button(label, id=button_id, style=base_style, **kwargs)
+    
+    @staticmethod
+    def create_button_group(buttons, label_text=None, active_button_id=None):
+        """Create a button group with joined buttons and optional label."""
+        button_elements = []
+        
+        # Add label if provided
+        if label_text:
+            button_elements.append(
+                html.Label(
+                    label_text,
+                    className="dash-label",
+                    style={
+                        "marginBottom": "2px",
+                        "marginRight": "5px",
+                        "minWidth": "110px",
+                        "width": "110px",
+                        "display": "inline-block",
+                        "whiteSpace": "nowrap",
+                    },
+                )
+            )
+        
+        # Create container for buttons
+        button_container = html.Div(
+            [
+                ButtonFactory.create(
+                    btn["label"],
+                    btn["id"],
+                    button_type=btn.get("type", "default"),
+                    is_active=btn.get("default", False) or btn["id"] == active_button_id,
+                    custom_style={
+                        "flex": "1",
+                        "margin": "0",
+                        "padding": "2px 0",
+                        "lineHeight": "1",
+                        "borderRadius": "0",
+                        "borderLeft": "none" if i > 0 else "1px solid #ccc",
+                        "position": "relative",
+                    }
+                )
+                for i, btn in enumerate(buttons)
+            ],
+            style={
+                "display": "flex",
+                "flex": "1",
+                "width": "100%",
+                "gap": "0",
+                "border-collapse": "collapse",
+            },
+        )
+        
+        button_elements.append(button_container)
+        
+        # Return the complete button group
+        return html.Div(
+            button_elements,
+            style={
+                "margin": "2px",
+                "marginBottom": "6px",
+                "textAlign": "left",
+                "width": "100%",
+                "display": "flex",
+                "alignItems": "center",
+            },
+        )
 
 
 class ContainerFactory:
@@ -135,16 +196,7 @@ class ContainerFactory:
     
     @staticmethod
     def create_section(children, title=None, custom_style=None):
-        """Create a styled section container.
-        
-        Args:
-            children: Child components
-            title: Optional section title
-            custom_style: Additional style attributes (dict)
-            
-        Returns:
-            html.Div container with consistent styling
-        """
+        """Create a styled section container."""
         base_style = {
             "marginBottom": "15px",
             "borderBottom": "1px solid #eee",
@@ -178,24 +230,57 @@ class ContainerFactory:
     
     @staticmethod
     def create_flex_container(children, is_wrap=True, justify="flex-start", gap="3px", custom_style=None):
-        """Create a flexbox container with common settings.
-        
-        Args:
-            children: Child components
-            is_wrap: Whether to wrap items
-            justify: Flexbox justification (flex-start, center, etc.)
-            gap: Gap between items
-            custom_style: Additional style attributes (dict)
-            
-        Returns:
-            html.Div with flexbox styling
-        """
+        """Create a flexbox container with common settings."""
         base_style = {
             "display": "flex",
             "flexWrap": "wrap" if is_wrap else "nowrap",
             "gap": gap,
             "justifyContent": justify,
             "marginBottom": "10px",
+        }
+        
+        if custom_style:
+            base_style.update(custom_style)
+            
+        return html.Div(children, style=base_style)
+    
+    @staticmethod
+    def create_card(children, custom_style=None):
+        """Create a card container with shadow and rounded corners."""
+        base_style = {
+            "padding": "10px",
+            "backgroundColor": "#fff",
+            "borderRadius": "6px",
+            "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.1)",
+            "width": "100%",
+            "margin": "0 auto"
+        }
+        
+        if custom_style:
+            base_style.update(custom_style)
+            
+        return html.Div(children, style=base_style)
+    
+    @staticmethod
+    def create_overlay_panel(children, visible=False, custom_style=None):
+        """Create a modal overlay panel."""
+        base_style = {
+            "position": "fixed",
+            "top": "50%",
+            "left": "50%",
+            "transform": "translate(-50%, -50%)",
+            "width": "90%",
+            "maxWidth": "500px",
+            "maxHeight": "100%",
+            "zIndex": "1000",
+            "backgroundColor": "#fff",
+            "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",
+            "borderRadius": "8px",
+            "padding": "15px",
+            "overflow": "auto",
+            "opacity": "1" if visible else "0",
+            "visibility": "visible" if visible else "hidden",
+            "pointer-events": "auto" if visible else "none"
         }
         
         if custom_style:

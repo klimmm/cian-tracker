@@ -5,7 +5,7 @@ from dash import dcc
 import logging
 from app.layout import create_app_layout
 from app.dashboard_callbacks import register_all_callbacks
-from app.app_config import set_data_dir, get_data_dir, logger
+from app.app_config import AppConfig
 
 # Configure logging
 logging.basicConfig(
@@ -15,43 +15,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Define a global variable for the data directory that can be accessed by other modules
-DATA_DIR = None
 
 def initialize_app(data_dir=None):
     """Initialize the Dash application with proper configuration."""
-    # Set the data directory if provided
-    if data_dir:
-        set_data_dir(data_dir)
-        logger.info(f"Using data directory: {get_data_dir()}")
-    else:
-        # Default is already set in app_config.py
-        logger.info(f"Using default data directory: {get_data_dir()}")
+    # Initialize AppConfig
+    AppConfig.initialize(data_dir)
+    logger.info(f"Using data directory: {AppConfig.get_data_dir()}")
     
-    # Get current directory to set up assets properly
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    assets_path = os.path.join(current_dir, "assets")
-    
-    # Log the paths for debugging
-    logger.info(f"Current directory: {current_dir}")
+    # Get assets path from AppConfig
+    assets_path = AppConfig.get_path("assets")
     logger.info(f"Assets path: {assets_path}")
-    logger.info(f"DATA_DIR: {get_data_dir()}")
+    
+    # Ensure the assets directory exists
+    if not os.path.exists(assets_path):
+        os.makedirs(assets_path)
 
     # Initialize the app with proper assets configuration
     app = dash.Dash(
         __name__,
-        title="",
+        title="Cian Apartment Dashboard",
         meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
         suppress_callback_exceptions=True,
-        assets_folder=assets_path,
+        assets_folder=str(assets_path),
     )
 
-    # Create assets directory structure if it doesn't exist
-    if not os.path.exists(assets_path):
-        os.makedirs(assets_path)
-
-    # Link the root images directory to the assets folder
-    setup_image_directory(get_data_dir(), assets_path)
+    # Set up images directory links
+    setup_image_directory(assets_path)
 
     server = app.server
 
@@ -84,7 +73,7 @@ def initialize_app(data_dir=None):
     # Get base layout from layout module
     base_layout = create_app_layout(app)
 
-    # Add our new data store to the layout
+    # Add our data store to the layout
     if isinstance(base_layout, dash.html.Div) and hasattr(base_layout, "children"):
         if isinstance(base_layout.children, list):
             base_layout.children.append(apartment_data_store)
@@ -94,14 +83,17 @@ def initialize_app(data_dir=None):
     # Set the app layout
     app.layout = base_layout
 
+    # Register callbacks
+    register_all_callbacks(app)
+
     return app
 
 
-def setup_image_directory(root_dir, assets_path):
+def setup_image_directory(assets_path):
     """Set up image directory with proper linking."""
-    # Point to images directory in ROOT_DIR
-    images_dir = os.path.join(root_dir, "images")
-    assets_images_dir = os.path.join(assets_path, "images")
+    # Get image directories
+    images_dir = AppConfig.get_images_path()
+    assets_images_dir = assets_path / "images"
 
     logger.info(f"Source images directory: {images_dir}")
     logger.info(f"Target assets images directory: {assets_images_dir}")
@@ -114,7 +106,7 @@ def setup_image_directory(root_dir, assets_path):
                     # Try directory junction on Windows
                     import subprocess
                     subprocess.run(
-                        ["mklink", "/J", assets_images_dir, images_dir], 
+                        ["mklink", "/J", str(assets_images_dir), str(images_dir)], 
                         shell=True, 
                         check=False
                     )
@@ -148,13 +140,6 @@ def run_server(app, debug=True, port=8050):
     app.run_server(debug=debug, host="0.0.0.0", port=port)
 
 
-def register_callbacks(app):
-    """Import and register all callbacks after app creation to avoid circular imports"""
-    register_all_callbacks(app)
-
-
 if __name__ == "__main__":
     app = initialize_app()
-    # Register callbacks after app initialization
-    register_callbacks(app)
     app.run_server(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8050)))

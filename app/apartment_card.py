@@ -4,9 +4,11 @@ import logging
 import re
 import os
 import base64
+from pathlib import Path
 from app.components import PillFactory, ContainerFactory
 from app.formatters import FormatUtils
-from app.app_config import get_data_dir  # Use the new function
+from app.app_config import AppConfig
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] - %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
@@ -18,28 +20,15 @@ class ImageHandler:
     @staticmethod
     def get_apartment_images(offer_id):
         """Get base64 encoded images for apartment with robust path handling."""
-        # Get the images directory from DATA_DIR
-        base_image_dir = os.path.join(get_data_dir(), "images")
-        image_dir = os.path.join(base_image_dir, str(offer_id))
-        
-        logger.info(f"Looking for images in: {image_dir}")
-        # Rest of the method remains the same
-
-        # Try multiple path options to find images
-        image_paths = []
         try:
-            # Check if the primary directory exists
-            if not os.path.exists(image_dir):
+            # Use AppConfig for consistent path handling
+            image_dir = AppConfig.get_images_path(str(offer_id))
+            logger.info(f"Looking for images in: {image_dir}")
+            
+            # Check if the directory exists
+            if not image_dir.exists():
                 logger.warning(f"Image directory not found: {image_dir}")
-                # Try an alternative path (relative to current working directory)
-                alt_image_dir = os.path.join(ROOT_DIR, "images", str(offer_id))
-                
-                if os.path.exists(alt_image_dir):
-                    image_dir = alt_image_dir
-                    logger.info(f"Using alternative image path: {os.path.abspath(image_dir)}")
-                else:
-                    logger.warning(f"Alternative image directory not found: {os.path.abspath(alt_image_dir)}")
-                    return []
+                return []
 
             # List all jpg files in the directory
             image_files = [f for f in os.listdir(image_dir) if f.lower().endswith(".jpg")]
@@ -50,8 +39,9 @@ class ImageHandler:
                 return []
 
             # Encode each image as base64
+            image_paths = []
             for file in sorted(image_files):
-                image_path = os.path.join(image_dir, file)
+                image_path = image_dir / file
                 try:
                     with open(image_path, "rb") as image_file:
                         encoded_string = base64.b64encode(image_file.read()).decode()
@@ -319,11 +309,11 @@ class ApartmentCardBuilder:
         # Process price history for tags
         price_history_tags = []
         if price_history:
-            # Sort history by date
-            sorted_history = sorted(price_history, key=lambda x: x.get("date_iso", ""))
-            
             # Track unique date+price combinations to avoid duplicates
             seen_entries = set()
+            
+            # Sort history by date
+            sorted_history = sorted(price_history, key=lambda x: x.get("date_iso", ""))
             
             # Create a pill for each unique price history entry
             for entry in sorted_history:
@@ -505,33 +495,12 @@ def create_apartment_details_card(apartment_data, table_row_data=None, row_idx=N
     offer_id = apartment_data.get("offer_id", "")
 
     # Extract address and other info from table_row_data if available
-    address = ""
-    distance = ""
-    metro = ""
-    title = ""
-    cian_est = ""
-    price = ""
-    description = ""
+    address, distance, metro, title, cian_est, price, description = extract_row_data(table_row_data)
 
-    if table_row_data:
-        address = (
-            table_row_data.get("address_title", "")
-            .split("<br>")[0]
-            .replace("[", "")
-            .split("](")[0]
-            if "<br>" in table_row_data.get("address_title", "")
-            else ""
-        )
-        distance = table_row_data.get("distance", "")
-        metro = table_row_data.get("metro_station", "")
-        title = (
-            table_row_data.get("address_title", "").split("<br>")[1]
-            if "<br>" in table_row_data.get("address_title", "")
-            else table_row_data.get("title", "")
-        )
-        cian_est = table_row_data.get("cian_estimation_formatted", "")
-        price = table_row_data.get("price_value_formatted", "")
-        description = table_row_data.get("description", "")
+    # Create navigation header
+    nav_header = ApartmentCardBuilder.create_navigation_header(
+        offer_id, row_idx, total_rows
+    )
 
     # Build the card section by section
     slideshow = ImageHandler.create_slideshow(offer_id)
@@ -544,32 +513,60 @@ def create_apartment_details_card(apartment_data, table_row_data=None, row_idx=N
     terms_section = ApartmentCardBuilder.create_terms_section(apartment_data.get("terms", {}))
     property_section = ApartmentCardBuilder.create_property_features_section(apartment_data)
 
-    # Assemble all sections in the correct order
+    # Assemble all sections in the correct order (filtering out None sections)
     all_sections = [
-        slideshow,
-        address_section,
-        price_section,
-        terms_section,
-        property_section,
-        description,
+        section for section in [
+            nav_header,
+            slideshow,
+            address_section,
+            price_section,
+            terms_section,
+            property_section,
+            html.Div(description, style={"fontSize": "11px", "lineHeight": "1.3"}) if description else None,
+        ] if section is not None
     ]
 
-    # Filter out None sections
-    all_sections = [section for section in all_sections if section is not None]
-
     # Create the card container
-    return html.Div(
+    return ContainerFactory.create_card(
         all_sections,
-        style={
-            "padding": "10px",
-            "backgroundColor": "#fff",
+        custom_style={
             "fontFamily": "Arial, sans-serif",
             "fontSize": "10px",
-            "borderRadius": "6px",
-            "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.1)",
-            "width": "100%",
-            "maxWidth": "500px",
-            "margin": "0 auto",
             "lineHeight": "1.2",
-        },
+            "maxWidth": "500px"
+        }
     )
+
+
+def extract_row_data(table_row_data):
+    """Extract and format address and other data from table_row_data."""
+    if not table_row_data:
+        return "", "", "", "", "", "", ""
+        
+    # Extract address from address_title
+    address = (
+        table_row_data.get("address_title", "")
+        .split("<br>")[0]
+        .replace("[", "")
+        .split("](")[0]
+        if "<br>" in table_row_data.get("address_title", "")
+        else ""
+    )
+    
+    # Extract other fields
+    distance = table_row_data.get("distance", "")
+    metro = table_row_data.get("metro_station", "")
+    
+    # Extract title from address_title or use title field
+    title = (
+        table_row_data.get("address_title", "").split("<br>")[1]
+        if "<br>" in table_row_data.get("address_title", "")
+        else table_row_data.get("title", "")
+    )
+    
+    # Extract remaining fields
+    cian_est = table_row_data.get("cian_estimation_formatted", "")
+    price = table_row_data.get("price_value_formatted", "")
+    description = table_row_data.get("description", "")
+    
+    return address, distance, metro, title, cian_est, price, description
