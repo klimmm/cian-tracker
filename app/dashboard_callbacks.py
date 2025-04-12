@@ -4,17 +4,18 @@ from dash.dependencies import Input, Output, State, MATCH
 import dash
 import logging
 import pandas as pd
-from app.utils import DataManager, load_apartment_details
+from typing import Dict, List, Any, Tuple, Optional, Union
+from app.utils import DataManager, load_apartment_details, ErrorHandler
 from app.apartment_card import create_apartment_details_card
 from app.config import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS, BUTTON_STYLES
 from dash import dash_table, html
 from app.config import CONFIG, STYLE, COLUMN_STYLES, HEADER_STYLES
-from app.components import ButtonFactory
+from app.components import StyleManager
 
 logger = logging.getLogger(__name__)
 
 
-def register_all_callbacks(app):
+def register_all_callbacks(app: dash.Dash) -> None:
     """Register all callbacks for the application."""
     register_data_callbacks(app)
     register_filter_callbacks(app)
@@ -22,7 +23,7 @@ def register_all_callbacks(app):
     register_details_callbacks(app)
 
 
-def register_data_callbacks(app):
+def register_data_callbacks(app: dash.Dash) -> None:
     """Register callbacks for data loading and management."""
     
     @app.callback(
@@ -33,7 +34,7 @@ def register_data_callbacks(app):
         [Input("interval-component", "n_intervals")],
         prevent_initial_call=False,
     )
-    def load_apartment_data(_):
+    def load_apartment_data(_) -> Tuple[List[Dict[str, Any]], str]:
         """Load apartment data and update the data store."""
         try:
             # Load data from files
@@ -71,13 +72,11 @@ def register_data_callbacks(app):
             return df_dict, f"Актуально на: {update_time}"
             
         except Exception as e:
-            import traceback
-            logger.error(f"Error loading data: {e}")
-            logger.error(traceback.format_exc())
+            logger.error(f"Error loading data: {e}", exc_info=True)
             return [], f"Ошибка загрузки данных: {str(e)}"
 
 
-def register_filter_callbacks(app):
+def register_filter_callbacks(app: dash.Dash) -> None:
     """Register callbacks for filter management."""
     
     # Unified filter button callback
@@ -97,7 +96,7 @@ def register_filter_callbacks(app):
         [State("filter-store", "data")],
         prevent_initial_call=True,
     )
-    def unified_filter_update(*args):
+    def unified_filter_update(*args) -> List[Dict[str, Any]]:
         """Update filter store based on button clicks."""
         # Get the triggered input
         ctx_msg = ctx.triggered[0] if ctx.triggered else None
@@ -108,20 +107,20 @@ def register_filter_callbacks(app):
         trigger_id = ctx_msg["prop_id"].split(".")[0]
 
         # Get current filter state
-        current_filters = args[-1]  # Last argument is the filter-store State
+        current_filters = args[-1] or {}  # Last argument is the filter-store State
         
         # Handle button clicks based on type
-        filter_updated = handle_button_click(trigger_id, current_filters)
+        handle_button_click(trigger_id, current_filters)
         
-        # Return updated filters if changes were made
-        return [current_filters] if filter_updated else [dash.no_update]
-    
-    
+        # Return updated filters
+        return [current_filters]
+
+
     @app.callback(
         [Output("table-container", "children")],
         [Input("filter-store", "data"), Input("apartment-data-store", "data")],
     )
-    def update_table_content(filters, data):
+    def update_table_content(filters, data) -> List[html.Div]:
         """Update table based on filters, using cached data."""
         if not data:
             return [html.Div("Нет данных")]
@@ -142,7 +141,7 @@ def register_filter_callbacks(app):
         [Input("apartment-table", "sort_by"), Input("filter-store", "data")],
         [State("apartment-data-store", "data")],
     )
-    def update_sort(sort_by, filters, data):
+    def update_sort(sort_by, filters, data) -> List[Dict[str, Any]]:
         """Handle table sorting using cached data."""
         if not data:
             return []
@@ -157,14 +156,13 @@ def register_filter_callbacks(app):
         return df.to_dict("records")
     
         
-    # Updated callback in app/dashboard_callbacks.py
-    
+    # Updated callback for sort button text
     @app.callback(
         [*[Output(f"{btn['id']}-text", "children") for btn in SORT_BUTTONS]],
         [Input("filter-store", "data")],
         prevent_initial_call=False,  # Changed from True to False to handle initial load
     )
-    def update_sort_button_text(filters):
+    def update_sort_button_text(filters) -> List[str]:
         """Update sort button text with direction indicators."""
         if not filters:
             return [btn["label"] for btn in SORT_BUTTONS]
@@ -182,7 +180,8 @@ def register_filter_callbacks(app):
     
         return button_texts
 
-def register_style_callbacks(app):
+
+def register_style_callbacks(app: dash.Dash) -> None:
     """Register callbacks for styling updates."""
     
     @app.callback(
@@ -197,7 +196,7 @@ def register_style_callbacks(app):
         ],
         [Input("filter-store", "data")],
     )
-    def update_button_styles(filters):
+    def update_button_styles(filters) -> List[Dict[str, Any]]:
         """Update button styles based on filter store state."""
         
         if not filters:
@@ -223,7 +222,9 @@ def register_style_callbacks(app):
             ("updated_today", "btn-updated-today"),
         ]:
             button_type = filter_name
-            base_style = {**BUTTON_STYLES.get(button_type, {}), "flex": "1"}
+            base_style = StyleManager.merge_styles(
+                BUTTON_STYLES.get(button_type, {}), {"flex": "1"}
+            )
 
             if filters.get(filter_name):
                 base_style.update({"opacity": 1.0, "boxShadow": "0 0 5px #4682B4"})
@@ -240,7 +241,7 @@ def register_style_callbacks(app):
         return styles
 
 
-def register_details_callbacks(app):
+def register_details_callbacks(app: dash.Dash) -> None:
     """Register callbacks for apartment details panel."""
     
     @app.callback(
@@ -258,45 +259,35 @@ def register_details_callbacks(app):
         [
             State("apartment-table", "data"),
             State("selected-apartment-store", "data"),
+            State("apartment-details-panel", "style"),
         ],
         prevent_initial_call=True,
     )
     def handle_apartment_panel(
-        active_cell, prev_clicks, next_clicks, close_clicks, table_data, selected_data
-    ):
+        active_cell, prev_clicks, next_clicks, close_clicks, 
+        table_data, selected_data, current_style
+    ) -> Tuple[Dict[str, Any], Union[html.Div, dash.no_update], Union[Dict[str, Any], None, dash.no_update]]:
         """Handle the apartment details panel interactions."""
         
         triggered_id = ctx.triggered_id
         
         # Panel style presets
-        hidden_style = {
+        if not current_style:
+            current_style = {}
+            
+        hidden_style = StyleManager.merge_styles(current_style, {
             "opacity": "0",
             "visibility": "hidden",
             "pointer-events": "none",
             "display": "none",
-        }
-        visible_style = {
+        })
+        
+        visible_style = StyleManager.merge_styles(current_style, {
             "opacity": "1",
             "visibility": "visible",
             "pointer-events": "auto",
             "display": "block",
-            "position": "fixed",
-            "top": "50%",
-            "left": "50%",
-            "transform": "translate(-50%, -50%)",
-            "width": "90%",
-            "maxWidth": "500px",
-            "maxHeight": "100%",
-            "zIndex": "1000",
-            "backgroundColor": "#fff",
-            "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",
-            "borderRadius": "8px",
-            "padding": "15px",
-            "overflow": "auto",
-            "transformOrigin": "center",
-            "willChange": "opacity, visibility",
-            "animation": "fadeIn 0.3s ease-in-out",
-        }
+        })
 
         # Handle close
         if triggered_id == "close-details-button":
@@ -383,9 +374,34 @@ def register_details_callbacks(app):
 
 # ==================== HELPER FUNCTIONS ====================
 
-def handle_button_click(trigger_id, current_filters):
+def handle_button_click(trigger_id: str, current_filters: Dict[str, Any]) -> bool:
     """Handle a button click based on the button type."""
+    
+    # Initialize filter structure if needed
+    if not current_filters:
+        current_filters = {}
+        
     # Handle price buttons
+    if _handle_price_button(trigger_id, current_filters):
+        return True
+        
+    # Handle distance buttons
+    if _handle_distance_button(trigger_id, current_filters):
+        return True
+        
+    # Handle filter toggle buttons
+    if _handle_toggle_button(trigger_id, current_filters):
+        return True
+        
+    # Handle sort buttons
+    if _handle_sort_button(trigger_id, current_filters):
+        return True
+        
+    return False
+
+
+def _handle_price_button(trigger_id: str, current_filters: Dict[str, Any]) -> bool:
+    """Handle price button clicks."""
     price_button_ids = [btn["id"] for btn in PRICE_BUTTONS]
     if trigger_id in price_button_ids:
         # Set the active price button and corresponding value
@@ -395,8 +411,11 @@ def handle_button_click(trigger_id, current_filters):
             current_filters.get("price_value", 80000),
         )
         return True
+    return False
 
-    # Handle distance buttons
+
+def _handle_distance_button(trigger_id: str, current_filters: Dict[str, Any]) -> bool:
+    """Handle distance button clicks."""
     distance_button_ids = [btn["id"] for btn in DISTANCE_BUTTONS]
     if trigger_id in distance_button_ids:
         # Set the active distance button and corresponding value
@@ -406,8 +425,11 @@ def handle_button_click(trigger_id, current_filters):
             current_filters.get("distance_value", 3.0),
         )
         return True
+    return False
 
-    # Handle filter toggle buttons
+
+def _handle_toggle_button(trigger_id: str, current_filters: Dict[str, Any]) -> bool:
+    """Handle filter toggle button clicks."""
     filter_toggle_map = {
         "btn-nearest": "nearest",
         "btn-below-estimate": "below_estimate",
@@ -420,8 +442,11 @@ def handle_button_click(trigger_id, current_filters):
         filter_key = filter_toggle_map[trigger_id]
         current_filters[filter_key] = not current_filters.get(filter_key, False)
         return True
+    return False
 
-    # Handle sort buttons
+
+def _handle_sort_button(trigger_id: str, current_filters: Dict[str, Any]) -> bool:
+    """Handle sort button clicks."""
     sort_button_ids = [btn["id"] for btn in SORT_BUTTONS]
     if trigger_id in sort_button_ids:
         # Get the selected sort column
@@ -447,44 +472,17 @@ def handle_button_click(trigger_id, current_filters):
                     "default_direction", "asc"
                 )
             return True
-    
     return False
 
 
-def create_button_style(btn, index, button_type, is_active=False):
+def create_button_style(btn: Dict[str, Any], index: int, button_type: str, 
+                       is_active: bool = False) -> Dict[str, Any]:
     """Create a consistent button style."""
-    # Use BUTTON_STYLES directly from config instead of from ButtonFactory
-    
-    # Base style
-    base_style = {
-        **(BUTTON_STYLES.get(button_type, {})),
-        "flex": "1",
-        "margin": "0",
-        "padding": "2px 0",
-        "fontSize": "10px",
-        "lineHeight": "1",
-        "borderRadius": "0",
-        "borderLeft": "none" if index > 0 else "1px solid #ccc",
-        "position": "relative",
-    }
-
-    # Apply active styling if this is the active button
-    if is_active:
-        base_style.update({
-            "opacity": 1.0,
-            "boxShadow": "0 0 5px #4682B4",
-            "zIndex": "1",
-        })
-    else:
-        base_style.update({
-            "opacity": 0.6,
-            "zIndex": "0",
-        })
-        
-    return base_style
+    return StyleManager.create_button_style(button_type, is_active, index, True)
 
 
-def handle_apartment_selection(row_idx, table_data, visible_style):
+def handle_apartment_selection(row_idx: int, table_data: List[Dict[str, Any]],
+                              visible_style: Dict[str, Any]) -> Tuple[Dict[str, Any], html.Div, Dict[str, Any]]:
     """Handle selection of an apartment from the table."""
     row_data = table_data[row_idx]
     offer_id = row_data.get("offer_id")
@@ -515,7 +513,8 @@ def handle_apartment_selection(row_idx, table_data, visible_style):
         )
 
 
-def handle_apartment_navigation(trigger_id, selected_data, visible_style):
+def handle_apartment_navigation(trigger_id: str, selected_data: Dict[str, Any],
+                              visible_style: Dict[str, Any]) -> Tuple[dash.no_update, html.Div, Dict[str, Any]]:
     """Handle navigation between apartments."""
     current_idx = selected_data["row_idx"]
     table_data = selected_data["table_data"]
@@ -559,7 +558,7 @@ def handle_apartment_navigation(trigger_id, selected_data, visible_style):
         )
 
 
-def create_data_table(df):
+def create_data_table(df: pd.DataFrame) -> Union[dash_table.DataTable, html.Div]:
     """Create a DataTable with consistent configuration."""
     if df.empty:
         return html.Div("Нет данных")

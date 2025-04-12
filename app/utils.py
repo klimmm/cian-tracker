@@ -3,18 +3,93 @@ import pandas as pd
 import json
 import os
 import logging
+import traceback
 from pathlib import Path
+from typing import Tuple, Dict, List, Optional, Any, Callable, Union
 from app.config import CONFIG, MOSCOW_TZ
-from app.formatters import PriceFormatter, TimeFormatter, DataExtractor, FormatUtils
+from app.formatters import PriceFormatter, TimeFormatter, DataExtractor, FormatUtils, HtmlFormatter
 from app.app_config import AppConfig
 
 logger = logging.getLogger(__name__)
+
+class ErrorHandler:
+    """Standardized error handling and logging."""
+    
+    @staticmethod
+    def log_and_return(logger, operation_name: str, error: Exception, 
+                      default_return: Any = None, log_level: str = "error") -> Any:
+        """Log an error and return a default value.
+        
+        Args:
+            logger: Logger instance
+            operation_name: Name of the operation that failed
+            error: Exception that occurred
+            default_return: Value to return on error
+            log_level: Logging level to use
+            
+        Returns:
+            The default return value
+        """
+        log_method = getattr(logger, log_level)
+        log_method(f"Error in {operation_name}: {str(error)}")
+        
+        if log_level == "error":
+            # Optionally log more details for errors
+            logger.debug(f"Traceback: {traceback.format_exc()}")
+            
+        return default_return
+    
+    @staticmethod
+    def try_operation(logger, operation_name: str, operation_func: Callable, 
+                     *args, default_return: Any = None, **kwargs) -> Any:
+        """Try to execute an operation with standardized error handling.
+        
+        Args:
+            logger: Logger instance
+            operation_name: Name of the operation
+            operation_func: Function to execute
+            *args: Arguments to pass to the function
+            default_return: Value to return on error
+            **kwargs: Keyword arguments to pass to the function
+            
+        Returns:
+            The result of the operation or the default return value on error
+        """
+        try:
+            return operation_func(*args, **kwargs)
+        except Exception as e:
+            return ErrorHandler.log_and_return(logger, operation_name, e, default_return)
+    
+    @staticmethod
+    def fallback_chain(logger, operation_name: str, operations: List[Tuple[Callable, List, Dict]]) -> Any:
+        """Try a sequence of operations until one succeeds.
+        
+        Args:
+            logger: Logger instance
+            operation_name: Name of the overall operation
+            operations: List of (func, args, kwargs) tuples to try in order
+            
+        Returns:
+            The result of the first successful operation, or None if all fail
+        """
+        for i, (func, args, kwargs) in enumerate(operations):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                logger.warning(f"Fallback {i+1}/{len(operations)} for {operation_name} failed: {e}")
+                
+                # If this is the last operation, log as error
+                if i == len(operations) - 1:
+                    logger.error(f"All fallbacks for {operation_name} failed")
+                    
+        return None
+
 
 class DataManager:
     """Centralized manager for all data operations with improved error handling."""
     
     @staticmethod
-    def load_csv_safely(file_path):
+    def load_csv_safely(file_path: str) -> pd.DataFrame:
         """Load a CSV file with robust error handling for malformed files."""
         if not os.path.exists(file_path):
             logger.warning(f"File not found: {file_path}")
@@ -22,98 +97,111 @@ class DataManager:
 
         try:
             # First try using Python's built-in CSV module which is more forgiving
-            import csv
-
-            # Read raw data while auto-detecting dialect
-            with open(file_path, "r", encoding="utf-8") as f:
-                # Sample first 1000 chars to detect format
-                sample = f.read(1000)
-                f.seek(0)
-
-                # Try to detect the dialect
-                try:
-                    dialect = csv.Sniffer().sniff(sample)
-                    reader = csv.reader(f, dialect)
-                except:
-                    # If detection fails, use most permissive settings
-                    reader = csv.reader(
-                        f, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
-                    )
-
-                rows = list(reader)
-
-            if not rows:
-                return pd.DataFrame()
-
-            # Find maximum field count
-            max_fields = max(len(row) for row in rows)
-
-            # Use header as column names, padded if needed
-            header = rows[0]
-
-            # Pad header if it has fewer columns than data rows
-            if len(header) < max_fields:
-                header = header + [f"unnamed_{i}" for i in range(len(header), max_fields)]
-
-            # Fix possible duplicate column names
-            unique_header = []
-            seen = set()
-
-            for col in header:
-                if col in seen or not col:  # Also handle empty column names
-                    # Add suffix to make the column name unique
-                    count = 1
-                    new_col = f"column_{count}" if not col else f"{col}_{count}"
-                    while new_col in seen:
-                        count += 1
-                        new_col = f"column_{count}" if not col else f"{col}_{count}"
-                    unique_header.append(new_col)
-                else:
-                    unique_header.append(col)
-                seen.add(unique_header[-1])
-
-            # Create DataFrame, padding rows that have fewer fields
-            data = []
-            for row in rows[1:]:  # Skip header
-                # Pad row if needed
-                if len(row) < max_fields:
-                    row = row + [""] * (max_fields - len(row))
-                # Truncate if longer (shouldn't happen with max_fields)
-                data.append(row[:max_fields])
-
-            df = pd.DataFrame(data, columns=unique_header)
-            return df
-
+            return DataManager._load_with_csv_module(file_path)
         except Exception as e:
             logger.error(f"Error in CSV module parsing for {file_path}: {str(e)}")
+            return DataManager._load_with_pandas_fallback(file_path)
+    
+    @staticmethod
+    def _load_with_csv_module(file_path: str) -> pd.DataFrame:
+        """Load CSV using Python's CSV module for better error tolerance."""
+        import csv
 
-            # Fallback to pandas with error handling options
+        # Read raw data while auto-detecting dialect
+        with open(file_path, "r", encoding="utf-8") as f:
+            # Sample first 1000 chars to detect format
+            sample = f.read(1000)
+            f.seek(0)
+
+            # Try to detect the dialect
             try:
-                # Try with some common settings that might help with malformed files
+                dialect = csv.Sniffer().sniff(sample)
+                reader = csv.reader(f, dialect)
+            except:
+                # If detection fails, use most permissive settings
+                reader = csv.reader(
+                    f, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
+                )
+
+            rows = list(reader)
+
+        if not rows:
+            return pd.DataFrame()
+
+        # Find maximum field count
+        max_fields = max(len(row) for row in rows)
+
+        # Use header as column names, padded if needed
+        header = rows[0]
+
+        # Pad header if it has fewer columns than data rows
+        if len(header) < max_fields:
+            header = header + [f"unnamed_{i}" for i in range(len(header), max_fields)]
+
+        # Fix possible duplicate column names
+        unique_header = DataManager._create_unique_header(header)
+
+        # Create DataFrame, padding rows that have fewer fields
+        data = []
+        for row in rows[1:]:  # Skip header
+            # Pad row if needed
+            if len(row) < max_fields:
+                row = row + [""] * (max_fields - len(row))
+            # Truncate if longer (shouldn't happen with max_fields)
+            data.append(row[:max_fields])
+
+        return pd.DataFrame(data, columns=unique_header)
+        
+    @staticmethod
+    def _create_unique_header(header: List[str]) -> List[str]:
+        """Create unique header names from potentially duplicate names."""
+        unique_header = []
+        seen = set()
+
+        for col in header:
+            if col in seen or not col:  # Also handle empty column names
+                # Add suffix to make the column name unique
+                count = 1
+                new_col = f"column_{count}" if not col else f"{col}_{count}"
+                while new_col in seen:
+                    count += 1
+                    new_col = f"column_{count}" if not col else f"{col}_{count}"
+                unique_header.append(new_col)
+            else:
+                unique_header.append(col)
+            seen.add(unique_header[-1])
+            
+        return unique_header
+    
+    @staticmethod
+    def _load_with_pandas_fallback(file_path: str) -> pd.DataFrame:
+        """Fallback method to load CSV with pandas."""
+        try:
+            # Try with some common settings that might help with malformed files
+            return pd.read_csv(
+                file_path,
+                encoding="utf-8",
+                on_bad_lines="skip",  # For newer pandas versions
+                escapechar="\\",
+                quotechar='"',
+                low_memory=False,
+            )
+        except Exception as e2:
+            try:
+                # For older pandas versions
                 return pd.read_csv(
                     file_path,
                     encoding="utf-8",
-                    on_bad_lines="skip",  # For newer pandas versions
-                    escapechar="\\",
-                    quotechar='"',
+                    error_bad_lines=False,  # Deprecated but works in older pandas
+                    warn_bad_lines=True,
                     low_memory=False,
                 )
-            except Exception as e2:
-                try:
-                    # For older pandas versions
-                    return pd.read_csv(
-                        file_path,
-                        encoding="utf-8",
-                        error_bad_lines=False,  # Deprecated but works in older pandas
-                        warn_bad_lines=True,
-                        low_memory=False,
-                    )
-                except Exception as e3:
-                    logger.error(f"All loading methods failed for {file_path}: {str(e3)}")
-                    return pd.DataFrame()  # Return empty DataFrame
+            except Exception as e3:
+                logger.error(f"All loading methods failed for {file_path}: {str(e3)}")
+                return pd.DataFrame()  # Return empty DataFrame
     
     @staticmethod
-    def load_data():
+    def load_data() -> Tuple[pd.DataFrame, str]:
         """Load main apartment data from CSV files."""
         try:
             # Use AppConfig for consistent path management
@@ -136,15 +224,14 @@ class DataManager:
             return pd.DataFrame(), f"Error: {e}"
     
     @staticmethod
-    def _extract_update_time():
+    def _extract_update_time() -> str:
         """Extract update time from metadata file."""
         try:
             meta_path = AppConfig.get_cian_data_path("cian_apartments.meta.json")
             logger.info(f"Reading metadata from: {meta_path}")
             
             if not os.path.exists(meta_path):
-                logger.warning(f"Metadata file not found: {meta_path}")
-                return "Unknown"
+                return DataManager._extract_update_time_from_csv_header()
                 
             with open(meta_path, "r", encoding="utf-8") as f:
                 metadata = json.load(f)
@@ -156,23 +243,26 @@ class DataManager:
                     return update_time_str
         except Exception as e:
             logger.error(f"Error reading metadata file: {e}")
-            
-            # Fall back to reading metadata from the CSV header
-            try:
-                data_path = AppConfig.get_cian_data_path("cian_apartments.csv")
-                with open(data_path, encoding="utf-8") as f:
-                    first_line = f.readline()
-                    if "last_updated=" in first_line:
-                        parts = first_line.split("last_updated=")
-                        if len(parts) > 1:
-                            return parts[1].split(",")[0].strip()
-            except Exception as e2:
-                logger.error(f"Error reading CSV header: {e2}")
-            
-            return "Unknown"
+            return DataManager._extract_update_time_from_csv_header()
     
     @staticmethod
-    def process_data(df):
+    def _extract_update_time_from_csv_header() -> str:
+        """Extract update time from CSV header as fallback."""
+        try:
+            data_path = AppConfig.get_cian_data_path("cian_apartments.csv")
+            with open(data_path, encoding="utf-8") as f:
+                first_line = f.readline()
+                if "last_updated=" in first_line:
+                    parts = first_line.split("last_updated=")
+                    if len(parts) > 1:
+                        return parts[1].split(",")[0].strip()
+        except Exception as e:
+            logger.error(f"Error reading CSV header: {e}")
+        
+        return "Unknown"
+    
+    @staticmethod
+    def process_data(df: pd.DataFrame) -> pd.DataFrame:
         """Process and transform raw dataframe into display-ready format."""
         if df.empty:
             return df
@@ -194,7 +284,7 @@ class DataManager:
         return df
     
     @staticmethod
-    def _process_links(df):
+    def _process_links(df: pd.DataFrame) -> pd.DataFrame:
         """Process address and offer links."""
         base_url = CONFIG['base_url']
         
@@ -211,7 +301,7 @@ class DataManager:
         return df
     
     @staticmethod
-    def _process_metrics(df):
+    def _process_metrics(df: pd.DataFrame) -> pd.DataFrame:
         """Process distance and other metrics."""
         df["distance_sort"] = pd.to_numeric(df["distance"], errors="coerce")
         df["distance"] = df["distance_sort"].apply(
@@ -220,12 +310,12 @@ class DataManager:
         return df
     
     @staticmethod
-    def _process_dates(df):
+    def _process_dates(df: pd.DataFrame) -> pd.DataFrame:
         """Process dates and timestamps."""
         # Regular updated_time field
         df["updated_time_sort"] = pd.to_datetime(df["updated_time"], errors="coerce")
         df["updated_time"] = df["updated_time_sort"].apply(
-            lambda x: format_text(x, lambda dt: TimeFormatter.format_date(dt, MOSCOW_TZ), "")
+            lambda x: FormatUtils.format_text(x, lambda dt: TimeFormatter.format_date(dt, MOSCOW_TZ), "")
         )
 
         # Process unpublished_date fields with explicit format
@@ -235,7 +325,7 @@ class DataManager:
             errors="coerce",
         )
         df["unpublished_date"] = df["unpublished_date_sort"].apply(
-            lambda x: format_text(x, lambda dt: TimeFormatter.format_date(dt, MOSCOW_TZ), "--")
+            lambda x: FormatUtils.format_text(x, lambda dt: TimeFormatter.format_date(dt, MOSCOW_TZ), "--")
         )
         
         # Combined date for sorting
@@ -251,21 +341,21 @@ class DataManager:
         return df
     
     @staticmethod
-    def _process_financial_info(df):
+    def _process_financial_info(df: pd.DataFrame) -> pd.DataFrame:
         """Process price, commission, deposit and other financial information."""
         # Price value formatting
         df["price_value_formatted"] = df["price_value"].apply(
-            lambda x: format_text(x, lambda v: PriceFormatter.format_price(v), "--")
+            lambda x: FormatUtils.format_text(x, lambda v: PriceFormatter.format_price(v), "--")
         )
         
         # Cian estimation formatting
         df["cian_estimation_formatted"] = df["cian_estimation_value"].apply(
-            lambda x: format_text(x, lambda v: PriceFormatter.format_price(v), "--")
+            lambda x: FormatUtils.format_text(x, lambda v: PriceFormatter.format_price(v), "--")
         )
         
         # Price difference formatting
         df["price_difference_formatted"] = df["price_difference_value"].apply(
-            lambda x: format_text(x, lambda v: PriceFormatter.format_price(v, abbreviate=True), "")
+            lambda x: FormatUtils.format_text(x, lambda v: PriceFormatter.format_price(v, abbreviate=True), "")
         )
         
         # Price change formatting
@@ -292,7 +382,7 @@ class DataManager:
         return df
     
     @staticmethod
-    def _create_display_columns(df):
+    def _create_display_columns(df: pd.DataFrame) -> pd.DataFrame:
         """Create combined display columns for the UI."""
         # Price text with formatted style
         df["price_text"] = df.apply(
@@ -341,7 +431,7 @@ class DataManager:
         return df
     
     @staticmethod
-    def _apply_default_sorting(df):
+    def _apply_default_sorting(df: pd.DataFrame) -> pd.DataFrame:
         """Apply default sorting to the dataframe."""
         # Create a sort key column (active first, then by distance)
         df["sort_key"] = df["status"].apply(lambda x: 1)  # All items have same priority now
@@ -353,10 +443,8 @@ class DataManager:
         
         return df
     
-    # Updated filter method in utils.py - DataManager class
-    
     @staticmethod
-    def filter_data(df, filters=None):
+    def filter_data(df: pd.DataFrame, filters: Optional[Dict[str, Any]] = None) -> pd.DataFrame:
         """Filter data based on user-selected filters with cumulative filtering."""
         if df.empty or not filters:
             return df
@@ -397,7 +485,8 @@ class DataManager:
         return filtered_df
         
     @staticmethod
-    def filter_and_sort_data(df, filters=None, sort_by=None):
+    def filter_and_sort_data(df: pd.DataFrame, filters: Optional[Dict[str, Any]] = None, 
+                            sort_by: Optional[List[Dict[str, Any]]] = None) -> pd.DataFrame:
         """Filter and sort data in a single function."""
         # Apply filtering
         df = DataManager.filter_data(df, filters)
@@ -431,7 +520,7 @@ class DataManager:
         return df
 
 
-def load_apartment_details(offer_id):
+def load_apartment_details(offer_id: str) -> Dict[str, Any]:
     """
     Load all details for a specific apartment by offer_id,
     combining data from multiple CSV files with robust error handling.
@@ -495,7 +584,7 @@ def load_apartment_details(offer_id):
     return apartment_data
 
 
-def generate_tags_for_row(row):
+def generate_tags_for_row(row: pd.Series) -> Dict[str, Any]:
     """Generate tag flags for various row conditions."""
     # Initialize tag dictionary
     tags = {
@@ -534,11 +623,7 @@ def generate_tags_for_row(row):
     neighborhood = str(row.get("neighborhood", ""))
     if neighborhood and neighborhood != "nan" and neighborhood != "None":
         # Extract just the neighborhood name if it follows a pattern like "р-н Хамовники"
-        if "р-н " in neighborhood:
-            neighborhood_name = neighborhood.split("р-н ")[1].strip()
-        else:
-            neighborhood_name = neighborhood.strip()
-
+        neighborhood_name = DataExtractor.extract_neighborhood(neighborhood)
         tags["neighborhood"] = neighborhood_name
 
         # Check if this is Хамовники
@@ -552,9 +637,8 @@ def generate_tags_for_row(row):
     return tags
 
 
-def format_update_title(row):
+def format_update_title(row: pd.Series) -> str:
     """Format the update_title column with enhanced responsive design."""
-    tag_style = "display:inline-block; padding:1px 4px; border-radius:6px; margin:0; white-space:nowrap;"
     tag_flags = generate_tags_for_row(row)
 
     # Showing date
@@ -564,8 +648,7 @@ def format_update_title(row):
         time_str = row["unpublished_date"] or row["updated_time"]
 
     # Use a more compact layout with better centering
-    html = f'<div style="text-align:center; width:100%; display:block; padding:0; margin:0;">'
-    html += f"<strong>{time_str}</strong>"
+    html = HtmlFormatter.create_centered_text(f"<strong>{time_str}</strong>")
 
     # Show price change only if status is active
     if row["status"] == "active" and row.get("price_change_formatted"):
@@ -575,20 +658,17 @@ def format_update_title(row):
     tags = []
     if row["status"] != "active":
         tags.append(
-            f'<span style="{tag_style} background-color:#f5f5f5; color:#666;">📦 архив</span>'
+            HtmlFormatter.create_tag_span("📦 архив", "#f5f5f5", "#666")
         )
 
     if tags:
         html += "<br>" + "".join(tags)
 
-    html += "</div>"
     return html
 
 
-def format_property_tags(row):
+def format_property_tags(row: pd.Series) -> str:
     """Format property tags with reduced padding."""
-    # Reduce padding in tag style
-    tag_style = "display:inline-block; padding:1px 4px; border-radius:3px; margin-right:1px; white-space:nowrap;"
     tags = []
     tag_flags = generate_tags_for_row(row)
     distance_value = row.get("distance_sort")
@@ -614,9 +694,7 @@ def format_property_tags(row):
             bg_color = "#dadce0"  # Gray for farther distances
             text_color = "#3c4043"  # Dark gray text
 
-        tags.append(
-            f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{time_text}</span>'
-        )
+        tags.append(HtmlFormatter.create_tag_span(time_text, bg_color, text_color))
 
     # Add neighborhood tag if available
     if tag_flags.get("neighborhood"):
@@ -635,28 +713,14 @@ def format_property_tags(row):
             bg_color = "#dadce0"  # Gray
             text_color = "#3c4043"  # Dark gray
 
-        tags.append(
-            f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{neighborhood}</span>'
-        )
+        tags.append(HtmlFormatter.create_tag_span(neighborhood, bg_color, text_color))
 
     # Use minimal padding and gap in the container
-    return (
-        f'<div style="display:flex; flex-wrap:wrap; gap:1px; justify-content:flex-start; padding:0;">{"".join(tags)}</div>'
-        if tags
-        else ""
-    )
-
-
-# Helper function to apply formatters safely
-def format_text(value, formatter, default=""):
-    """Generic formatter with default handling."""
-    if value is None or pd.isna(value):
-        return default
-    return formatter(value)
+    return HtmlFormatter.create_flex_container("".join(tags)) if tags else ""
 
 
 # Rental period formatting
-def format_rental_period(value):
+def format_rental_period(value: Optional[str]) -> str:
     """Format rental period with more intuitive abbreviation."""
     if value == "От года":
         return "год+"
@@ -666,8 +730,10 @@ def format_rental_period(value):
 
 
 # Utilities formatting
-def format_utilities(value):
+def format_utilities(value: Optional[str]) -> str:
     """Format utilities info with clearer abbreviation."""
+    if value is None:
+        return "--"
     if "без счётчиков" in value:
         return "+счет"
     elif "счётчики включены" in value:
@@ -676,7 +742,7 @@ def format_utilities(value):
 
 
 # Calculate financial burden
-def calculate_monthly_burden(row):
+def calculate_monthly_burden(row: pd.Series) -> Optional[float]:
     """Calculate average monthly financial burden over 12 months."""
     try:
         price = pd.to_numeric(row["price_value"], errors="coerce")
@@ -690,7 +756,7 @@ def calculate_monthly_burden(row):
 
 
 # Format burden value
-def format_burden(row):
+def format_burden(row: pd.Series) -> str:
     """Format the burden value with comparison to price."""
     try:
         if (

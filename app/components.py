@@ -1,16 +1,43 @@
 # app/components.py
 from dash import html
 import logging
+from typing import Dict, Any, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
-class PillFactory:
-    """Factory for creating pill/tag components with consistent styling."""
+class StyleManager:
+    """Manager for consistent style creation and application."""
     
     @staticmethod
-    def create(text, bg_color="#f0f0f0", text_color="#333", custom_style=None):
-        """Create a pill/tag component with standard styling."""
-        base_style = {
+    def merge_styles(base_style: Dict[str, Any], custom_style: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Merge a base style with custom overrides.
+        
+        Args:
+            base_style: Base style dictionary
+            custom_style: Custom style overrides
+            
+        Returns:
+            Merged style dictionary
+        """
+        if not custom_style:
+            return base_style.copy()
+            
+        merged = base_style.copy()
+        merged.update(custom_style)
+        return merged
+        
+    @staticmethod
+    def create_pill_style(bg_color: str = "#f0f0f0", text_color: str = "#333") -> Dict[str, Any]:
+        """Create a standard pill/tag style.
+        
+        Args:
+            bg_color: Background color
+            text_color: Text color
+            
+        Returns:
+            Style dictionary
+        """
+        return {
             "display": "inline-block",
             "fontSize": "10px", 
             "backgroundColor": bg_color,
@@ -22,14 +49,126 @@ class PillFactory:
             "boxShadow": "0 1px 1px rgba(0,0,0,0.03)"
         }
         
-        # Merge custom style if provided
-        if custom_style:
-            base_style.update(custom_style)
+    @staticmethod
+    def create_button_style(button_type: str = "default", is_active: bool = False, 
+                           index: int = 0, joined: bool = False) -> Dict[str, Any]:
+        """Create a standard button style.
+        
+        Args:
+            button_type: Type of button (default, price, distance, etc.)
+            is_active: Whether the button is active
+            index: Index in button group (for joined buttons)
+            joined: Whether the button is part of a joined group
             
-        return html.Div(text, style=base_style)
+        Returns:
+            Style dictionary
+        """
+        # Import button styles from config
+        from app.config import BUTTON_STYLES, STYLE
+        
+        # Get base style
+        base_style = {
+            "display": "inline-block",
+            "padding": "3px 8px",
+            "fontSize": "10px",
+            "border": "1px solid #ccc",
+            "margin": "0 5px 5px 0",
+            "cursor": "pointer",
+            "borderRadius": "4px"
+        }
+        
+        # Update with style from config
+        if STYLE.get("button_base"):
+            base_style.update(STYLE["button_base"])
+            
+        # Apply type-specific styling
+        if button_type in BUTTON_STYLES:
+            base_style.update(BUTTON_STYLES.get(button_type, {}))
+            
+        # Apply joined button styling
+        if joined:
+            base_style.update({
+                "flex": "1",
+                "margin": "0",
+                "padding": "2px 0",
+                "fontSize": "10px",
+                "lineHeight": "1",
+                "borderRadius": "0",
+                "borderLeft": "none" if index > 0 else "1px solid #ccc",
+                "position": "relative",
+            })
+            
+        # Apply active styling
+        if is_active:
+            base_style.update({
+                "opacity": 1.0,
+                "boxShadow": "0 0 5px #4682B4",
+                "zIndex": 1
+            })
+        else:
+            base_style.update({
+                "opacity": 0.6,
+                "zIndex": 0
+            })
+            
+        return base_style
+        
+    @staticmethod
+    def create_container_style(style_type: str = "card", 
+                               custom_style: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Create a standard container style.
+        
+        Args:
+            style_type: Type of container (card, section, flex)
+            custom_style: Custom style overrides
+            
+        Returns:
+            Style dictionary
+        """
+        base_style = {}
+        
+        if style_type == "card":
+            base_style = {
+                "padding": "10px",
+                "backgroundColor": "#fff",
+                "borderRadius": "6px",
+                "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.1)",
+                "width": "100%",
+                "margin": "0 auto"
+            }
+        elif style_type == "section":
+            base_style = {
+                "marginBottom": "15px",
+                "borderBottom": "1px solid #eee",
+                "paddingBottom": "10px"
+            }
+        elif style_type == "flex":
+            base_style = {
+                "display": "flex",
+                "flexWrap": "wrap",
+                "gap": "3px",
+                "justifyContent": "flex-start",
+                "marginBottom": "10px",
+            }
+        
+        return StyleManager.merge_styles(base_style, custom_style)
+
+
+class PillFactory:
+    """Factory for creating pill/tag components with consistent styling."""
     
     @staticmethod
-    def create_price_comparison(price, cian_est):
+    def create(text: str, bg_color: str = "#f0f0f0", text_color: str = "#333", 
+               custom_style: Optional[Dict[str, Any]] = None) -> html.Div:
+        """Create a pill/tag component with standard styling."""
+        base_style = StyleManager.create_pill_style(bg_color, text_color)
+        style = StyleManager.merge_styles(base_style, custom_style)
+            
+        return html.Div(text, style=style)
+    
+    @staticmethod
+    def create_price_comparison(price: Optional[Union[str, int]], 
+                                cian_est: Optional[Union[str, int]]) -> Optional[html.Div]:
         """Create a specialized pill showing price vs Cian estimation difference."""
         if not price or not cian_est:
             return None
@@ -59,58 +198,22 @@ class PillFactory:
 class ButtonFactory:
     """Factory for creating styled buttons with consistent appearance."""
     
-    # Import button styles directly from config to avoid circular imports
     @staticmethod
-    def get_button_styles():
-        """Get button styles from the config."""
-        from app.config import BUTTON_STYLES, STYLE
-        return BUTTON_STYLES, STYLE.get("button_base", {})
-    
-    @staticmethod
-    def create(label, button_id, button_type="default", is_active=False, custom_style=None, **kwargs):
+    def create(label: str, button_id: str, button_type: str = "default", 
+               is_active: bool = False, custom_style: Optional[Dict[str, Any]] = None, 
+               **kwargs) -> html.Button:
         """Create a styled button."""
-        # Get styles from config
-        BUTTON_STYLES, button_base = ButtonFactory.get_button_styles()
+        style = StyleManager.create_button_style(button_type, is_active)
         
-        # Base style for all buttons
-        base_style = {
-            "display": "inline-block",
-            "padding": "3px 8px",
-            "fontSize": "10px",
-            "border": "1px solid #ccc",
-            "margin": "0 5px 5px 0",
-            "cursor": "pointer",
-            "borderRadius": "4px"
-        }
-        
-        # Add base button style from config
-        base_style.update(button_base)
-        
-        # Apply type-specific styling
-        if button_type in BUTTON_STYLES:
-            base_style.update(BUTTON_STYLES.get(button_type, {}))
-            
-        # Apply active styling if button is active
-        if is_active:
-            base_style.update({
-                "opacity": 1.0,
-                "boxShadow": "0 0 5px #4682B4",
-                "zIndex": 1
-            })
-        else:
-            base_style.update({
-                "opacity": 0.6,
-                "zIndex": 0
-            })
-            
         # Apply any custom styles
         if custom_style:
-            base_style.update(custom_style)
+            style = StyleManager.merge_styles(style, custom_style)
             
-        return html.Button(label, id=button_id, style=base_style, **kwargs)
+        return html.Button(label, id=button_id, style=style, **kwargs)
     
     @staticmethod
-    def create_button_group(buttons, label_text=None, active_button_id=None):
+    def create_button_group(buttons: List[Dict[str, Any]], label_text: Optional[str] = None, 
+                            active_button_id: Optional[str] = None) -> html.Div:
         """Create a button group with joined buttons and optional label."""
         button_elements = []
         
@@ -138,9 +241,12 @@ class ButtonFactory:
                 html.Button(
                     children=html.Span(btn["label"], id=f"{btn['id']}-text"),
                     id=btn["id"],
-                    style={
-                        **ButtonFactory.get_joined_button_style(btn, i, active_button_id)
-                    }
+                    style=StyleManager.create_button_style(
+                        button_type=btn.get("type", "default"),
+                        is_active=btn.get("default", False) or btn["id"] == active_button_id,
+                        index=i,
+                        joined=True
+                    )
                 )
                 for i, btn in enumerate(buttons)
             ],
@@ -168,69 +274,15 @@ class ButtonFactory:
             },
         )
 
-    @staticmethod
-    def get_joined_button_style(btn, index, active_button_id=None):
-        """Get style for a button that's part of a joined group."""
-        # Get styles from config
-        BUTTON_STYLES, _ = ButtonFactory.get_button_styles()
-        
-        # Determine if this button is active
-        is_active = btn.get("default", False) or btn["id"] == active_button_id
-        
-        # Get button type
-        button_type = btn.get("type", "default")
-        if "price" in btn["id"]:
-            button_type = "price"
-        elif "dist" in btn["id"]:
-            button_type = "distance"
-        elif "sort" in btn["id"]:
-            button_type = "sort"
-        
-        # Base style
-        base_style = {
-            **(BUTTON_STYLES.get(button_type, {})),
-            "flex": "1",
-            "margin": "0",
-            "padding": "2px 0",
-            "fontSize": "10px",
-            "lineHeight": "1",
-            "borderRadius": "0",
-            "borderLeft": "none" if index > 0 else "1px solid #ccc",
-            "position": "relative",
-            "textAlign": "center",
-            "backgroundColor": BUTTON_STYLES.get(button_type, {}).get("backgroundColor", "#f5f5f5")
-        }
-        
-        # Apply active styling
-        if is_active:
-            base_style.update({
-                "opacity": 1.0,
-                "boxShadow": "0 0 5px #4682B4",
-                "zIndex": 1
-            })
-        else:
-            base_style.update({
-                "opacity": 0.6,
-                "zIndex": 0
-            })
-            
-        return base_style
-
 
 class ContainerFactory:
     """Factory for creating container elements with consistent styling."""
     
     @staticmethod
-    def create_section(children, title=None, custom_style=None):
+    def create_section(children: Union[List[Any], Any], title: Optional[str] = None, 
+                       custom_style: Optional[Dict[str, Any]] = None) -> html.Div:
         """Create a styled section container."""
-        base_style = {
-            "marginBottom": "15px",
-            "borderBottom": "1px solid #eee",
-            "paddingBottom": "10px"
-        }
-        
-        if custom_style:
-            base_style.update(custom_style)
+        style = StyleManager.create_container_style("section", custom_style)
             
         elements = []
         
@@ -252,10 +304,12 @@ class ContainerFactory:
         else:
             elements.append(children)
             
-        return html.Div(elements, style=base_style)
+        return html.Div(elements, style=style)
     
     @staticmethod
-    def create_flex_container(children, is_wrap=True, justify="flex-start", gap="3px", custom_style=None):
+    def create_flex_container(children: List[Any], is_wrap: bool = True, 
+                              justify: str = "flex-start", gap: str = "3px", 
+                              custom_style: Optional[Dict[str, Any]] = None) -> html.Div:
         """Create a flexbox container with common settings."""
         base_style = {
             "display": "flex",
@@ -265,30 +319,21 @@ class ContainerFactory:
             "marginBottom": "10px",
         }
         
-        if custom_style:
-            base_style.update(custom_style)
+        style = StyleManager.merge_styles(base_style, custom_style)
             
-        return html.Div(children, style=base_style)
+        return html.Div(children, style=style)
     
     @staticmethod
-    def create_card(children, custom_style=None):
+    def create_card(children: List[Any], 
+                    custom_style: Optional[Dict[str, Any]] = None) -> html.Div:
         """Create a card container with shadow and rounded corners."""
-        base_style = {
-            "padding": "10px",
-            "backgroundColor": "#fff",
-            "borderRadius": "6px",
-            "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.1)",
-            "width": "100%",
-            "margin": "0 auto"
-        }
-        
-        if custom_style:
-            base_style.update(custom_style)
+        style = StyleManager.create_container_style("card", custom_style)
             
-        return html.Div(children, style=base_style)
+        return html.Div(children, style=style)
     
     @staticmethod
-    def create_overlay_panel(children, visible=False, custom_style=None):
+    def create_overlay_panel(children: List[Any], visible: bool = False, 
+                             custom_style: Optional[Dict[str, Any]] = None) -> html.Div:
         """Create a modal overlay panel."""
         base_style = {
             "position": "fixed",
@@ -309,7 +354,6 @@ class ContainerFactory:
             "pointer-events": "auto" if visible else "none"
         }
         
-        if custom_style:
-            base_style.update(custom_style)
+        style = StyleManager.merge_styles(base_style, custom_style)
             
-        return html.Div(children, style=base_style)
+        return html.Div(children, style=style)

@@ -1,7 +1,9 @@
 # app/layout.py
 from dash import dcc, html
+import dash
+from typing import Dict, Any, List, Optional
 from app.config import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS, STYLE, BUTTON_STYLES
-from app.components import ButtonFactory, ContainerFactory
+from app.components import ButtonFactory, ContainerFactory, StyleManager
 
 # Default values
 default_price = next(
@@ -18,7 +20,7 @@ default_distance_btn = next(
 )
 
 
-def create_filter_buttons():
+def create_filter_buttons() -> html.Div:
     """Create the filter toggle buttons with consistent styling."""
     # Create filter buttons with a label - similar to other button groups
     return html.Div(
@@ -43,66 +45,22 @@ def create_filter_buttons():
                     html.Button(
                         html.Span("Свежие", id="btn-updated-today-text"),
                         id="btn-updated-today",
-                        style={
-                            **BUTTON_STYLES["updated_today"], 
-                            "opacity": "0.6", 
-                            "flex": "1",
-                            "margin": "0",
-                            "padding": "2px 0",
-                            "fontSize": "10px",
-                            "lineHeight": "1",
-                            "borderRadius": "0",
-                            "borderLeft": "none" if i > 0 else "1px solid #ccc",
-                            "position": "relative",
-                        },
+                        style=StyleManager.create_button_style("updated_today", False, i, True)
                     ) if i == 0 else
                     html.Button(
                         html.Span("Рядом", id="btn-nearest-text"),
                         id="btn-nearest",
-                        style={
-                            **BUTTON_STYLES["nearest"], 
-                            "opacity": "0.6", 
-                            "flex": "1",
-                            "margin": "0",
-                            "padding": "2px 0",
-                            "fontSize": "10px",
-                            "lineHeight": "1",
-                            "borderRadius": "0",
-                            "borderLeft": "none",
-                            "position": "relative",
-                        },
+                        style=StyleManager.create_button_style("nearest", False, i, True)
                     ) if i == 1 else
                     html.Button(
                         html.Span("Выгодно", id="btn-below-estimate-text"),
                         id="btn-below-estimate",
-                        style={
-                            **BUTTON_STYLES["below_estimate"], 
-                            "opacity": "0.6", 
-                            "flex": "1",
-                            "margin": "0",
-                            "padding": "2px 0",
-                            "fontSize": "10px",
-                            "lineHeight": "1",
-                            "borderRadius": "0",
-                            "borderLeft": "none",
-                            "position": "relative",
-                        },
+                        style=StyleManager.create_button_style("below_estimate", False, i, True)
                     ) if i == 2 else
                     html.Button(
                         html.Span("Активные", id="btn-inactive-text"),
                         id="btn-inactive",
-                        style={
-                            **BUTTON_STYLES["inactive"], 
-                            "opacity": "0.6", 
-                            "flex": "1",
-                            "margin": "0",
-                            "padding": "2px 0",
-                            "fontSize": "10px",
-                            "lineHeight": "1",
-                            "borderRadius": "0",
-                            "borderLeft": "none",
-                            "position": "relative",
-                        },
+                        style=StyleManager.create_button_style("inactive", False, i, True)
                     )
                     for i in range(4)
                 ],
@@ -126,11 +84,11 @@ def create_filter_buttons():
     )
 
 
-def create_apartment_details_panel():
+def create_apartment_details_panel() -> html.Div:
     """Create the overlay details panel."""
     return html.Div(
         id="apartment-details-panel",
-        style={
+        style=StyleManager.create_container_style("card", {
             "display": "none",
             "position": "fixed",
             "top": "50%",
@@ -141,12 +99,9 @@ def create_apartment_details_panel():
             "maxWidth": "345px",
             "maxHeight": "100%",
             "zIndex": "1000",
-            "backgroundColor": "#fff",
-            "boxShadow": "0 4px 12px rgba(0, 0, 0, 0.2)",
-            "borderRadius": "8px",
             "padding": "15px",
             "overflow": "auto",
-        },
+        }),
         children=[
             # Top right close button
             html.Div(
@@ -229,7 +184,7 @@ def create_apartment_details_panel():
     )
 
 
-def create_app_layout(app):
+def create_app_layout(app: dash.Dash) -> html.Div:
     """Create the application layout with components."""
     # Create a store for the selected apartment
     selected_apartment_store = dcc.Store(
@@ -307,8 +262,8 @@ def create_app_layout(app):
         controls_container,
     ]
     
-    # Set the app layout with all components
-    app.layout = html.Div(
+    # Return the layout with all components
+    return html.Div(
         main_layout + [
             # Table container with ID for toggling visibility
             html.Div(
@@ -331,5 +286,3 @@ def create_app_layout(app):
         ],
         style=STYLE["container"],
     )
-    
-    return app.layout

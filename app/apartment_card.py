@@ -5,9 +5,11 @@ import re
 import os
 import base64
 from pathlib import Path
-from app.components import PillFactory, ContainerFactory
+from typing import Dict, List, Any, Optional, Union, Tuple
+from app.components import PillFactory, ContainerFactory, StyleManager
 from app.formatters import FormatUtils
 from app.app_config import AppConfig
+from app.utils import ErrorHandler
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] - %(message)s", datefmt="%H:%M:%S")
@@ -18,47 +20,53 @@ class ImageHandler:
     """Handle apartment image processing with robust error handling."""
     
     @staticmethod
-    def get_apartment_images(offer_id):
+    def get_apartment_images(offer_id: str) -> List[str]:
         """Get base64 encoded images for apartment with robust path handling."""
-        try:
-            # Use AppConfig for consistent path handling
-            image_dir = AppConfig.get_images_path(str(offer_id))
-            logger.info(f"Looking for images in: {image_dir}")
-            
-            # Check if the directory exists
-            if not os.path.exists(image_dir):
-                logger.warning(f"Image directory not found: {image_dir}")
-                return []
-
-            # List all jpg files in the directory
-            image_files = [f for f in os.listdir(image_dir) if f.lower().endswith(".jpg")]
-            logger.info(f"Found {len(image_files)} images for offer_id {offer_id}")
-
-            if not image_files:
-                logger.warning(f"No JPG images found in directory: {image_dir}")
-                return []
-
-            # Encode each image as base64
-            image_paths = []
-            for file in sorted(image_files):
-                image_path = image_dir / file
-                try:
-                    with open(image_path, "rb") as image_file:
-                        encoded_string = base64.b64encode(image_file.read()).decode()
-                        # Format as data URL
-                        image_paths.append(f"data:image/jpeg;base64,{encoded_string}")
-                        logger.info(f"Successfully encoded image: {image_path}")
-                except Exception as e:
-                    logger.error(f"Error encoding image {image_path}: {e}", exc_info=True)
-
-            return image_paths
-            
-        except Exception as e:
-            logger.error(f"Error processing images for offer_id {offer_id}: {e}", exc_info=True)
-            return []
+        return ErrorHandler.try_operation(
+            logger,
+            "get_apartment_images",
+            ImageHandler._get_images,
+            offer_id,
+            default_return=[]
+        )
     
     @staticmethod
-    def create_slideshow(offer_id):
+    def _get_images(offer_id: str) -> List[str]:
+        """Internal method to get images with error handling."""
+        # Use AppConfig for consistent path handling
+        image_dir = AppConfig.get_images_path(str(offer_id))
+        logger.info(f"Looking for images in: {image_dir}")
+        
+        # Check if the directory exists
+        if not os.path.exists(image_dir):
+            logger.warning(f"Image directory not found: {image_dir}")
+            return []
+
+        # List all jpg files in the directory
+        image_files = [f for f in os.listdir(image_dir) if f.lower().endswith(".jpg")]
+        logger.info(f"Found {len(image_files)} images for offer_id {offer_id}")
+
+        if not image_files:
+            logger.warning(f"No JPG images found in directory: {image_dir}")
+            return []
+
+        # Encode each image as base64
+        image_paths = []
+        for file in sorted(image_files):
+            image_path = os.path.join(image_dir, file)
+            try:
+                with open(image_path, "rb") as image_file:
+                    encoded_string = base64.b64encode(image_file.read()).decode()
+                    # Format as data URL
+                    image_paths.append(f"data:image/jpeg;base64,{encoded_string}")
+                    logger.info(f"Successfully encoded image: {image_path}")
+            except Exception as e:
+                logger.error(f"Error encoding image {image_path}: {e}")
+
+        return image_paths
+    
+    @staticmethod
+    def create_slideshow(offer_id: str) -> Optional[html.Div]:
         """Create a slideshow component for apartment images."""
         image_paths = ImageHandler.get_apartment_images(offer_id)
 
@@ -86,74 +94,82 @@ class ImageHandler:
                         html.Button(
                             "❮",
                             id={"type": "prev-btn", "offer_id": offer_id},
-                            style={
-                                "position": "absolute",
-                                "top": "50%",
-                                "left": "10px",
-                                "transform": "translateY(-50%)",
-                                "backgroundColor": "rgba(0,0,0,0.3)",
-                                "color": "white",
-                                "border": "none",
-                                "borderRadius": "50%",
-                                "width": "30px",
-                                "height": "30px",
-                                "fontSize": "16px",
-                                "cursor": "pointer",
-                                "zIndex": "2",
-                                "display": "flex",
-                                "alignItems": "center",
-                                "justifyContent": "center",
-                            },
+                            style=StyleManager.merge_styles(
+                                {
+                                    "position": "absolute",
+                                    "top": "50%",
+                                    "left": "10px",
+                                    "transform": "translateY(-50%)",
+                                    "backgroundColor": "rgba(0,0,0,0.3)",
+                                    "color": "white",
+                                    "border": "none",
+                                    "borderRadius": "50%",
+                                    "width": "30px",
+                                    "height": "30px",
+                                    "fontSize": "16px",
+                                    "cursor": "pointer",
+                                    "zIndex": "2",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center",
+                                }
+                            ),
                         ),
                         html.Button(
                             "❯",
                             id={"type": "next-btn", "offer_id": offer_id},
-                            style={
-                                "position": "absolute",
-                                "top": "50%",
-                                "right": "10px",
-                                "transform": "translateY(-50%)",
-                                "backgroundColor": "rgba(0,0,0,0.3)",
-                                "color": "white",
-                                "border": "none",
-                                "borderRadius": "50%",
-                                "width": "30px",
-                                "height": "30px",
-                                "fontSize": "16px",
-                                "cursor": "pointer",
-                                "zIndex": "2",
-                                "display": "flex",
-                                "alignItems": "center",
-                                "justifyContent": "center",
-                            },
+                            style=StyleManager.merge_styles(
+                                {
+                                    "position": "absolute",
+                                    "top": "50%",
+                                    "right": "10px",
+                                    "transform": "translateY(-50%)",
+                                    "backgroundColor": "rgba(0,0,0,0.3)",
+                                    "color": "white",
+                                    "border": "none",
+                                    "borderRadius": "50%",
+                                    "width": "30px",
+                                    "height": "30px",
+                                    "fontSize": "16px",
+                                    "cursor": "pointer",
+                                    "zIndex": "2",
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center",
+                                }
+                            ),
                         ),
                         # Image counter
                         html.Div(
                             f"1/{len(image_paths)}",
                             id={"type": "counter", "offer_id": offer_id},
-                            style={
-                                "position": "absolute",
-                                "bottom": "10px",
-                                "right": "10px",
-                                "backgroundColor": "rgba(0,0,0,0.5)",
-                                "color": "white",
-                                "padding": "3px 8px",
-                                "borderRadius": "12px",
-                                "fontSize": "10px",
-                            },
+                            style=StyleManager.merge_styles(
+                                {
+                                    "position": "absolute",
+                                    "bottom": "10px",
+                                    "right": "10px",
+                                    "backgroundColor": "rgba(0,0,0,0.5)",
+                                    "color": "white",
+                                    "padding": "3px 8px",
+                                    "borderRadius": "12px",
+                                    "fontSize": "10px",
+                                }
+                            ),
                         ),
                     ],
-                    style={
-                        "position": "relative",
-                        "display": "flex",
-                        "justifyContent": "center",
-                        "alignItems": "center",
-                        "height": "220px",
-                        "backgroundColor": "#f5f5f5",
-                        "borderRadius": "4px",
-                        "overflow": "hidden",
-                        "marginBottom": "5px",
-                    },
+                    style=StyleManager.merge_styles(
+                        {
+                            "position": "relative",
+                            "display": "flex",
+                            "justifyContent": "center",
+                            "alignItems": "center",
+                            "height": "220px",
+                            "backgroundColor": "#f5f5f5",
+                            "borderRadius": "4px",
+                            "overflow": "hidden",
+                            "marginBottom": "5px",
+                        }
+                    ),
                 ),
                 # Hidden store for current index and image paths
                 dcc.Store(
@@ -163,20 +179,24 @@ class ImageHandler:
                 # Title showing total number of photos
                 html.Div(
                     f"Фотографии ({len(image_paths)})",
-                    style={
-                        "fontSize": "11px",
-                        "fontWeight": "bold",
-                        "marginBottom": "10px",
-                        "color": "#4682B4",
-                        "textAlign": "center",
-                    },
+                    style=StyleManager.merge_styles(
+                        {
+                            "fontSize": "11px",
+                            "fontWeight": "bold",
+                            "marginBottom": "10px",
+                            "color": "#4682B4",
+                            "textAlign": "center",
+                        }
+                    ),
                 ),
             ],
-            style={
-                "marginBottom": "15px",
-                "borderBottom": "1px solid #eee",
-                "paddingBottom": "10px",
-            },
+            style=StyleManager.merge_styles(
+                {
+                    "marginBottom": "15px",
+                    "borderBottom": "1px solid #eee",
+                    "paddingBottom": "10px",
+                }
+            ),
         )
 
         return slideshow
@@ -186,22 +206,25 @@ class ApartmentCardBuilder:
     """Builder for creating apartment detail cards with modular sections."""
     
     @staticmethod
-    def create_id_header(offer_id):
+    def create_id_header(offer_id: str) -> html.Div:
         """Create a simple header with the apartment ID."""
         return html.Div(
             f"ID: {offer_id}",
-            style={
-                "fontSize": "10px",
-                "color": "#666",
-                "margin": "0 auto 10px auto",
-                "textAlign": "center",
-                "padding": "5px 0",
-                "borderBottom": "1px solid #eee",
-            },
+            style=StyleManager.merge_styles(
+                {
+                    "fontSize": "10px",
+                    "color": "#666",
+                    "margin": "0 auto 10px auto",
+                    "textAlign": "center",
+                    "padding": "5px 0",
+                    "borderBottom": "1px solid #eee",
+                }
+            ),
         )
     
     @staticmethod
-    def create_address_section(address, metro, title, distance):
+    def create_address_section(address: str, metro: Optional[str], 
+                              title: Optional[str], distance: Optional[str]) -> html.Div:
         """Create the address section with location details."""
         return html.Div(
             [
@@ -230,7 +253,8 @@ class ApartmentCardBuilder:
         )
     
     @staticmethod
-    def create_price_section(price, cian_est, price_history=None):
+    def create_price_section(price: Optional[str], cian_est: Optional[str], 
+                           price_history: Optional[List[Dict[str, Any]]] = None) -> html.Div:
         """Create the price information section."""
         price_value = re.sub(r"[^\d]", "", price) if price else None
         cian_est_value = re.sub(r"[^\d]", "", cian_est) if cian_est else None
@@ -299,7 +323,7 @@ class ApartmentCardBuilder:
         )
     
     @staticmethod
-    def create_terms_section(terms):
+    def create_terms_section(terms: Optional[Dict[str, Any]]) -> Optional[html.Div]:
         """Create the rental terms section with formatting."""
         if not terms:
             return None
@@ -328,7 +352,7 @@ class ApartmentCardBuilder:
         ) if terms_items else None
     
     @staticmethod
-    def create_property_features_section(apartment_data):
+    def create_property_features_section(apartment_data: Dict[str, Any]) -> Optional[html.Div]:
         """Create a combined properties and features section."""
         apt = apartment_data.get("apartment", {})
         bld = apartment_data.get("building", {})
@@ -419,7 +443,10 @@ class ApartmentCardBuilder:
         ) if all_properties else None
 
 
-def create_apartment_details_card(apartment_data, table_row_data=None, row_idx=None, total_rows=None):
+def create_apartment_details_card(apartment_data: Dict[str, Any], 
+                                 table_row_data: Optional[Dict[str, Any]] = None, 
+                                 row_idx: Optional[int] = None, 
+                                 total_rows: Optional[int] = None) -> html.Div:
     """Render apartment data into a compact detail card with modern layout."""
     if not apartment_data:
         return html.Div("Нет данных для этой квартиры.", style={"fontSize": "12px"})
@@ -447,20 +474,22 @@ def create_apartment_details_card(apartment_data, table_row_data=None, row_idx=N
         "Открыть на Циан ↗",
         href=f"https://www.cian.ru/rent/flat/{offer_id}/",
         target="_blank",
-        style={
-            "backgroundColor": "#4682B4",
-            "color": "white",
-            "border": "none",
-            "borderRadius": "4px",
-            "padding": "5px 10px",
-            "fontSize": "12px",
-            "fontWeight": "bold",
-            "textDecoration": "none",
-            "display": "block",
-            "textAlign": "center",
-            "width": "fit-content",
-            "margin": "10px auto",
-        },
+        style=StyleManager.merge_styles(
+            {
+                "backgroundColor": "#4682B4",
+                "color": "white",
+                "border": "none",
+                "borderRadius": "4px",
+                "padding": "5px 10px",
+                "fontSize": "12px",
+                "fontWeight": "bold",
+                "textDecoration": "none",
+                "display": "block",
+                "textAlign": "center",
+                "width": "fit-content",
+                "margin": "10px auto",
+            }
+        ),
     )
 
     # Assemble all sections in the correct order (filtering out None sections)
@@ -472,7 +501,8 @@ def create_apartment_details_card(apartment_data, table_row_data=None, row_idx=N
             price_section,
             terms_section,
             property_section,
-            html.Div(description, style={"fontSize": "11px", "lineHeight": "1.3", "marginBottom": "15px"}) if description else None,
+            html.Div(description, style={"fontSize": "11px", "lineHeight": "1.3", "marginBottom": "15px"}) 
+            if description else None,
             external_link
         ] if section is not None
     ]
@@ -489,7 +519,7 @@ def create_apartment_details_card(apartment_data, table_row_data=None, row_idx=N
     )
 
 
-def extract_row_data(table_row_data):
+def extract_row_data(table_row_data: Optional[Dict[str, Any]]) -> Tuple[str, str, str, str, str, str, str]:
     """Extract and format address and other data from table_row_data."""
     if not table_row_data:
         return "", "", "", "", "", "", ""
