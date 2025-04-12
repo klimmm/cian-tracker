@@ -1,6 +1,7 @@
 # app/layout.py
 from dash import dcc, html
-from app.config import BUTTON_STYLES, PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS, STYLE
+from app.config import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS, STYLE, BUTTON_STYLES
+from app.components import ButtonFactory, ContainerFactory
 
 # Default values
 default_price = next(
@@ -17,22 +18,14 @@ default_distance_btn = next(
 )
 
 
-def create_button_group(buttons, label_text, active_button_id=None):
-    """Create a consistent button group with label and joined buttons.
-    
-    Args:
-        buttons: List of button config dictionaries
-        label_text: Text label for the button group
-        active_button_id: ID of the currently active button
-        
-    Returns:
-        html.Div container with label and buttons
-    """
+def create_filter_buttons():
+    """Create the filter toggle buttons with consistent styling."""
+    # Create filter buttons with a label - similar to other button groups
     return html.Div(
         [
             # Label on the left
             html.Label(
-                label_text,
+                "Быстрые фильтры:",
                 className="dash-label",
                 style={
                     "marginBottom": "2px",
@@ -41,18 +34,18 @@ def create_button_group(buttons, label_text, active_button_id=None):
                     "width": "110px",
                     "display": "inline-block",
                     "whiteSpace": "nowrap",
+                    "fontSize": "10px",
                 },
             ),
-            # Buttons on the right - completely joined
+            # Buttons in a row - consistent with other button groups
             html.Div(
                 [
                     html.Button(
-                        btn["label"],
-                        id=btn["id"],
+                        html.Span("Свежие", id="btn-updated-today-text"),
+                        id="btn-updated-today",
                         style={
-                            **BUTTON_STYLES.get(btn.get("type", "default"), {}),
-                            "opacity": 1.0 if btn.get("default", False) or btn["id"] == active_button_id else 0.6,
-                            "boxShadow": "0 0 5px #4682B4" if btn.get("default", False) or btn["id"] == active_button_id else None,
+                            **BUTTON_STYLES["updated_today"], 
+                            "opacity": "0.6", 
                             "flex": "1",
                             "margin": "0",
                             "padding": "2px 0",
@@ -61,10 +54,57 @@ def create_button_group(buttons, label_text, active_button_id=None):
                             "borderRadius": "0",
                             "borderLeft": "none" if i > 0 else "1px solid #ccc",
                             "position": "relative",
-                            "zIndex": "1" if btn.get("default", False) or btn["id"] == active_button_id else "0",
+                        },
+                    ) if i == 0 else
+                    html.Button(
+                        html.Span("Рядом", id="btn-nearest-text"),
+                        id="btn-nearest",
+                        style={
+                            **BUTTON_STYLES["nearest"], 
+                            "opacity": "0.6", 
+                            "flex": "1",
+                            "margin": "0",
+                            "padding": "2px 0",
+                            "fontSize": "10px",
+                            "lineHeight": "1",
+                            "borderRadius": "0",
+                            "borderLeft": "none",
+                            "position": "relative",
+                        },
+                    ) if i == 1 else
+                    html.Button(
+                        html.Span("Выгодно", id="btn-below-estimate-text"),
+                        id="btn-below-estimate",
+                        style={
+                            **BUTTON_STYLES["below_estimate"], 
+                            "opacity": "0.6", 
+                            "flex": "1",
+                            "margin": "0",
+                            "padding": "2px 0",
+                            "fontSize": "10px",
+                            "lineHeight": "1",
+                            "borderRadius": "0",
+                            "borderLeft": "none",
+                            "position": "relative",
+                        },
+                    ) if i == 2 else
+                    html.Button(
+                        html.Span("Активные", id="btn-inactive-text"),
+                        id="btn-inactive",
+                        style={
+                            **BUTTON_STYLES["inactive"], 
+                            "opacity": "0.6", 
+                            "flex": "1",
+                            "margin": "0",
+                            "padding": "2px 0",
+                            "fontSize": "10px",
+                            "lineHeight": "1",
+                            "borderRadius": "0",
+                            "borderLeft": "none",
+                            "position": "relative",
                         },
                     )
-                    for i, btn in enumerate(buttons)
+                    for i in range(4)
                 ],
                 style={
                     "display": "flex",
@@ -82,40 +122,6 @@ def create_button_group(buttons, label_text, active_button_id=None):
             "width": "100%",
             "display": "flex",
             "alignItems": "center",
-        },
-    )
-
-
-def create_filter_buttons():
-    """Create the filter toggle buttons."""
-    return html.Div(
-        [
-            html.Button(
-                "За сутки",
-                id="btn-updated-today",
-                style={**BUTTON_STYLES["updated_today"], "opacity": "0.6", "flex": "1"},
-            ),
-            html.Button(
-                "Рядом",
-                id="btn-nearest",
-                style={**BUTTON_STYLES["nearest"], "opacity": "0.6", "flex": "1"},
-            ),
-            html.Button(
-                "Выгодно",
-                id="btn-below-estimate",
-                style={**BUTTON_STYLES["below_estimate"], "opacity": "0.6", "flex": "1"},
-            ),
-            html.Button(
-                "Активные",
-                id="btn-inactive",
-                style={**BUTTON_STYLES["inactive"], "opacity": "0.6", "flex": "1"},
-            ),
-        ],
-        style={
-            "margin": "2px",
-            "display": "none",
-            "width": "100%",
-            "gap": "0px",
         },
     )
 
@@ -234,9 +240,13 @@ def create_app_layout(app):
     apartment_details_panel = create_apartment_details_panel()
 
     # Base components for the layout
-    header = html.H2("", style=STYLE["header"])
-    update_time = html.Div(html.Span(id="last-update-time", style=STYLE["update_time"]))
-    refresh_interval = dcc.Interval(id="interval-component", interval=2 * 60 * 1000, n_intervals=0)
+    header = html.H2("Cian Apartment Dashboard", style=STYLE["header"])
+    update_time = html.Div(
+        html.Span(id="last-update-time", style=STYLE["update_time"])
+    )
+    refresh_interval = dcc.Interval(
+        id="interval-component", interval=2 * 60 * 1000, n_intervals=0
+    )
     
     # Filter store with default values
     filter_store = dcc.Store(
@@ -250,62 +260,41 @@ def create_app_layout(app):
             "distance_value": default_distance,
             "active_price_btn": default_price_btn,
             "active_dist_btn": default_distance_btn,
-            "sort_column": "distance_sort",
-            "sort_direction": "asc",
-            "active_sort_btn": "btn-sort-distance",
+            "sort_column": "date_sort_combined",
+            "sort_direction": "desc",
+            "active_sort_btn": "btn-sort-time",
         },
     )
     
-    # Create button groups for controls
-    price_buttons = create_button_group(
+    # Create button groups for controls using ButtonFactory
+    price_buttons = ButtonFactory.create_button_group(
         PRICE_BUTTONS, "Макс. цена (₽):", default_price_btn
     )
     
-    distance_buttons = create_button_group(
+    distance_buttons = ButtonFactory.create_button_group(
         DISTANCE_BUTTONS, "Макс. расстояние (км):", default_distance_btn
     )
     
-    sort_buttons = create_button_group(
-        SORT_BUTTONS, "Сортировать:", "btn-sort-distance"
+    sort_buttons = ButtonFactory.create_button_group(
+        SORT_BUTTONS, "Сортировать:", "btn-sort-time"  # Updated default
     )
     
     filter_buttons = create_filter_buttons()
     
-    # Filter label
-    filter_label = html.Div(
-        [
-            html.Label(
-                "Быстрые фильтры:",
-                className="dash-label",
-                style={
-                    "marginBottom": "2px",
-                    "marginLeft": "4px",
-                    "textAlign": "left",
-                },
-            ),
-        ],
-        style={
-            "margin": "2px",
-            "display": "none",
-            "marginTop": "5px",
-            "textAlign": "left",
-            "width": "100%",
-        },
-    )
-    
-    # Combine all controls into a container
+    # Combine all controls into a container with left alignment
     controls_container = html.Div(
         [
             price_buttons,
             distance_buttons,
-            filter_label,
-            filter_buttons,
+            filter_buttons,  # Now includes label
             sort_buttons,
         ],
         style={
             "textAlign": "left",
             "width": "355px",
             "padding": "0px",
+            "margin": "0",
+            "alignSelf": "flex-start",
         },
     )
     

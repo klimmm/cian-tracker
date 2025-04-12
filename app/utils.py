@@ -353,58 +353,49 @@ class DataManager:
         
         return df
     
+    # Updated filter method in utils.py - DataManager class
+    
     @staticmethod
     def filter_data(df, filters=None):
-        """Filter data based on user-selected filters."""
+        """Filter data based on user-selected filters with cumulative filtering."""
         if df.empty or not filters:
             return df
-
+    
+        filtered_df = df.copy()
+    
         # Apply price filter
         price_value = filters.get("price_value")
-        if price_value and price_value != float("inf") and "price_value" in df.columns:
-            df = df[df["price_value"] <= price_value]
-
+        if price_value and price_value != float("inf") and "price_value" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["price_value"] <= price_value]
+            
         # Apply distance filter
-        distance_value = filters.get("distance_value")
-        if distance_value and distance_value != float("inf") and "distance_sort" in df.columns:
-            df = df[df["distance_sort"] <= distance_value]
-
-        # Apply toggle button filters
-        mask = None
-        
-        # Check if any toggle filters are active
-        if any(
-            filters.get(k, False)
-            for k in ["nearest", "below_estimate", "inactive", "updated_today"]
-        ):
-            mask = pd.Series(False, index=df.index)
-
-            # Nearby filter (within 1.5km)
-            if filters.get("nearest") and "distance_sort" in df.columns:
-                mask |= df["distance_sort"] < 1.5
-                
-            # Below estimate filter (price difference > 5000)
-            if filters.get("below_estimate") and "price_difference_value" in df.columns:
-                mask |= df["price_difference_value"] >= 5000
-                
-            # Active listings filter
-            if filters.get("inactive") and "status" in df.columns:
-                mask |= df["status"] == "active"
-                
-            # Updated today filter
-            if filters.get("updated_today") and "updated_time_sort" in df.columns:
-                df["updated_time_sort"] = pd.to_datetime(
-                    df["updated_time_sort"], errors="coerce"
-                )
-                recent_time = pd.Timestamp.now() - pd.Timedelta(hours=24)
-                mask |= df["updated_time_sort"] > recent_time
-
-            # Apply the combined mask if any filters are active
-            if mask is not None and any(mask):
-                df = df[mask]
-
-        return df
+        distance_value = filters.get("distance_value") 
+        if distance_value and distance_value != float("inf") and "distance_sort" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["distance_sort"] <= distance_value]
+            
+        # Apply each toggle filter individually (AND logic)
+        # Nearby filter (within 1.5km)
+        if filters.get("nearest") and "distance_sort" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["distance_sort"] < 1.5]
+            
+        # Below estimate filter (price difference > 5000)
+        if filters.get("below_estimate") and "price_difference_value" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["price_difference_value"] >= 5000]
+            
+        # Active listings filter
+        if filters.get("inactive") and "status" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["status"] == "active"]
+            
+        # Updated today filter
+        if filters.get("updated_today") and "updated_time_sort" in filtered_df.columns:
+            filtered_df["updated_time_sort"] = pd.to_datetime(
+                filtered_df["updated_time_sort"], errors="coerce"
+            )
+            recent_time = pd.Timestamp.now() - pd.Timedelta(hours=24)
+            filtered_df = filtered_df[filtered_df["updated_time_sort"] > recent_time]
     
+        return filtered_df
+        
     @staticmethod
     def filter_and_sort_data(df, filters=None, sort_by=None):
         """Filter and sort data in a single function."""

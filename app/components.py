@@ -4,22 +4,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class UIComponentFactory:
-    """Base factory for all UI components with consistent styling."""
-    
-    @staticmethod
-    def create_container(children, style=None, custom_class=None, **kwargs):
-        """Create a generic container with consistent styling."""
-        base_style = {
-            "margin": "0",
-            "padding": "0",
-        }
-        
-        if style:
-            base_style.update(style)
-            
-        return html.Div(children, style=base_style, className=custom_class, **kwargs)
-
 class PillFactory:
     """Factory for creating pill/tag components with consistent styling."""
     
@@ -75,21 +59,19 @@ class PillFactory:
 class ButtonFactory:
     """Factory for creating styled buttons with consistent appearance."""
     
-    # Define button type style mappings once
-    BUTTON_STYLES = {
-        "default": {"backgroundColor": "#f5f5f5"},
-        "price": {"backgroundColor": "#e8e8e0"},
-        "distance": {"backgroundColor": "#e0e4e8"},
-        "nearest": {"backgroundColor": "#d9edf7"},
-        "below_estimate": {"backgroundColor": "#fef3d5"},
-        "updated_today": {"backgroundColor": "#dff0d8"},
-        "inactive": {"backgroundColor": "#f4f4f4"},
-        "sort": {"backgroundColor": "#e0e0e8"}
-    }
+    # Import button styles directly from config to avoid circular imports
+    @staticmethod
+    def get_button_styles():
+        """Get button styles from the config."""
+        from app.config import BUTTON_STYLES, STYLE
+        return BUTTON_STYLES, STYLE.get("button_base", {})
     
     @staticmethod
     def create(label, button_id, button_type="default", is_active=False, custom_style=None, **kwargs):
         """Create a styled button."""
+        # Get styles from config
+        BUTTON_STYLES, button_base = ButtonFactory.get_button_styles()
+        
         # Base style for all buttons
         base_style = {
             "display": "inline-block",
@@ -101,9 +83,12 @@ class ButtonFactory:
             "borderRadius": "4px"
         }
         
+        # Add base button style from config
+        base_style.update(button_base)
+        
         # Apply type-specific styling
-        if button_type in ButtonFactory.BUTTON_STYLES:
-            base_style.update(ButtonFactory.BUTTON_STYLES[button_type])
+        if button_type in BUTTON_STYLES:
+            base_style.update(BUTTON_STYLES.get(button_type, {}))
             
         # Apply active styling if button is active
         if is_active:
@@ -142,6 +127,7 @@ class ButtonFactory:
                         "width": "110px",
                         "display": "inline-block",
                         "whiteSpace": "nowrap",
+                        "fontSize": "10px",
                     },
                 )
             )
@@ -149,19 +135,11 @@ class ButtonFactory:
         # Create container for buttons
         button_container = html.Div(
             [
-                ButtonFactory.create(
-                    btn["label"],
-                    btn["id"],
-                    button_type=btn.get("type", "default"),
-                    is_active=btn.get("default", False) or btn["id"] == active_button_id,
-                    custom_style={
-                        "flex": "1",
-                        "margin": "0",
-                        "padding": "2px 0",
-                        "lineHeight": "1",
-                        "borderRadius": "0",
-                        "borderLeft": "none" if i > 0 else "1px solid #ccc",
-                        "position": "relative",
+                html.Button(
+                    children=html.Span(btn["label"], id=f"{btn['id']}-text"),
+                    id=btn["id"],
+                    style={
+                        **ButtonFactory.get_joined_button_style(btn, i, active_button_id)
                     }
                 )
                 for i, btn in enumerate(buttons)
@@ -189,6 +167,54 @@ class ButtonFactory:
                 "alignItems": "center",
             },
         )
+
+    @staticmethod
+    def get_joined_button_style(btn, index, active_button_id=None):
+        """Get style for a button that's part of a joined group."""
+        # Get styles from config
+        BUTTON_STYLES, _ = ButtonFactory.get_button_styles()
+        
+        # Determine if this button is active
+        is_active = btn.get("default", False) or btn["id"] == active_button_id
+        
+        # Get button type
+        button_type = btn.get("type", "default")
+        if "price" in btn["id"]:
+            button_type = "price"
+        elif "dist" in btn["id"]:
+            button_type = "distance"
+        elif "sort" in btn["id"]:
+            button_type = "sort"
+        
+        # Base style
+        base_style = {
+            **(BUTTON_STYLES.get(button_type, {})),
+            "flex": "1",
+            "margin": "0",
+            "padding": "2px 0",
+            "fontSize": "10px",
+            "lineHeight": "1",
+            "borderRadius": "0",
+            "borderLeft": "none" if index > 0 else "1px solid #ccc",
+            "position": "relative",
+            "textAlign": "center",
+            "backgroundColor": BUTTON_STYLES.get(button_type, {}).get("backgroundColor", "#f5f5f5")
+        }
+        
+        # Apply active styling
+        if is_active:
+            base_style.update({
+                "opacity": 1.0,
+                "boxShadow": "0 0 5px #4682B4",
+                "zIndex": 1
+            })
+        else:
+            base_style.update({
+                "opacity": 0.6,
+                "zIndex": 0
+            })
+            
+        return base_style
 
 
 class ContainerFactory:

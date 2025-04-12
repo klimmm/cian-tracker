@@ -26,7 +26,7 @@ class ImageHandler:
             logger.info(f"Looking for images in: {image_dir}")
             
             # Check if the directory exists
-            if not image_dir.exists():
+            if not os.path.exists(image_dir):
                 logger.warning(f"Image directory not found: {image_dir}")
                 return []
 
@@ -186,86 +186,15 @@ class ApartmentCardBuilder:
     """Builder for creating apartment detail cards with modular sections."""
     
     @staticmethod
-    def create_navigation_header(offer_id, row_idx=None, total_rows=None):
-        """Create the navigation header with controls."""
+    def create_id_header(offer_id):
+        """Create a simple header with the apartment ID."""
         return html.Div(
-            [
-                # Left: Navigation buttons with counter
-                html.Div(
-                    [
-                        html.Button(
-                            "←",
-                            id="prev-apartment-button",
-                            disabled=row_idx == 0,
-                            style={
-                                "backgroundColor": "#4682B4" if row_idx > 0 else "#cccccc",
-                                "color": "white",
-                                "border": "none",
-                                "borderRadius": "4px",
-                                "padding": "3px 8px",
-                                "marginRight": "8px",
-                                "cursor": "pointer" if row_idx > 0 else "not-allowed",
-                                "fontSize": "12px",
-                                "fontWeight": "bold",
-                            },
-                        ),
-                        html.Span(
-                            f"{row_idx + 1}/{total_rows}" if row_idx is not None and total_rows else "",
-                            style={"fontSize": "10px", "margin": "0 8px", "color": "#666"},
-                        ),
-                        html.Button(
-                            "→",
-                            id="next-apartment-button",
-                            disabled=row_idx >= total_rows - 1 if total_rows else True,
-                            style={
-                                "backgroundColor": "#4682B4" if row_idx < total_rows - 1 else "#cccccc",
-                                "color": "white",
-                                "border": "none",
-                                "borderRadius": "4px",
-                                "padding": "3px 8px",
-                                "cursor": "pointer" if row_idx < total_rows - 1 else "not-allowed",
-                                "fontSize": "12px",
-                                "fontWeight": "bold",
-                            },
-                        ),
-                    ],
-                    style={"display": "flex", "alignItems": "center", "flexShrink": "0"},
-                ),
-                # Center: ID
-                html.Div(
-                    f"ID: {offer_id}",
-                    style={
-                        "fontSize": "10px",
-                        "color": "#666",
-                        "margin": "0 auto",
-                        "textAlign": "center",
-                    },
-                ),
-                # Right: External link styled like navigation buttons
-                html.A(
-                    "Циан ↗",
-                    href=f"https://www.cian.ru/rent/flat/{offer_id}/",
-                    target="_blank",
-                    style={
-                        "backgroundColor": "#4682B4",
-                        "color": "white",
-                        "border": "none",
-                        "borderRadius": "4px",
-                        "padding": "3px 8px",
-                        "fontSize": "12px",
-                        "fontWeight": "bold",
-                        "textDecoration": "none",
-                        "display": "inline-block",
-                        "textAlign": "center",
-                        "flexShrink": "0",
-                    },
-                ),
-            ],
+            f"ID: {offer_id}",
             style={
-                "display": "flex",
-                "justifyContent": "space-between",
-                "alignItems": "center",
-                "marginBottom": "10px",
+                "fontSize": "10px",
+                "color": "#666",
+                "margin": "0 auto 10px auto",
+                "textAlign": "center",
                 "padding": "5px 0",
                 "borderBottom": "1px solid #eee",
             },
@@ -309,7 +238,7 @@ class ApartmentCardBuilder:
         # Process price history for tags
         price_history_tags = []
         if price_history:
-            # Track unique date+price combinations to avoid duplicates
+            # Add a more strict uniqueness check by including all fields
             seen_entries = set()
             
             # Sort history by date
@@ -318,15 +247,19 @@ class ApartmentCardBuilder:
             # Create a pill for each unique price history entry
             for entry in sorted_history:
                 if "date" in entry and "price" in entry:
-                    # Create a unique key for this date+price combination
-                    entry_key = f"{entry['date']}:{entry['price']}"
+                    # Create a unique key for this price history entry
+                    price_clean = str(entry.get('price', '')).strip()
+                    date_clean = str(entry.get('date', '')).strip()
+                    
+                    # Create a more robust key using cleaned values
+                    entry_key = f"{date_clean}:{price_clean}"
                     
                     # Only add if we haven't seen this combination before
                     if entry_key not in seen_entries:
                         seen_entries.add(entry_key)
                         price_history_tags.append(
                             PillFactory.create(
-                                f"{entry['date']}: {entry['price']}", "#f8f8f8", "#666"
+                                f"{date_clean}: {price_clean}", "#f8f8f8", "#666"
                             )
                         )
         
@@ -497,13 +430,9 @@ def create_apartment_details_card(apartment_data, table_row_data=None, row_idx=N
     # Extract address and other info from table_row_data if available
     address, distance, metro, title, cian_est, price, description = extract_row_data(table_row_data)
 
-    # Create navigation header
-    nav_header = ApartmentCardBuilder.create_navigation_header(
-        offer_id, row_idx, total_rows
-    )
-
     # Build the card section by section
     slideshow = ImageHandler.create_slideshow(offer_id)
+    id_header = ApartmentCardBuilder.create_id_header(offer_id)
     address_section = ApartmentCardBuilder.create_address_section(address, metro, title, distance)
     price_section = ApartmentCardBuilder.create_price_section(
         price, 
@@ -513,16 +442,38 @@ def create_apartment_details_card(apartment_data, table_row_data=None, row_idx=N
     terms_section = ApartmentCardBuilder.create_terms_section(apartment_data.get("terms", {}))
     property_section = ApartmentCardBuilder.create_property_features_section(apartment_data)
 
+    # Create external link button
+    external_link = html.A(
+        "Открыть на Циан ↗",
+        href=f"https://www.cian.ru/rent/flat/{offer_id}/",
+        target="_blank",
+        style={
+            "backgroundColor": "#4682B4",
+            "color": "white",
+            "border": "none",
+            "borderRadius": "4px",
+            "padding": "5px 10px",
+            "fontSize": "12px",
+            "fontWeight": "bold",
+            "textDecoration": "none",
+            "display": "block",
+            "textAlign": "center",
+            "width": "fit-content",
+            "margin": "10px auto",
+        },
+    )
+
     # Assemble all sections in the correct order (filtering out None sections)
     all_sections = [
         section for section in [
-            nav_header,
+            id_header,
             slideshow,
             address_section,
             price_section,
             terms_section,
             property_section,
-            html.Div(description, style={"fontSize": "11px", "lineHeight": "1.3"}) if description else None,
+            html.Div(description, style={"fontSize": "11px", "lineHeight": "1.3", "marginBottom": "15px"}) if description else None,
+            external_link
         ] if section is not None
     ]
 

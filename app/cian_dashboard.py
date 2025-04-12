@@ -22,13 +22,16 @@ def initialize_app(data_dir=None):
     AppConfig.initialize(data_dir)
     logger.info(f"Using data directory: {AppConfig.get_data_dir()}")
     
-    # Get assets path from AppConfig
-    assets_path = AppConfig.get_path("assets")
-    logger.info(f"Assets path: {assets_path}")
+    # Get current directory for proper assets location
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    assets_path = os.path.join(current_dir, "assets")
     
-    # Ensure the assets directory exists
-    if not os.path.exists(assets_path):
-        os.makedirs(assets_path)
+    # Log the paths for debugging
+    logger.info(f"Current directory: {current_dir}")
+    logger.info(f"Assets path: {assets_path}")
+
+    # Validate assets path
+    validate_assets_path(assets_path)
 
     # Initialize the app with proper assets configuration
     app = dash.Dash(
@@ -36,10 +39,15 @@ def initialize_app(data_dir=None):
         title="Cian Apartment Dashboard",
         meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
         suppress_callback_exceptions=True,
-        assets_folder=str(assets_path),
+        assets_folder=assets_path,  # Use the assets folder in the app directory
     )
 
-    # Set up images directory links
+    # Ensure assets directory exists
+    if not os.path.exists(assets_path):
+        os.makedirs(assets_path)
+        logger.warning(f"Created missing assets directory: {assets_path}")
+
+    # Link the image directory to the assets folder
     setup_image_directory(assets_path)
 
     server = app.server
@@ -89,11 +97,31 @@ def initialize_app(data_dir=None):
     return app
 
 
+def validate_assets_path(assets_path):
+    """Validate that the assets path contains the expected files."""
+    # Check for specific assets
+    expected_files = ["custom.css", "tag_click.js"]
+    found_files = []
+    
+    for file in expected_files:
+        file_path = os.path.join(assets_path, file)
+        if os.path.exists(file_path):
+            found_files.append(file)
+    
+    if len(found_files) == len(expected_files):
+        logger.info(f"All expected assets found: {', '.join(found_files)}")
+    else:
+        missing = [f for f in expected_files if f not in found_files]
+        logger.warning(f"Missing assets: {', '.join(missing)}")
+        
+    return len(found_files) == len(expected_files)
+
+
 def setup_image_directory(assets_path):
     """Set up image directory with proper linking."""
-    # Get image directories
+    # Get image directory from AppConfig
     images_dir = AppConfig.get_images_path()
-    assets_images_dir = assets_path / "images"
+    assets_images_dir = os.path.join(assets_path, "images")
 
     logger.info(f"Source images directory: {images_dir}")
     logger.info(f"Target assets images directory: {assets_images_dir}")
