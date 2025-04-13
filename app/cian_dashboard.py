@@ -54,9 +54,14 @@ def _setup_image_directory(assets_path: str) -> None:
     images_dir = AppConfig.get_images_path()
     assets_images_dir = os.path.join(assets_path, "images")
 
-    if os.path.exists(images_dir) and not os.path.exists(assets_images_dir):
+    # Skip if target directory already exists
+    if os.path.exists(assets_images_dir):
+        logger.info(f"Assets images directory already exists: {assets_images_dir}")
+        return
+
+    # Only attempt to create link if source exists
+    if os.path.exists(images_dir):
         try:
-            # Create appropriate link based on platform
             if os.name == "nt":  # Windows
                 import subprocess
                 subprocess.run(["mklink", "/J", str(assets_images_dir), str(images_dir)], 
@@ -66,9 +71,21 @@ def _setup_image_directory(assets_path: str) -> None:
             logger.info(f"Created link from {images_dir} to {assets_images_dir}")
         except Exception as e:
             logger.warning(f"Could not create directory link: {e}")
-            # Create placeholder
-            if not os.path.exists(assets_images_dir):
-                os.makedirs(assets_images_dir)
+            # Create directory instead of link if linking fails
+            try:
+                os.makedirs(assets_images_dir, exist_ok=True)
+                logger.info(f"Created directory instead of link: {assets_images_dir}")
+            except Exception as e2:
+                logger.error(f"Failed to create images directory: {e2}")
+                # Continue without failing - non-critical error
+    else:
+        # Create empty directory if source doesn't exist
+        try:
+            os.makedirs(assets_images_dir, exist_ok=True)
+            logger.info(f"Created images directory: {assets_images_dir}")
+        except Exception as e:
+            logger.warning(f"Failed to create images directory: {e}")
+            # Continue without failing - non-critical error
 
 if __name__ == "__main__":
     app = initialize_app()
