@@ -4,401 +4,247 @@ import logging
 import re
 import os
 import base64
-from pathlib import Path
 from typing import Dict, List, Any, Optional, Union, Tuple
+import requests
 from app.components import PillFactory, ContainerFactory, StyleManager
 from app.formatters import FormatUtils
 from app.app_config import AppConfig
 from app.utils import ErrorHandler
-import requests
-from urllib.parse import urljoin
-from io import BytesIO
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] - %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
 
-
-# Add these imports to apartment_card.py
-
-
-# Add these imports at the top of apartment_card.py
-import requests
-from urllib.parse import urljoin
-from io import BytesIO
-
-# Make sure AppConfig is imported
-from app.app_config import AppConfig
-
-
 class ImageHandler:
-    """Handle apartment image processing with robust error handling."""
+    """Handle apartment image processing."""
     
     @staticmethod
-    def get_apartment_images(offer_id: str) -> List[str]:
-        """Get base64 encoded images for apartment with robust path handling."""
+    def get_apartment_images(offer_id):
+        """Get base64 encoded images for apartment."""
         return ErrorHandler.try_operation(
-            logger,
-            "get_apartment_images",
-            ImageHandler._get_images,
-            offer_id,
-            default_return=[]
+            logger, "get_apartment_images", ImageHandler._get_images, offer_id, default_return=[]
         )
     
     @staticmethod
-    def _get_images(offer_id: str) -> List[str]:
-        """Internal method to get images with error handling."""
-        # Check hybrid mode configuration for images
+    def _get_images(offer_id):
+        """Get images with error handling."""
+        # Check hybrid mode
         if AppConfig.should_use_hybrid_for_images():
-            # Try local images first
+            # Try local first
             local_images = ImageHandler._get_images_from_local(offer_id)
             if local_images:
-                logger.info(f"Found {len(local_images)} local images for offer_id {offer_id}")
                 return local_images
                 
             # Fall back to GitHub
-            logger.info(f"No local images found for offer_id {offer_id}, trying GitHub...")
             github_images = ImageHandler._get_images_from_github(offer_id)
             if github_images:
-                logger.info(f"Found {len(github_images)} GitHub images for offer_id {offer_id}")
                 return github_images
                 
-            logger.warning(f"No images found anywhere for offer_id {offer_id}")
             return []
         
-        # If not in hybrid mode, use whatever mode is configured
+        # Use configured source
         if AppConfig.is_using_github():
             return ImageHandler._get_images_from_github(offer_id)
         else:
             return ImageHandler._get_images_from_local(offer_id)
     
     @staticmethod
-    def _get_images_from_local(offer_id: str) -> List[str]:
+    def _get_images_from_local(offer_id):
         """Get images from local filesystem."""
-        # Use AppConfig for consistent path handling
         image_dir = AppConfig.get_images_path(str(offer_id))
-        logger.info(f"Looking for images in: {image_dir}")
         
-        # Check if the directory exists
         if not os.path.exists(image_dir):
-            logger.info(f"Image directory not found: {image_dir}")
             return []
 
-        # List all jpg files in the directory
+        # Find jpg files
         image_files = [f for f in os.listdir(image_dir) if f.lower().endswith(".jpg")]
-        
         if not image_files:
-            logger.info(f"No JPG images found in directory: {image_dir}")
             return []
 
-        # Encode each image as base64
+        # Encode as base64
         image_paths = []
         for file in sorted(image_files):
             image_path = os.path.join(image_dir, file)
             try:
                 with open(image_path, "rb") as image_file:
-                    encoded_string = base64.b64encode(image_file.read()).decode()
-                    # Format as data URL
-                    image_paths.append(f"data:image/jpeg;base64,{encoded_string}")
+                    encoded = base64.b64encode(image_file.read()).decode()
+                    image_paths.append(f"data:image/jpeg;base64,{encoded}")
             except Exception as e:
                 logger.error(f"Error encoding image {image_path}: {e}")
 
         return image_paths
     
     @staticmethod
-    def _get_images_from_github(offer_id: str) -> List[str]:
+    def _get_images_from_github(offer_id):
         """Get images from GitHub repository."""
-        # Construct the GitHub directory URL
         github_base = AppConfig.DATA_SOURCE["github"]["base_url"]
         image_dir_url = urljoin(github_base, f"images/{offer_id}/")
-        logger.info(f"Looking for images in GitHub: {image_dir_url}")
-        
         image_paths = []
         
-        # Try a set of standard image names (up to 10 images)
+        # Try standard image names
         for i in range(1, 11):
             image_url = urljoin(image_dir_url, f"{i}.jpg")
             try:
                 response = requests.head(image_url)
                 if response.status_code == 200:
-                    # Image exists, get the content
                     img_response = requests.get(image_url)
                     if img_response.status_code == 200:
-                        # Convert to base64
-                        encoded_string = base64.b64encode(img_response.content).decode()
-                        image_paths.append(f"data:image/jpeg;base64,{encoded_string}")
-                        logger.info(f"Successfully loaded image from GitHub: {image_url}")
+                        encoded = base64.b64encode(img_response.content).decode()
+                        image_paths.append(f"data:image/jpeg;base64,{encoded}")
             except Exception as e:
-                logger.warning(f"Error loading image from GitHub {image_url}: {e}")
+                logger.warning(f"Error loading image from GitHub: {e}")
                 
         return image_paths
     
     @staticmethod
-    def create_slideshow(offer_id: str) -> Optional[html.Div]:
-        """Create a slideshow component for apartment images."""
+    def create_slideshow(offer_id):
+        """Create a slideshow component for images."""
         image_paths = ImageHandler.get_apartment_images(offer_id)
-
         if not image_paths:
             return None
 
-        # Create slideshow container
-        slideshow = html.Div(
-            [
-                # Image container with navigation arrows
+        # Create slideshow with navigation
+        slideshow = html.Div([
+            # Image container with nav arrows
+            html.Div([
+                # Main image
+                html.Img(
+                    id={"type": "slideshow-img", "offer_id": offer_id},
+                    src=image_paths[0],
+                    style={"maxWidth": "100%", "maxHeight": "220px", "objectFit": "contain", "borderRadius": "4px"}
+                ),
+                # Navigation buttons
+                html.Button(
+                    "❮", id={"type": "prev-btn", "offer_id": offer_id},
+                    style={
+                        "position": "absolute", "top": "50%", "left": "10px", "transform": "translateY(-50%)",
+                        "backgroundColor": "rgba(0,0,0,0.3)", "color": "white", "border": "none",
+                        "borderRadius": "50%", "width": "30px", "height": "30px", "fontSize": "16px",
+                        "cursor": "pointer", "zIndex": "2", "display": "flex", "alignItems": "center",
+                        "justifyContent": "center"
+                    }
+                ),
+                html.Button(
+                    "❯", id={"type": "next-btn", "offer_id": offer_id},
+                    style={
+                        "position": "absolute", "top": "50%", "right": "10px", "transform": "translateY(-50%)",
+                        "backgroundColor": "rgba(0,0,0,0.3)", "color": "white", "border": "none",
+                        "borderRadius": "50%", "width": "30px", "height": "30px", "fontSize": "16px",
+                        "cursor": "pointer", "zIndex": "2", "display": "flex", "alignItems": "center",
+                        "justifyContent": "center"
+                    }
+                ),
+                # Image counter
                 html.Div(
-                    [
-                        # Main image
-                        html.Img(
-                            id={"type": "slideshow-img", "offer_id": offer_id},
-                            src=image_paths[0],
-                            style={
-                                "maxWidth": "100%",
-                                "maxHeight": "220px",
-                                "objectFit": "contain",
-                                "borderRadius": "4px",
-                            },
-                        ),
-                        # Left/right arrows
-                        html.Button(
-                            "❮",
-                            id={"type": "prev-btn", "offer_id": offer_id},
-                            style=StyleManager.merge_styles(
-                                {
-                                    "position": "absolute",
-                                    "top": "50%",
-                                    "left": "10px",
-                                    "transform": "translateY(-50%)",
-                                    "backgroundColor": "rgba(0,0,0,0.3)",
-                                    "color": "white",
-                                    "border": "none",
-                                    "borderRadius": "50%",
-                                    "width": "30px",
-                                    "height": "30px",
-                                    "fontSize": "16px",
-                                    "cursor": "pointer",
-                                    "zIndex": "2",
-                                    "display": "flex",
-                                    "alignItems": "center",
-                                    "justifyContent": "center",
-                                }
-                            ),
-                        ),
-                        html.Button(
-                            "❯",
-                            id={"type": "next-btn", "offer_id": offer_id},
-                            style=StyleManager.merge_styles(
-                                {
-                                    "position": "absolute",
-                                    "top": "50%",
-                                    "right": "10px",
-                                    "transform": "translateY(-50%)",
-                                    "backgroundColor": "rgba(0,0,0,0.3)",
-                                    "color": "white",
-                                    "border": "none",
-                                    "borderRadius": "50%",
-                                    "width": "30px",
-                                    "height": "30px",
-                                    "fontSize": "16px",
-                                    "cursor": "pointer",
-                                    "zIndex": "2",
-                                    "display": "flex",
-                                    "alignItems": "center",
-                                    "justifyContent": "center",
-                                }
-                            ),
-                        ),
-                        # Image counter
-                        html.Div(
-                            f"1/{len(image_paths)}",
-                            id={"type": "counter", "offer_id": offer_id},
-                            style=StyleManager.merge_styles(
-                                {
-                                    "position": "absolute",
-                                    "bottom": "10px",
-                                    "right": "10px",
-                                    "backgroundColor": "rgba(0,0,0,0.5)",
-                                    "color": "white",
-                                    "padding": "3px 8px",
-                                    "borderRadius": "12px",
-                                    "fontSize": "10px",
-                                }
-                            ),
-                        ),
-                    ],
-                    style=StyleManager.merge_styles(
-                        {
-                            "position": "relative",
-                            "display": "flex",
-                            "justifyContent": "center",
-                            "alignItems": "center",
-                            "height": "220px",
-                            "backgroundColor": "#f5f5f5",
-                            "borderRadius": "4px",
-                            "overflow": "hidden",
-                            "marginBottom": "5px",
-                        }
-                    ),
+                    f"1/{len(image_paths)}",
+                    id={"type": "counter", "offer_id": offer_id},
+                    style={
+                        "position": "absolute", "bottom": "10px", "right": "10px",
+                        "backgroundColor": "rgba(0,0,0,0.5)", "color": "white",
+                        "padding": "3px 8px", "borderRadius": "12px", "fontSize": "10px"
+                    }
                 ),
-                # Hidden store for current index and image paths
-                dcc.Store(
-                    id={"type": "slideshow-data", "offer_id": offer_id},
-                    data={"current_index": 0, "image_paths": image_paths},
-                ),
-                # Title showing total number of photos
-                html.Div(
-                    f"Фотографии ({len(image_paths)})",
-                    style=StyleManager.merge_styles(
-                        {
-                            "fontSize": "11px",
-                            "fontWeight": "bold",
-                            "marginBottom": "10px",
-                            "color": "#4682B4",
-                            "textAlign": "center",
-                        }
-                    ),
-                ),
-            ],
-            style=StyleManager.merge_styles(
-                {
-                    "marginBottom": "15px",
-                    "borderBottom": "1px solid #eee",
-                    "paddingBottom": "10px",
+            ], style={
+                "position": "relative", "display": "flex", "justifyContent": "center",
+                "alignItems": "center", "height": "220px", "backgroundColor": "#f5f5f5",
+                "borderRadius": "4px", "overflow": "hidden", "marginBottom": "5px"
+            }),
+            # Data store
+            dcc.Store(
+                id={"type": "slideshow-data", "offer_id": offer_id},
+                data={"current_index": 0, "image_paths": image_paths}
+            ),
+            # Title
+            html.Div(
+                f"Фотографии ({len(image_paths)})",
+                style={
+                    "fontSize": "11px", "fontWeight": "bold", 
+                    "marginBottom": "10px", "color": "#4682B4", "textAlign": "center"
                 }
             ),
-        )
+        ], style={"marginBottom": "15px", "borderBottom": "1px solid #eee", "paddingBottom": "10px"})
 
         return slideshow
 
 
 class ApartmentCardBuilder:
-    """Builder for creating apartment detail cards with modular sections."""
+    """Builder for apartment detail cards."""
     
     @staticmethod
-    def create_id_header(offer_id: str) -> html.Div:
-        """Create a simple header with the apartment ID."""
+    def create_id_header(offer_id):
+        """Create header with apartment ID."""
         return html.Div(
             f"ID: {offer_id}",
-            style=StyleManager.merge_styles(
-                {
-                    "fontSize": "10px",
-                    "color": "#666",
-                    "margin": "0 auto 10px auto",
-                    "textAlign": "center",
-                    "padding": "5px 0",
-                    "borderBottom": "1px solid #eee",
-                }
-            ),
+            style={
+                "fontSize": "10px", "color": "#666", "margin": "0 auto 10px auto",
+                "textAlign": "center", "padding": "5px 0", "borderBottom": "1px solid #eee"
+            }
         )
     
     @staticmethod
-    def create_address_section(address: str, metro: Optional[str], 
-                              title: Optional[str], distance: Optional[str]) -> html.Div:
-        """Create the address section with location details."""
-        return html.Div(
-            [
-                html.Div(
-                    address,
-                    style={"fontSize": "13px", "fontWeight": "bold", "marginBottom": "2px"},
-                ),
-                html.Div(
-                    [
-                        html.Span(
-                            metro,
-                            style={"fontSize": "11px", "color": "#4682B4", "marginRight": "8px"}
-                        ) if metro else None,
-                        html.Span(
-                            title, 
-                            style={"fontSize": "11px", "marginRight": "8px"}
-                        ) if title else None,
-                        html.Span(
-                            distance, 
-                            style={"fontSize": "11px", "fontWeight": "bold"}
-                        ) if distance else None,
-                    ],
-                    style={"marginBottom": "5px"},
-                ),
-            ]
-        )
+    def create_address_section(address, metro, title, distance):
+        """Create address section with location details."""
+        return html.Div([
+            html.Div(address, style={"fontSize": "13px", "fontWeight": "bold", "marginBottom": "2px"}),
+            html.Div([
+                html.Span(metro, style={"fontSize": "11px", "color": "#4682B4", "marginRight": "8px"}) if metro else None,
+                html.Span(title, style={"fontSize": "11px", "marginRight": "8px"}) if title else None,
+                html.Span(distance, style={"fontSize": "11px", "fontWeight": "bold"}) if distance else None,
+            ], style={"marginBottom": "5px"})
+        ])
     
     @staticmethod
-    def create_price_section(price: Optional[str], cian_est: Optional[str], 
-                           price_history: Optional[List[Dict[str, Any]]] = None) -> html.Div:
-        """Create the price information section."""
+    def create_price_section(price, cian_est, price_history=None):
+        """Create price information section."""
         price_value = re.sub(r"[^\d]", "", price) if price else None
         cian_est_value = re.sub(r"[^\d]", "", cian_est) if cian_est else None
         
-        # Process price history for tags
+        # Process price history
         price_history_tags = []
         if price_history:
-            # Add a more strict uniqueness check by including all fields
             seen_entries = set()
-            
-            # Sort history by date
             sorted_history = sorted(price_history, key=lambda x: x.get("date_iso", ""))
             
-            # Create a pill for each unique price history entry
             for entry in sorted_history:
                 if "date" in entry and "price" in entry:
-                    # Create a unique key for this price history entry
                     price_clean = str(entry.get('price', '')).strip()
                     date_clean = str(entry.get('date', '')).strip()
-                    
-                    # Create a more robust key using cleaned values
                     entry_key = f"{date_clean}:{price_clean}"
                     
-                    # Only add if we haven't seen this combination before
                     if entry_key not in seen_entries:
                         seen_entries.add(entry_key)
                         price_history_tags.append(
-                            PillFactory.create(
-                                f"{date_clean}: {price_clean}", "#f8f8f8", "#666"
-                            )
+                            PillFactory.create(f"{date_clean}: {price_clean}", "#f8f8f8", "#666")
                         )
         
-        return html.Div(
-            [
-                # Price header
-                html.Div(
-                    "",
-                    style={
-                        "fontSize": "12px",
-                        "fontWeight": "bold",
-                        "marginBottom": "5px",
-                        "color": "#4682B4",
-                    },
-                ),
-                # Current price with formatted difference vs Cian estimation
-                html.Div(
-                    [
-                        html.Span(price, style={"fontSize": "14px", "fontWeight": "bold"}),
-                        PillFactory.create_price_comparison(price_value, cian_est_value)
-                        if price_value and cian_est_value else None,
-                    ],
-                    style={
-                        "display": "flex",
-                        "alignItems": "center",
-                        "gap": "10px",
-                        "marginBottom": "6px",
-                    },
-                ),
-                # Price history as tags
-                ContainerFactory.create_flex_container(
-                    price_history_tags,
-                    gap="3px",
-                    custom_style={"marginBottom": "10px"}
-                ) if price_history_tags else None,
-            ]
-        )
+        return html.Div([
+            # Price header
+            html.Div("", style={
+                "fontSize": "12px", "fontWeight": "bold",
+                "marginBottom": "5px", "color": "#4682B4"
+            }),
+            # Current price with comparison
+            html.Div([
+                html.Span(price, style={"fontSize": "14px", "fontWeight": "bold"}),
+                PillFactory.create_price_comparison(price_value, cian_est_value)
+                if price_value and cian_est_value else None,
+            ], style={
+                "display": "flex", "alignItems": "center",
+                "gap": "10px", "marginBottom": "6px"
+            }),
+            # Price history tags
+            ContainerFactory.create_flex_container(
+                price_history_tags, gap="3px", custom_style={"marginBottom": "10px"}
+            ) if price_history_tags else None,
+        ])
     
     @staticmethod
-    def create_terms_section(terms: Optional[Dict[str, Any]]) -> Optional[html.Div]:
-        """Create the rental terms section with formatting."""
+    def create_terms_section(terms):
+        """Create rental terms section."""
         if not terms:
             return None
             
         terms_items = []
         
-        # Create pill/tag for each term
         for field, label in {
             "security_deposit": "Залог",
             "commission": "Комиссия",
@@ -412,21 +258,17 @@ class ApartmentCardBuilder:
                 
                 terms_items.append(PillFactory.create(f"{label}: {value}", "#f0f0f0", "#333"))
         
-        # Create terms container if we have terms
         return ContainerFactory.create_flex_container(
-            terms_items,
-            gap="3px",
-            custom_style={"marginBottom": "10px"}
+            terms_items, gap="3px", custom_style={"marginBottom": "10px"}
         ) if terms_items else None
     
     @staticmethod
-    def create_property_features_section(apartment_data: Dict[str, Any]) -> Optional[html.Div]:
-        """Create a combined properties and features section."""
+    def create_property_features_section(apartment_data):
+        """Create properties and features section."""
         apt = apartment_data.get("apartment", {})
         bld = apartment_data.get("building", {})
         features = apartment_data.get("features", {})
         
-        # Combine all properties
         all_properties = []
         
         # Special handling for floor and total_floors

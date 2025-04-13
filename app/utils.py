@@ -5,735 +5,38 @@ import os
 import logging
 import traceback
 from typing import Tuple, Dict, List, Optional, Any, Callable
+from datetime import datetime, timedelta
+import requests
+from urllib.parse import urljoin
 from app.config import CONFIG, MOSCOW_TZ
-from app.formatters import (
-    PriceFormatter,
-    TimeFormatter,
-    DataExtractor,
-    FormatUtils,
-    HtmlFormatter,
-)
 from app.app_config import AppConfig
 
 logger = logging.getLogger(__name__)
 
-
 class ErrorHandler:
     """Standardized error handling and logging."""
-
     @staticmethod
-    def log_and_return(
-        logger,
-        operation_name: str,
-        error: Exception,
-        default_return: Any = None,
-        log_level: str = "error",
-    ) -> Any:
-        """Log an error and return a default value."""
-        getattr(logger, log_level)(f"Error in {operation_name}: {str(error)}")
-        if log_level == "error":
-            logger.debug(f"Traceback: {traceback.format_exc()}")
-        return default_return
-
-    @staticmethod
-    def try_operation(
-        logger,
-        operation_name: str,
-        operation_func: Callable,
-        *args,
-        default_return: Any = None,
-        **kwargs,
-    ) -> Any:
-        """Try to execute an operation with standardized error handling."""
+    def try_operation(logger, operation_name, operation_func, *args, default_return=None, **kwargs):
+        """Execute operation with error handling."""
         try:
             return operation_func(*args, **kwargs)
         except Exception as e:
-            return ErrorHandler.log_and_return(
-                logger, operation_name, e, default_return
-            )
+            logger.error(f"Error in {operation_name}: {str(e)}")
+            return default_return
 
     @staticmethod
-    def fallback_chain(
-        logger, operation_name: str, operations: List[Tuple[Callable, List, Dict]]
-    ) -> Any:
-        """Try a sequence of operations until one succeeds."""
+    def fallback_chain(logger, operation_name, operations):
+        """Try operations in sequence until one succeeds."""
         for i, (func, args, kwargs) in enumerate(operations):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                logger.warning(
-                    f"Fallback {i+1}/{len(operations)} for {operation_name} failed: {e}"
-                )
+                logger.warning(f"Fallback {i+1}/{len(operations)} failed: {e}")
                 if i == len(operations) - 1:
-                    logger.error(f"All fallbacks for {operation_name} failed")
+                    logger.error(f"All fallbacks failed")
         return None
 
-
-# Add these imports to the top of utils.py
-import requests
-from urllib.parse import urljoin
-
-# Add this to the DataManager class in utils.py
-# Add to utils.py
-import requests
-from urllib.parse import urljoin
-
-class DataManager:
-    """Centralized manager for all data operations with improved error handling."""
-
-
-    @staticmethod
-    def _load_with_csv_module(file_path: str) -> pd.DataFrame:
-        """Load CSV using Python's CSV module for better error tolerance."""
-        import csv
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            sample = f.read(1000)
-            f.seek(0)
-
-            try:
-                dialect = csv.Sniffer().sniff(sample)
-                reader = csv.reader(f, dialect)
-            except:
-                reader = csv.reader(
-                    f, delimiter=",", quotechar='"', quoting=csv.QUOTE_MINIMAL
-                )
-
-            rows = list(reader)
-
-        if not rows:
-            return pd.DataFrame()
-
-        max_fields = max(len(row) for row in rows)
-        header = rows[0]
-
-        if len(header) < max_fields:
-            header = header + [f"unnamed_{i}" for i in range(len(header), max_fields)]
-
-        unique_header = DataManager._create_unique_header(header)
-
-        data = []
-        for row in rows[1:]:
-            if len(row) < max_fields:
-                row = row + [""] * (max_fields - len(row))
-            data.append(row[:max_fields])
-
-        return pd.DataFrame(data, columns=unique_header)
-
-    @staticmethod
-    def _create_unique_header(header: List[str]) -> List[str]:
-        """Create unique header names from potentially duplicate names."""
-        unique_header = []
-        seen = set()
-
-        for col in header:
-            if col in seen or not col:
-                count = 1
-                new_col = f"column_{count}" if not col else f"{col}_{count}"
-                while new_col in seen:
-                    count += 1
-                    new_col = f"column_{count}" if not col else f"{col}_{count}"
-                unique_header.append(new_col)
-            else:
-                unique_header.append(col)
-            seen.add(unique_header[-1])
-
-        return unique_header
-
-    @staticmethod
-    def _load_with_pandas_fallback(file_path: str) -> pd.DataFrame:
-        """Fallback method to load CSV with pandas."""
-        try:
-            return pd.read_csv(
-                file_path,
-                encoding="utf-8",
-                on_bad_lines="skip",
-                escapechar="\\",
-                quotechar='"',
-                low_memory=False,
-            )
-        except Exception as e2:
-            try:
-                return pd.read_csv(
-                    file_path,
-                    encoding="utf-8",
-                    error_bad_lines=False,
-                    warn_bad_lines=True,
-                    low_memory=False,
-                )
-            except Exception as e3:
-                logger.error(f"All loading methods failed for {file_path}: {str(e3)}")
-                return pd.DataFrame()
-    
-    @staticmethod
-    def load_csv_from_url(url: str) -> pd.DataFrame:
-        """Load a CSV file from a URL with error handling."""
-        try:
-            logger.info(f"Loading CSV from URL: {url}")
-            response = requests.get(url)
-            
-            # Check if the request was successful
-            if response.status_code == 200:
-                # Use pandas to read the CSV from the content
-                return pd.read_csv(pd.io.common.StringIO(response.text), encoding="utf-8")
-            else:
-                logger.error(f"Failed to fetch CSV from URL: {url}, Status code: {response.status_code}")
-                return pd.DataFrame()
-                
-        except Exception as e:
-            logger.error(f"Error loading CSV from URL {url}: {str(e)}")
-            return pd.DataFrame()
-    
-    @staticmethod
-    def load_csv_safely(file_path: str) -> pd.DataFrame:
-        """Load a CSV file with robust error handling for malformed files."""
-        filename = os.path.basename(file_path)
-        
-        # Always use GitHub for main data files
-        if AppConfig.always_use_github_for(filename):
-            github_url = AppConfig.get_github_url("cian_data", filename)
-            return DataManager.load_csv_from_url(github_url)
-        
-        # For apartment details files, use hybrid approach if configured
-        if AppConfig.should_use_hybrid_for_apartment_details():
-            # Try local file first
-            if os.path.exists(file_path):
-                try:
-                    df = DataManager._load_with_csv_module(file_path)
-                    if not df.empty:
-                        logger.info(f"Successfully loaded {filename} from local file")
-                        return df
-                except Exception as e:
-                    logger.warning(f"Error loading local file {filename}: {e}")
-                    
-            # Fall back to GitHub
-            github_url = AppConfig.get_github_url("cian_data", filename)
-            logger.info(f"Trying to load {filename} from GitHub at {github_url}")
-            df = DataManager.load_csv_from_url(github_url)
-            if not df.empty:
-                logger.info(f"Successfully loaded {filename} from GitHub")
-                return df
-            else:
-                logger.warning(f"Failed to load {filename} from GitHub")
-                return pd.DataFrame()
-        
-        # Default to local file loading
-        if not os.path.exists(file_path):
-            logger.warning(f"File not found: {file_path}")
-            return pd.DataFrame()
-
-        try:
-            return DataManager._load_with_csv_module(file_path)
-        except Exception as e:
-            logger.error(f"Error in CSV module parsing for {file_path}: {str(e)}")
-            return DataManager._load_with_pandas_fallback(file_path)
-    
-    @staticmethod
-    def load_data() -> Tuple[pd.DataFrame, str]:
-        """Load main apartment data from CSV files."""
-        try:
-            # Always use GitHub for the main data file
-            url = AppConfig.get_github_url("cian_data", "cian_apartments.csv")
-            logger.info(f"Loading main data from GitHub: {url}")
-            
-            df = DataManager.load_csv_from_url(url)
-            if df.empty:
-                logger.error("Loaded DataFrame from GitHub is empty!")
-                return pd.DataFrame(), "Data file not found on GitHub"
-                
-            logger.info(f"Successfully loaded {len(df)} rows from GitHub")
-            
-            # Get update time
-            update_time = DataManager._extract_update_time_from_github()
-            
-            return df, update_time
-            
-        except Exception as e:
-            logger.error(f"Error loading data: {e}")
-            return pd.DataFrame(), f"Error: {e}"
-    
-    @staticmethod
-    def _extract_update_time_from_github() -> str:
-        """Extract update time from GitHub metadata file."""
-        try:
-            # Try to load the metadata file from GitHub
-            meta_url = AppConfig.get_github_url("cian_data", "cian_apartments.meta.json")
-            response = requests.get(meta_url)
-            
-            if response.status_code == 200:
-                metadata = response.json()
-                update_time_str = metadata.get("last_updated", "Unknown")
-                try:
-                    dt = pd.to_datetime(update_time_str)
-                    return dt.strftime("%d.%m.%Y %H:%M:%S")
-                except:
-                    return update_time_str
-            else:
-                # Fallback to CSV header approach
-                return DataManager._extract_update_time_from_csv_header_github()
-                
-        except Exception as e:
-            logger.error(f"Error reading metadata from GitHub: {e}")
-            return "Unknown (GitHub)"
-    
-    @staticmethod
-    def _extract_update_time_from_csv_header_github() -> str:
-        """Extract update time from CSV header as fallback when using GitHub."""
-        try:
-            # Get first few lines of the CSV to check for header comments
-            url = AppConfig.get_github_url("cian_data", "cian_apartments.csv")
-            response = requests.get(url, headers={"Range": "bytes=0-1000"})
-            
-            if response.status_code in [200, 206]:  # 200 OK or 206 Partial Content
-                first_line = response.text.split('\n')[0]
-                if "last_updated=" in first_line:
-                    parts = first_line.split("last_updated=")
-                    if len(parts) > 1:
-                        return parts[1].split(",")[0].strip()
-            return "Unknown (GitHub)"
-                
-        except Exception as e:
-            logger.error(f"Error reading CSV header from GitHub: {e}")
-            return "Unknown (GitHub)"
-
-    @staticmethod
-    def process_data(df: pd.DataFrame) -> pd.DataFrame:
-        """Process and transform raw dataframe into display-ready format."""
-        if df.empty:
-            return df
-
-        df["offer_id"] = df["offer_id"].astype(str)
-
-        DataManager._process_links(df)
-        DataManager._process_metrics(df)
-        DataManager._process_dates(df)
-        DataManager._process_financial_info(df)
-        DataManager._create_display_columns(df)
-
-        df["tags"] = df.apply(generate_tags_for_row, axis=1)
-
-        df["sort_key"] = df["status"].apply(lambda x: 1)
-        df = df.sort_values(["sort_key", "distance_sort"], ascending=[True, True]).drop(
-            columns="sort_key"
-        )
-
-        return df
-
-    @staticmethod
-    def _process_links(df: pd.DataFrame) -> None:
-        """Process address and offer links."""
-        base_url = CONFIG["base_url"]
-        df["address"] = df.apply(
-            lambda r: f"[{r['address']}]({base_url}{r['offer_id']}/)", axis=1
-        )
-        df["offer_link"] = df["offer_id"].apply(lambda x: f"[View]({base_url}{x}/)")
-        df["address_title"] = df.apply(
-            lambda r: f"[{r['address']}]({base_url}{r['offer_id']}/)<br>{r['title']}",
-            axis=1,
-        )
-
-    @staticmethod
-    def _process_metrics(df: pd.DataFrame) -> None:
-        """Process distance and other metrics."""
-        df["distance_sort"] = pd.to_numeric(df["distance"], errors="coerce")
-        df["distance"] = df["distance_sort"].apply(
-            lambda x: f"{x:.2f} km" if pd.notnull(x) else ""
-        )
-
-    @staticmethod
-    def _process_dates(df: pd.DataFrame) -> None:
-        """Process dates and timestamps."""
-        # Process existing date columns
-        df["updated_time_sort"] = pd.to_datetime(df["updated_time"], errors="coerce")
-        df["updated_time"] = df["updated_time_sort"].apply(
-            lambda x: FormatUtils.format_text(x, lambda dt: TimeFormatter.format_date(dt, MOSCOW_TZ), "")
-        )
-    
-        df["unpublished_date_sort"] = pd.to_datetime(
-            df["unpublished_date"], format="%Y-%m-%d %H:%M:%S", errors="coerce"
-        )
-        df["unpublished_date"] = df["unpublished_date_sort"].apply(
-            lambda x: FormatUtils.format_text(x, lambda dt: TimeFormatter.format_date(dt, MOSCOW_TZ), "--")
-        )
-        
-        df["activity_date_sort"] = pd.to_datetime(df["activity_date"], errors="coerce")
-        df["activity_date"] = df["activity_date_sort"].apply(
-            lambda x: FormatUtils.format_text(x, lambda dt: TimeFormatter.format_date(dt, MOSCOW_TZ), "--")
-        )
-        
-        # Calculate days_active
-        now = pd.Timestamp.now()
-
-        # In utils.py, modify the DataManager._process_dates method where days_active is calculated:
-        
-        # Calculate days_active and hours when days is 0
-        df["days_active_value"] = df.apply(
-            lambda r: (now - r["updated_time_sort"]).days 
-                      if r["status"] == "active" and pd.notnull(r["updated_time_sort"])
-                      else (r["unpublished_date_sort"] - r["updated_time_sort"]).days 
-                      if r["status"] == "non active" and pd.notnull(r["unpublished_date_sort"]) and pd.notnull(r["updated_time_sort"]) 
-                      else None,
-            axis=1
-        )
-        
-        # Calculate hours for entries where days = 0
-        df["hours_active_value"] = df.apply(
-            lambda r: int((now - r["updated_time_sort"]).total_seconds() // 3600) 
-                      if r["status"] == "active" and pd.notnull(r["updated_time_sort"]) and (now - r["updated_time_sort"]).days == 0
-                      else int((r["unpublished_date_sort"] - r["updated_time_sort"]).total_seconds() // 3600) 
-                      if r["status"] == "non active" and pd.notnull(r["unpublished_date_sort"]) and pd.notnull(r["updated_time_sort"]) 
-                      and (r["unpublished_date_sort"] - r["updated_time_sort"]).days == 0
-                      else None,
-            axis=1
-        )
-        
-        # Format days_active for display, showing hours when days = 0
-        df["days_active"] = df.apply(
-            lambda r: f"{int(r['hours_active_value'])} ч." if pd.notnull(r['days_active_value']) and r['days_active_value'] == 0 and pd.notnull(r['hours_active_value'])
-                      else f"{int(r['days_active_value'])} дн." if pd.notnull(r['days_active_value']) and r['days_active_value'] >= 0 
-                      else "--",
-            axis=1
-        )
-                    
-
-
-        
-        # Combined date for sorting
-        df["date_sort_combined"] = df.apply(
-            lambda r: r["updated_time_sort"],
-            axis=1
-        )
-
-    @staticmethod
-    def _process_financial_info(df: pd.DataFrame) -> None:
-        """Process price, commission, deposit and other financial information."""
-        df["price_value_formatted"] = df["price_value"].apply(
-            lambda x: FormatUtils.format_text(
-                x, lambda v: PriceFormatter.format_price(v), "--"
-            )
-        )
-        df["cian_estimation_formatted"] = df["cian_estimation_value"].apply(
-            lambda x: FormatUtils.format_text(
-                x, lambda v: PriceFormatter.format_price(v), "--"
-            )
-        )
-        df["price_difference_formatted"] = df["price_difference_value"].apply(
-            lambda x: FormatUtils.format_text(
-                x, lambda v: PriceFormatter.format_price(v, abbreviate=True), ""
-            )
-        )
-        df["price_change_formatted"] = df["price_change_value"].apply(
-            PriceFormatter.format_price_change
-        )
-
-        df["rental_period_abbr"] = df["rental_period"].apply(format_rental_period)
-        df["utilities_type_abbr"] = df["utilities_type"].apply(format_utilities)
-
-        df["commission_value"] = df["commission_info"].apply(
-            DataExtractor.extract_commission_value
-        )
-        df["commission_info_abbr"] = df["commission_value"].apply(
-            PriceFormatter.format_commission
-        )
-        df["deposit_value"] = df["deposit_info"].apply(
-            DataExtractor.extract_deposit_value
-        )
-        df["deposit_info_abbr"] = df["deposit_value"].apply(
-            PriceFormatter.format_deposit
-        )
-
-        df["monthly_burden"] = df.apply(calculate_monthly_burden, axis=1)
-        df["monthly_burden_formatted"] = df.apply(format_burden, axis=1)
-
-    @staticmethod
-    def _create_display_columns(df: pd.DataFrame) -> None:
-        """Create combined display columns for the UI."""
-        df["price_text"] = df.apply(
-            lambda r: (
-                f'<div style="display:block; text-align:center; margin:0; padding:0;">'
-                f'<strong style="margin:0; padding:0;">{r["price_value_formatted"]}</strong>'
-                + (
-                    f'<br><span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-top:2px; background-color:#fcf3cd; color:#856404;">хорошая цена</span>'
-                    if r.get("price_difference_value", 0) > 0
-                    and r.get("status") != "non active"
-                    else ""
-                )
-                + "</div>"
-            ),
-            axis=1,
-        )
-
-        df["commission_text"] = df.apply(
-            lambda r: f'комиссия {r["commission_info_abbr"]}', axis=1
-        )
-        df["deposit_text"] = df.apply(
-            lambda r: f'залог {r["deposit_info_abbr"]}', axis=1
-        )
-        df["price_info"] = df.apply(
-            lambda r: f"{r['price_text']}<br>{r['commission_text']}<br> {r['deposit_text']}",
-            axis=1,
-        )
-
-        df["update_title"] = df.apply(format_update_title, axis=1)
-        df["property_tags"] = df.apply(format_property_tags, axis=1)
-        df["update_time"] = df.apply(
-            lambda r: f'<strong>{r["updated_time"]}</strong>',
-            axis=1,
-        )
-        df["price_change"] = df["price_change_formatted"]
-
-        df["activity_date"] = df.apply(format_activity_date, axis=1)
-   
-        df["days_active"] = df.apply(format_active_days, axis=1)
-        # Create a combined update_title and activity_date column
-        df["update_title"] = df.apply(
-            lambda r: f"{r['update_title']}{r['activity_date']}" 
-            if pd.notnull(r['activity_date']) and r['activity_date'] != ""
-            else r['update_title'],
-            axis=1
-        )
-
-
-    
-    @staticmethod
-    def filter_data(
-        df: pd.DataFrame, filters: Optional[Dict[str, Any]] = None
-    ) -> pd.DataFrame:
-        """Filter data based on user-selected filters with cumulative filtering."""
-        if df.empty or not filters:
-            return df
-
-        filtered_df = df.copy()
-
-        if (
-            (price_value := filters.get("price_value"))
-            and price_value != float("inf")
-            and "price_value" in filtered_df.columns
-        ):
-            filtered_df = filtered_df[filtered_df["price_value"] <= price_value]
-
-        if (
-            (distance_value := filters.get("distance_value"))
-            and distance_value != float("inf")
-            and "distance_sort" in filtered_df.columns
-        ):
-            filtered_df = filtered_df[filtered_df["distance_sort"] <= distance_value]
-
-        if filters.get("nearest") and "distance_sort" in filtered_df.columns:
-            filtered_df = filtered_df[filtered_df["distance_sort"] < 1.5]
-
-        if (
-            filters.get("below_estimate")
-            and "price_difference_value" in filtered_df.columns
-        ):
-            filtered_df = filtered_df[filtered_df["price_difference_value"] >= 5000]
-
-        if filters.get("inactive") and "status" in filtered_df.columns:
-            filtered_df = filtered_df[filtered_df["status"] == "active"]
-
-        if filters.get("updated_today") and "updated_time_sort" in filtered_df.columns:
-            filtered_df["updated_time_sort"] = pd.to_datetime(
-                filtered_df["updated_time_sort"], errors="coerce"
-            )
-            recent_time = pd.Timestamp.now() - pd.Timedelta(hours=24)
-            filtered_df = filtered_df[filtered_df["updated_time_sort"] > recent_time]
-
-
-
-        
-        return filtered_df
-
-    @staticmethod
-    def filter_and_sort_data(
-        df: pd.DataFrame,
-        filters: Optional[Dict[str, Any]] = None,
-        sort_by: Optional[List[Dict[str, Any]]] = None,
-    ) -> pd.DataFrame:
-        """Filter and sort data in a single function."""
-        df = DataManager.filter_data(df, filters)
-
-        if df.empty:
-            return df
-
-        if filters and "sort_column" in filters and "sort_direction" in filters:
-            sort_column = filters["sort_column"]
-
-            if sort_column in df.columns:
-                df = df.sort_values(
-                    sort_column, ascending=filters["sort_direction"] == "asc"
-                )
-            elif "price_value" in df.columns:
-                df = df.sort_values("price_value", ascending=True)
-        elif sort_by:
-            for item in sort_by:
-                col = CONFIG["columns"]["sort_map"].get(
-                    item["column_id"], item["column_id"]
-                )
-                if col in df.columns:
-                    df = df.sort_values(col, ascending=item["direction"] == "asc")
-
-        return df
-
-
-def load_apartment_details(offer_id: str) -> Dict[str, Any]:
-    """Load all details for a specific apartment by offer_id."""
-    data_dir = AppConfig.get_cian_data_path()
-    logger.info(f"Loading apartment details for offer_id {offer_id}")
-
-    apartment_data = {"offer_id": offer_id}
-    files_to_check = [
-        ("price_history.csv", "price_history"),
-        ("stats.csv", "stats"),
-        ("features.csv", "features"),
-        ("rental_terms.csv", "terms"),
-        ("apartment_details.csv", "apartment"),
-        ("building_details.csv", "building"),
-    ]
-
-    for filename, group_name in files_to_check:
-        try:
-            # Use the DataManager's load_csv_safely method which already supports the hybrid approach
-            filepath = os.path.join(data_dir, filename)
-            df = DataManager.load_csv_safely(filepath)
-                
-            if df.empty or "offer_id" not in df.columns:
-                continue
-
-            df["offer_id"] = df["offer_id"].astype(str)
-            filtered_df = df[df["offer_id"] == str(offer_id)]
-
-            if not filtered_df.empty:
-                if group_name == "price_history":
-                    apartment_data[group_name] = filtered_df.to_dict("records")
-                else:
-                    apartment_data[group_name] = filtered_df.iloc[0].to_dict()
-                logger.info(f"Loaded {group_name} data for offer_id {offer_id}")
-            else:
-                logger.warning(f"No data found for offer_id {offer_id} in {filename}")
-        except Exception as e:
-            logger.error(f"Error processing data from {filename}: {e}")
-
-    return apartment_data
-    
-def generate_tags_for_row(row: pd.Series) -> Dict[str, Any]:
-    """Generate tag flags for various row conditions."""
-    tags = {
-        "below_estimate": False,
-        "nearby": False,
-        "updated_today": False,
-        "neighborhood": None,
-        "is_hamovniki": False,
-        "is_arbat": False,
-    }
-
-    if row.get("price_difference_value", 0) > 0 and row.get("status") != "non active":
-        tags["below_estimate"] = True
-
-    if row.get("distance_sort", 999) < 1.5 and row.get("status") != "non active":
-        tags["nearby"] = True
-
-    try:
-        recent_time = pd.Timestamp.now() - pd.Timedelta(hours=24)
-        row_time = row.get("updated_time_sort")
-        if row_time and not pd.isna(row_time):
-            row_dt = pd.to_datetime(row_time)
-            if row_dt.date() == pd.Timestamp.now().date():
-                tags["updated_today"] = True
-    except Exception as e:
-        logger.error(f"Error processing timestamp: {e}")
-
-    neighborhood = str(row.get("neighborhood", ""))
-    if neighborhood and neighborhood != "nan" and neighborhood != "None":
-        neighborhood_name = DataExtractor.extract_neighborhood(neighborhood)
-        tags["neighborhood"] = neighborhood_name
-        tags["is_hamovniki"] = "Хамовники" in neighborhood
-        tags["is_arbat"] = "Арбат" in neighborhood
-
-    return tags
-
-def format_update_title(row: pd.Series) -> str:
-    """Format update_title showing all elements on the same line."""
-    time_str = row["updated_time"]
-    # Start with the date
-    html = f'<span style="font-size:0.9rem; font-weight:bold; line-height:1.2;">{time_str}</span> '
-    # Add price change or new indicator
-    if row.get("price_change_formatted"):
-        html += f'{row["price_change_formatted"]} '
-    
-    # Add days_active as a tag if it exists - on the same line
-    if pd.notnull(row.get("days_active")) and row["days_active"] != "--":
-        # Style based on the age - different colors for different age ranges
-        days_value = row.get("days_active_value", 0)
-        
-        # Check if status is non active
-        if row.get("status") == "non active":
-            # Use grey colors for non-active items
-            bg_color, text_color = "#f0f0f0", "#707070"  # Light grey background, dark grey text
-        else:
-            # Define colors based on age for active items
-            if days_value == 0:  # Today
-                bg_color, text_color = "#e8f5e9", "#2e7d32"  # Light green
-            elif days_value <= 3:  # Recent
-                bg_color, text_color = "#e3f2fd", "#1565c0"  # Light blue
-            elif days_value <= 14:  # Within 2 weeks
-                bg_color, text_color = "#fff3e0", "#e65100"  # Light orange
-            else:  # Older
-                bg_color, text_color = "#ffebee", "#c62828"  # Light red
-            
-        html += f'<span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-left:1px; background-color:{bg_color}; color:{text_color};">{row["days_active"]}</span>'
-    return HtmlFormatter.create_centered_text(html)
-
-
-
-
-def format_activity_date(row: pd.Series) -> str:
-    """Format activity_date showing when owner was last active with no material changes."""
-    if "activity_date" not in row or pd.isna(row["activity_date"]):
-        return ""
-    
-    # Check if activity_date is the same as updated_time, if so return empty string
-    if pd.notnull(row.get("updated_time_sort")) and pd.notnull(row.get("activity_date_sort")):
-        # Compare the dates to see if they're on the same day and time (within a minute tolerance)
-        time_diff = abs((row["activity_date_sort"] - row["updated_time_sort"]).total_seconds())
-        if time_diff < 60:  # If they're within a minute of each other
-            return ""
-        
-    activity_date = row["activity_date"]
-    
-    # Add a refresh/update icon only for activity updates
-    if row["status"] == "active":
-        html = f'<span style="color:#1976d2; font-size:0.7rem;">🔄</span><span style="font-size:0.9rem; font-weight:normal; line-height:1.2;">{activity_date}</span>'
-    else:
-        # For archived listings, just show the date and archive tag
-        html = f'<span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-left:3px; background-color:#f5f5f5; color:#666;">📦</span><span style="font-size:0.9rem; font-weight:naormal; line-height:1.2;">{activity_date}</span> '
-
-    return HtmlFormatter.create_centered_text(html)
-
-
-def format_active_days(row: pd.Series) -> str:
-    html = ''
-    # Add days_active as a tag if it exists - on the same line
-    if pd.notnull(row.get("days_active")) and row["days_active"] != "--":
-        # Style based on the age - different colors for different age ranges
-        days_value = row.get("days_active_value", 0)
-        
-        # Define colors based on age
-        if days_value == 0:  # Today
-            bg_color, text_color = "#e8f5e9", "#2e7d32"  # Light green
-        elif days_value <= 3:  # Recent
-            bg_color, text_color = "#e3f2fd", "#1565c0"  # Light blue
-        elif days_value <= 14:  # Within 2 weeks
-            bg_color, text_color = "#fff3e0", "#e65100"  # Light orange
-        else:  # Older
-            bg_color, text_color = "#ffebee", "#c62828"  # Light red
-            
-        html = f'<span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-left:3px; background-color:{bg_color}; color:{text_color};">{row["days_active"]}</span>'
-
-    return HtmlFormatter.create_centered_text(html)
-
-    
-# Add these constants to utils.py
-# Mapping of metro stations to line numbers
+# Metro station data
 METRO_STATIONS_TO_LINE = {
     # Line 1 (Сокольническая)
     'Бульвар Рокоссовского': 1, 'Черкизовская': 1, 'Преображенская площадь': 1, 'Сокольники': 1, 
@@ -762,7 +65,7 @@ METRO_STATIONS_TO_LINE = {
     'Кутузовская': 4, 'Фили': 4, 'Багратионовская': 4, 'Филёвский парк': 4, 'Пионерская': 4,
     
     # Line 5 (Кольцевая)
-    'Новослободская': 5, 'Проспект Мира': 5, 'Добрынинская': 5, 'Октябрьская': 5, 'Краснопресненская': 5,
+    'Новослободская': 5, 'Проспект Мира': 5, 'Добрынинская': 5, 'Краснопресненская': 5,
     
     # Line 6 (Калужско-Рижская)
     'Медведково': 6, 'Бабушкинская': 6, 'Свиблово': 6, 'Ботанический сад': 6, 
@@ -770,7 +73,7 @@ METRO_STATIONS_TO_LINE = {
     'Тургеневская': 6, 'Китай-город': 6, 'Третьяковская': 6, 'Шаболовская': 6, 
     'Ленинский проспект': 6, 'Академическая': 6, 'Профсоюзная': 6, 'Новые Черемушки': 6, 
     'Калужская': 6, 'Беляево': 6, 'Коньково': 6, 'Теплый Стан': 6, 
-    'Ясенево': 6, 'Новоясеневская': 6,
+    'Ясенево': 6, 'Новоясеневская': 6, 'Октябрьская': 5,
     
     # Line 7 (Таганско-Краснопресненская)
     'Жулебино': 7, 'Лермонтовский проспект': 7, 'Выхино': 7, 'Рязанский проспект': 7, 
@@ -838,138 +141,478 @@ LINE_TO_COLOR = {
     18: '#AC1753',  # Бирюлёвская линия
 }
 
-# Add these methods to the HtmlFormatter class in formatters.py
-def create_tag_span_with_border(text, bg_color, text_color, border_color, border_width):
-    """Create an HTML span tag with styling for a tag/pill that includes a border.
+
+class DataManager:
+    """Centralized data management."""
+    @staticmethod
+    def load_csv_from_url(url):
+        """Load CSV from URL."""
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                return pd.read_csv(pd.io.common.StringIO(response.text), encoding="utf-8")
+            else:
+                logger.error(f"Failed to fetch CSV: {url}, Status: {response.status_code}")
+                return pd.DataFrame()
+        except Exception as e:
+            logger.error(f"Error loading CSV from URL: {e}")
+            return pd.DataFrame()
     
-    Args:
-        text: Text content
-        bg_color: Background color
-        text_color: Text color
-        border_color: Border color
-        border_width: Border width
+    @staticmethod
+    def load_csv_safely(file_path):
+        """Load CSV with fallback strategies."""
+        filename = os.path.basename(file_path)
         
-    Returns:
-        HTML span tag string with border
-    """
-    tag_style = f"display:inline-block; padding:1px 4px; border-radius:3px; margin-right:1px; white-space:nowrap; border:{border_width} solid {border_color};"
-    return f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{text}</span>'
-
-# Modified format_property_tags function in utils.py
-def format_property_tags(row: pd.Series) -> str:
-    """Format property tags with reduced padding."""
-    import re  # Make sure re is imported
-    
-    tags = []
-    tag_flags = generate_tags_for_row(row)
-    distance_value = row.get("distance_sort")
-    # Existing code for distance tags
-    if distance_value is not None and not pd.isna(distance_value):
-        walking_minutes = (distance_value / 5) * 60
-        time_text = TimeFormatter.format_walking_time(distance_value)
-
-        if walking_minutes < 12:
-            bg_color, text_color = "#4285f4", "#ffffff"
-        elif walking_minutes < 20:
-            bg_color, text_color = "#aecbfa", "#174ea6"
-        elif walking_minutes < 30:
-            bg_color, text_color = "#aecbfa", "#174ea6"
-        else:
-            bg_color, text_color = "#dadce0", "#3c4043"
-
-        tags.append(HtmlFormatter.create_tag_span(time_text, bg_color, text_color))
-
-    # Existing code for neighborhood tags
-    if neighborhood := tag_flags.get("neighborhood"):
-        if tag_flags["is_hamovniki"]:
-            bg_color, text_color = "#e0f7f7", "#0c5460"
-        elif tag_flags["is_arbat"]:
-            bg_color, text_color = "#d0d1ff", "#3f3fa3"
-        else:
-            bg_color, text_color = "#dadce0", "#3c4043"
-
-        tags.append(HtmlFormatter.create_tag_span(neighborhood, bg_color, text_color))
-    # Add metro station tag if available
-    if metro_station := row.get("metro_station"):
-        if isinstance(metro_station, str) and metro_station.strip():
-            # Clean the metro station name (remove parentheses, etc.)
-            clean_station = re.sub(r'\s*\([^)]*\)', '', metro_station).strip()
-            
-            # Try to find a matching station
-            line_number = None
-            for station, line in METRO_STATIONS_TO_LINE.items():
-                if station in clean_station or clean_station in station:
-                    line_number = line
-                    break
-            
-            if line_number:
-                # Get the color for this line
-                bg_color = LINE_TO_COLOR.get(line_number, "#dadce0")  # Default gray if line not found
-                
-                # Special styling for MCC (Line 14) with red border
-                if line_number == 14:
-                    text_color = "#000000"  # Black text for better visibility on white
-                    # Add MCC prefix if not in the name already
-                    if "МЦК" not in clean_station and "MCC" not in clean_station and "мцк" not in clean_station.lower():
-                        station_display = f"{clean_station}"
-                    else:
-                        station_display = clean_station
+        # Check for GitHub first if needed
+        if AppConfig.always_use_github_for(filename):
+            github_url = AppConfig.get_github_url("cian_data", filename)
+            return DataManager.load_csv_from_url(github_url)
+        
+        # Try hybrid approach if configured
+        if AppConfig.should_use_hybrid_for_apartment_details():
+            if os.path.exists(file_path):
+                try:
+                    df = pd.read_csv(file_path, encoding="utf-8", on_bad_lines="skip")
+                    if not df.empty:
+                        return df
+                except Exception:
+                    pass
                     
-                    # Create special tag with red border for MCC
-                    # Using HtmlFormatter.create_tag_span_with_border directly at first
-                    tag_style = f"display:inline-block; padding:1px 4px; border-radius:3px; margin-right:1px; white-space:nowrap; border:1px solid #EF161E;"
-                    tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{station_display}</span>')
-                else:
-                    text_color = "#ffffff"  # White text for all other lines
-                    # Create the standard tag with station name and line color
-                    tags.append(HtmlFormatter.create_tag_span(clean_station, bg_color, text_color))
+            # Fall back to GitHub
+            github_url = AppConfig.get_github_url("cian_data", filename)
+            return DataManager.load_csv_from_url(github_url)
+        
+        # Local file as last resort
+        if not os.path.exists(file_path):
+            return pd.DataFrame()
 
-
-
-    return HtmlFormatter.create_flex_container("".join(tags)) if tags else ""
-
+        try:
+            return pd.read_csv(file_path, encoding="utf-8", on_bad_lines="skip")
+        except Exception:
+            try:
+                return pd.read_csv(file_path, encoding="utf-8", error_bad_lines=False)
+            except Exception:
+                return pd.DataFrame()
     
+    @staticmethod
+    def load_data():
+        """Load main apartment data."""
+        try:
+            url = AppConfig.get_github_url("cian_data", "cian_apartments.csv")
+            df = DataManager.load_csv_from_url(url)
+            if df.empty:
+                return pd.DataFrame(), "Data file not found"
+                
+            # Get update time
+            update_time = DataManager._extract_update_time()
+            
+            return df, update_time
+        except Exception as e:
+            logger.error(f"Error loading data: {e}")
+            return pd.DataFrame(), f"Error: {e}"
+    
+    @staticmethod
+    def _extract_update_time():
+        """Extract update time from metadata."""
+        try:
+            meta_url = AppConfig.get_github_url("cian_data", "cian_apartments.meta.json")
+            response = requests.get(meta_url)
+            
+            if response.status_code == 200:
+                metadata = response.json()
+                update_time_str = metadata.get("last_updated", "Unknown")
+                try:
+                    dt = pd.to_datetime(update_time_str)
+                    return dt.strftime("%d.%m.%Y %H:%M:%S")
+                except:
+                    return update_time_str
+            return "Unknown"
+        except Exception as e:
+            logger.error(f"Error reading metadata: {e}")
+            return "Unknown"
 
-def format_rental_period(value: Optional[str]) -> str:
-    """Format rental period with more intuitive abbreviation."""
-    if value == "От года":
-        return "год+"
-    elif value == "На несколько месяцев":
-        return "мес+"
-    return "--"
+    @staticmethod
+    def process_data(df):
+        """Process dataframe into display format."""
+        if df.empty:
+            return df
 
+        df["offer_id"] = df["offer_id"].astype(str)
 
-def format_utilities(value: Optional[str]) -> str:
-    """Format utilities info with clearer abbreviation."""
+        # Process data transformations
+        DataManager._process_links(df)
+        DataManager._process_metrics(df)
+        DataManager._process_dates(df)
+        DataManager._process_financial_info(df)
+        DataManager._create_display_columns(df)
+
+        df["tags"] = df.apply(generate_tags_for_row, axis=1)
+
+        # Sort by status and distance
+        df["sort_key"] = df["status"].apply(lambda x: 1)
+        df = df.sort_values(["sort_key", "distance_sort"], ascending=[True, True]).drop(columns="sort_key")
+
+        return df
+
+    @staticmethod
+    def _process_links(df):
+        """Process address and offer links."""
+        base_url = CONFIG["base_url"]
+        df["address"] = df.apply(lambda r: f"[{r['address']}]({base_url}{r['offer_id']}/)", axis=1)
+        df["offer_link"] = df["offer_id"].apply(lambda x: f"[View]({base_url}{x}/)")
+        df["address_title"] = df.apply(lambda r: f"[{r['address']}]({base_url}{r['offer_id']}/)<br>{r['title']}", axis=1)
+
+    @staticmethod
+    def _process_metrics(df):
+        """Process distance and other metrics."""
+        df["distance_sort"] = pd.to_numeric(df["distance"], errors="coerce")
+        df["distance"] = df["distance_sort"].apply(lambda x: f"{x:.2f} km" if pd.notnull(x) else "")
+
+    @staticmethod
+    def _process_dates(df):
+        """Process dates and timestamps."""
+        now = pd.Timestamp.now()
+        
+        # Convert datetime columns
+        for col in ["updated_time", "unpublished_date", "activity_date"]:
+            df[f"{col}_sort"] = pd.to_datetime(df[col], errors="coerce")
+            df[col] = df[f"{col}_sort"].apply(lambda x: format_date(x) if pd.notnull(x) else "--")
+        
+        # Calculate days active
+        df["days_active_value"] = df.apply(
+            lambda r: (now - r["updated_time_sort"]).days if r["status"] == "active" and pd.notnull(r["updated_time_sort"])
+            else (r["unpublished_date_sort"] - r["updated_time_sort"]).days if r["status"] == "non active" 
+            and pd.notnull(r["unpublished_date_sort"]) and pd.notnull(r["updated_time_sort"]) else None, axis=1)
+        
+        # Calculate hours for entries where days = 0
+        df["hours_active_value"] = df.apply(
+            lambda r: int((now - r["updated_time_sort"]).total_seconds() // 3600) 
+            if r["status"] == "active" and pd.notnull(r["updated_time_sort"]) and (now - r["updated_time_sort"]).days == 0
+            else int((r["unpublished_date_sort"] - r["updated_time_sort"]).total_seconds() // 3600) 
+            if r["status"] == "non active" and pd.notnull(r["unpublished_date_sort"]) 
+            and pd.notnull(r["updated_time_sort"]) and (r["unpublished_date_sort"] - r["updated_time_sort"]).days == 0
+            else None, axis=1)
+        
+        # Format days active
+        df["days_active"] = df.apply(
+            lambda r: f"{int(r['hours_active_value'])} ч." if pd.notnull(r['days_active_value']) and r['days_active_value'] == 0 
+            and pd.notnull(r['hours_active_value']) else f"{int(r['days_active_value'])} дн." 
+            if pd.notnull(r['days_active_value']) and r['days_active_value'] >= 0 else "--", axis=1)
+                    
+        # Combined date for sorting
+        df["date_sort_combined"] = df["updated_time_sort"]
+
+    @staticmethod
+    def _process_financial_info(df):
+        """Process financial information."""
+        # Format price columns
+        for col in ["price_value", "cian_estimation_value"]:
+            df[f"{col}_formatted"] = df[col].apply(lambda x: format_number(x) if is_numeric(x) else "--")
+            
+        df["price_difference_formatted"] = df["price_difference_value"].apply(
+            lambda x: format_number(x, abbreviate=True) if is_numeric(x) else "")
+            
+        df["price_change_formatted"] = df["price_change_value"].apply(format_price_change)
+
+        # Format period and utilities
+        df["rental_period_abbr"] = df["rental_period"].apply(format_rental_period)
+        df["utilities_type_abbr"] = df["utilities_type"].apply(format_utilities)
+
+        # Process commission and deposit
+        df["commission_value"] = df["commission_info"].apply(extract_commission_value)
+        df["commission_info_abbr"] = df["commission_value"].apply(format_commission)
+        df["deposit_value"] = df["deposit_info"].apply(extract_deposit_value)
+        df["deposit_info_abbr"] = df["deposit_value"].apply(format_deposit)
+
+        # Calculate monthly burden
+        df["monthly_burden"] = df.apply(calculate_monthly_burden, axis=1)
+        df["monthly_burden_formatted"] = df.apply(format_burden, axis=1)
+
+    @staticmethod
+    def _create_display_columns(df):
+        """Create combined display columns."""
+        # Price text with highlighting
+        df["price_text"] = df.apply(
+            lambda r: f'<div style="display:block; text-align:center; margin:0; padding:0;">'
+            f'<strong style="margin:0; padding:0;">{r["price_value_formatted"]}</strong>'
+            + (f'<br><span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-top:2px; '
+               f'background-color:#fcf3cd; color:#856404;">хорошая цена</span>'
+               if r.get("price_difference_value", 0) > 0 and r.get("status") != "non active" else "")
+            + "</div>", axis=1)
+
+        # Financial info
+        df["commission_text"] = df.apply(lambda r: f'комиссия {r["commission_info_abbr"]}', axis=1)
+        df["deposit_text"] = df.apply(lambda r: f'залог {r["deposit_info_abbr"]}', axis=1)
+        df["price_info"] = df.apply(
+            lambda r: f"{r['price_text']}<br>{r['commission_text']}<br> {r['deposit_text']}", axis=1)
+
+        # Update info
+        df["update_title"] = df.apply(format_update_title, axis=1)
+        df["property_tags"] = df.apply(format_property_tags, axis=1)
+        df["update_time"] = df.apply(lambda r: f'<strong>{r["updated_time"]}</strong>', axis=1)
+        df["price_change"] = df["price_change_formatted"]
+        df["activity_date"] = df.apply(format_activity_date, axis=1)
+        df["days_active"] = df.apply(format_active_days, axis=1)
+        
+        # Combine update title with activity date
+        df["update_title"] = df.apply(
+            lambda r: f"{r['update_title']}{r['activity_date']}" if pd.notnull(r['activity_date']) 
+            and r['activity_date'] != "" else r['update_title'], axis=1)
+
+    @staticmethod
+    def filter_data(df, filters=None):
+        """Filter data based on user filters."""
+        if df.empty or not filters:
+            return df
+
+        filtered_df = df.copy()
+
+        # Apply price filter
+        if (price_value := filters.get("price_value")) and price_value != float("inf") and "price_value" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["price_value"] <= price_value]
+
+        # Apply distance filter
+        if (distance_value := filters.get("distance_value")) and distance_value != float("inf") and "distance_sort" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["distance_sort"] <= distance_value]
+
+        # Apply feature filters
+        if filters.get("nearest") and "distance_sort" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["distance_sort"] < 1.5]
+
+        if filters.get("below_estimate") and "price_difference_value" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["price_difference_value"] >= 5000]
+
+        if filters.get("inactive") and "status" in filtered_df.columns:
+            filtered_df = filtered_df[filtered_df["status"] == "active"]
+
+        if filters.get("updated_today") and "updated_time_sort" in filtered_df.columns:
+            recent_time = pd.Timestamp.now() - pd.Timedelta(hours=24)
+            filtered_df = filtered_df[filtered_df["updated_time_sort"] > recent_time]
+        
+        return filtered_df
+
+    @staticmethod
+    def filter_and_sort_data(df, filters=None, sort_by=None):
+        """Filter and sort data in a single function."""
+        df = DataManager.filter_data(df, filters)
+        if df.empty:
+            return df
+
+        # Apply sorting
+        if filters and "sort_column" in filters and "sort_direction" in filters:
+            sort_column = filters["sort_column"]
+            if sort_column in df.columns:
+                df = df.sort_values(sort_column, ascending=filters["sort_direction"] == "asc")
+            elif "price_value" in df.columns:
+                df = df.sort_values("price_value", ascending=True)
+        elif sort_by:
+            for item in sort_by:
+                col = CONFIG["columns"]["sort_map"].get(item["column_id"], item["column_id"])
+                if col in df.columns:
+                    df = df.sort_values(col, ascending=item["direction"] == "asc")
+
+        return df
+
+def load_apartment_details(offer_id):
+    """Load details for a specific apartment."""
+    data_dir = AppConfig.get_cian_data_path()
+    apartment_data = {"offer_id": offer_id}
+    
+    # Define files to check
+    files_to_check = [
+        ("price_history.csv", "price_history"),
+        ("stats.csv", "stats"),
+        ("features.csv", "features"),
+        ("rental_terms.csv", "terms"),
+        ("apartment_details.csv", "apartment"),
+        ("building_details.csv", "building"),
+    ]
+
+    for filename, group_name in files_to_check:
+        try:
+            filepath = os.path.join(data_dir, filename)
+            df = DataManager.load_csv_safely(filepath)
+                
+            if not df.empty and "offer_id" in df.columns:
+                df["offer_id"] = df["offer_id"].astype(str)
+                filtered_df = df[df["offer_id"] == str(offer_id)]
+
+                if not filtered_df.empty:
+                    apartment_data[group_name] = filtered_df.to_dict("records") if group_name == "price_history" else filtered_df.iloc[0].to_dict()
+        except Exception as e:
+            logger.error(f"Error processing {filename}: {e}")
+
+    return apartment_data
+
+# Utility functions
+def is_numeric(value):
+    """Check if value can be converted to a number."""
     if value is None:
+        return False
+    try:
+        float(str(value).replace(" ", "").replace("₽", ""))
+        return True
+    except (ValueError, TypeError):
+        return False
+
+def format_number(value, include_currency=True, abbreviate=False, default="--"):
+    """Format numbers with options."""
+    if not is_numeric(value):
+        return default
+
+    import re
+    clean_value = re.sub(r"[^\d.]", "", str(value))
+    try:
+        num = int(float(clean_value))
+        
+        if abbreviate:
+            if num >= 1000000:
+                result = f"{num//1000000}M"
+            elif num >= 1000:
+                result = f"{num//1000}K"
+            else:
+                result = f"{num}"
+        else:
+            result = "{:,}".format(num).replace(",", " ")
+            
+        return f"{result} ₽" if include_currency else result
+    except:
+        return default
+
+def format_date(dt, threshold_hours=24):
+    """Format date with relative time for recent dates."""
+    if dt is None or pd.isna(dt):
         return "--"
-    if "без счётчиков" in value:
-        return "+счет"
-    elif "счётчики включены" in value:
-        return "-"
+        
+    # Russian month abbreviations
+    month_names = {1: "янв", 2: "фев", 3: "мар", 4: "апр", 5: "май", 6: "июн",
+                   7: "июл", 8: "авг", 9: "сен", 10: "окт", 11: "ноя", 12: "дек"}
+        
+    now = datetime.now()
+    delta = now - dt
+    today = now.date()
+    yesterday = today - timedelta(days=1)
+
+    if delta < timedelta(minutes=1):
+        return "только что"
+    elif delta < timedelta(hours=1):
+        minutes = int(delta.total_seconds() // 60)
+        return f"{minutes} {'минуту' if minutes == 1 else 'минуты' if 2 <= minutes <= 4 else 'минут'} назад"
+    elif delta < timedelta(hours=6):
+        hours = int(delta.total_seconds() // 3600)
+        return f"{hours} {'час' if hours == 1 else 'часа' if 2 <= hours <= 4 else 'часов'} назад"
+    elif dt.date() == today:
+        return f"сегодня, {dt.hour:02}:{dt.minute:02}"
+    elif dt.date() == yesterday:
+        return f"вчера, {dt.hour:02}:{dt.minute:02}"
+    else:
+        return f"{dt.day} {month_names[dt.month]}"
+
+def format_price_change(value, decimal_places=0):
+    """Format price changes with styling hints."""
+    if value is None or pd.isna(value) or (isinstance(value, str) and value.lower() == "new"):
+        return ""
+            
+    try:
+        value = float(value)
+    except:
+        return ""
+            
+    if abs(value) < 1:
+        return ""
+
+    # Colors and formatting
+    color = "#2a9d8f" if value < 0 else "#d62828"
+    bg_color = "#e6f7f5" if value < 0 else "#fbe9e7"
+    arrow = "↓" if value < 0 else "↑"
+    
+    # Abbreviate large numbers
+    if abs(value) >= 1000:
+        display = f"{abs(int(value))//1000}K"
+    else:
+        display = f"{abs(int(value))}"
+
+    return (f'<span style="color:{color}; font-weight:bold; background-color:{bg_color}; '
+            f'padding:2px 4px; font-size:0.5rem !important; border-radius:4px; display:inline-block; margin-top:2px;">'
+            f"{arrow} {display}</span>")
+
+def extract_commission_value(value):
+    """Extract commission percentage from text."""
+    if value is None or pd.isna(value):
+        return None
+    value = str(value).lower()
+    if "без комиссии" in value:
+        return 0.0
+    elif "комиссия" in value:
+        import re
+        match = re.search(r"(\d+)%", value)
+        if match:
+            return float(match.group(1))
+    return None
+
+def extract_deposit_value(deposit_info):
+    """Extract numeric deposit value from text."""
+    if deposit_info is None or pd.isna(deposit_info) or deposit_info == "--":
+        return None
+
+    if "без залога" in deposit_info.lower():
+        return 0
+
+    import re
+    match = re.search(r"залог\s+([\d\s\xa0]+)\s*₽", deposit_info, re.IGNORECASE)
+    if match:
+        amount_str = match.group(1)
+        clean_amount = re.sub(r"\s", "", amount_str)
+        try:
+            return int(clean_amount)
+        except ValueError:
+            return None
+    return None
+
+def format_commission(value):
+    """Format commission value."""
+    if value == 0:
+        return "0%"
+    elif isinstance(value, (int, float)):
+        return f"{int(value)}%" if value.is_integer() else f"{value}%"
     return "--"
 
+def format_deposit(value):
+    """Format deposit value."""
+    if value is None or pd.isna(value) or value == "--":
+        return "--"
+    if value == 0:
+        return "0₽"
+    elif isinstance(value, (int, float)):
+        return format_number(value, include_currency=False, abbreviate=True) + "₽"
+    return "--"
 
-def calculate_monthly_burden(row: pd.Series) -> Optional[float]:
-    """Calculate average monthly financial burden over 12 months."""
+def calculate_monthly_burden(row):
+    """Calculate average monthly financial burden."""
     try:
         price = pd.to_numeric(row["price_value"], errors="coerce")
         comm = pd.to_numeric(row["commission_value"], errors="coerce")
         dep = pd.to_numeric(row["deposit_value"], errors="coerce")
-        return PriceFormatter.calculate_monthly_burden(price, comm, dep)
+        
+        if pd.isna(price) or price <= 0:
+            return None
+            
+        comm = 0 if pd.isna(comm) else comm
+        dep = 0 if pd.isna(dep) else dep
+        
+        annual_rent = price * 12
+        commission_fee = price * (comm / 100)
+        total_burden = (annual_rent + commission_fee + dep) / 12
+        
+        return total_burden
     except Exception as e:
         logger.error(f"Error calculating burden: {e}")
         return None
 
-
-def format_burden(row: pd.Series) -> str:
-    """Format the burden value with comparison to price."""
+def format_burden(row):
+    """Format burden value with comparison to price."""
     try:
-        if (
-            pd.isna(row["monthly_burden"])
-            or pd.isna(row["price_value"])
-            or row["price_value"] <= 0
-        ):
+        if pd.isna(row["monthly_burden"]) or pd.isna(row["price_value"]) or row["price_value"] <= 0:
             return "--"
 
         burden = float(row["monthly_burden"])
@@ -978,6 +621,206 @@ def format_burden(row: pd.Series) -> str:
         diff_percent = int(((burden / price) - 1) * 100)
 
         return f"{burden_formatted}/мес." if diff_percent > 2 else burden_formatted
-    except Exception as e:
-        logger.error(f"Error formatting burden: {e}")
+    except Exception:
         return "--"
+
+def format_rental_period(value):
+    """Format rental period."""
+    if value == "От года":
+        return "год+"
+    elif value == "На несколько месяцев":
+        return "мес+"
+    return "--"
+
+def format_utilities(value):
+    """Format utilities info."""
+    if value is None:
+        return "--"
+    if "без счётчиков" in value:
+        return "+счет"
+    elif "счётчики включены" in value:
+        return "-"
+    return "--"
+
+def generate_tags_for_row(row):
+    """Generate tags for row conditions."""
+    tags = {
+        "below_estimate": row.get("price_difference_value", 0) > 0 and row.get("status") != "non active",
+        "nearby": row.get("distance_sort", 999) < 1.5 and row.get("status") != "non active",
+        "updated_today": False,
+        "neighborhood": None,
+        "is_hamovniki": False,
+        "is_arbat": False
+    }
+
+    # Check for recent updates
+    try:
+        recent_time = pd.Timestamp.now() - pd.Timedelta(hours=24)
+        row_time = row.get("updated_time_sort")
+        if row_time and not pd.isna(row_time):
+            row_dt = pd.to_datetime(row_time)
+            if row_dt.date() == pd.Timestamp.now().date():
+                tags["updated_today"] = True
+    except Exception as e:
+        logger.error(f"Error processing timestamp: {e}")
+
+    # Check neighborhood
+    neighborhood = str(row.get("neighborhood", ""))
+    if neighborhood and neighborhood != "nan" and neighborhood != "None":
+        # Extract neighborhood name
+        if "р-н " in neighborhood:
+            neighborhood_name = neighborhood.split("р-н ")[1].strip()
+        else:
+            neighborhood_name = neighborhood.strip()
+            
+        tags["neighborhood"] = neighborhood_name
+        tags["is_hamovniki"] = "Хамовники" in neighborhood
+        tags["is_arbat"] = "Арбат" in neighborhood
+
+    return tags
+
+def create_tag_span(text, bg_color, text_color):
+    """Create HTML span tag for a pill."""
+    style = "display:inline-block; padding:1px 4px; border-radius:3px; margin-right:1px; white-space:nowrap;"
+    return f'<span style="{style} background-color:{bg_color}; color:{text_color};">{text}</span>'
+
+def create_flex_container(content):
+    """Wrap content in a flex container."""
+    return f'<div style="display:flex; flex-wrap:wrap; gap:1px; justify-content:flex-start; padding:0;">{content}</div>'
+
+def format_update_title(row):
+    """Format update title with all elements on the same line."""
+    time_str = row["updated_time"]
+    html = f'<span style="font-size:0.9rem; font-weight:bold; line-height:1.2;">{time_str}</span> '
+    
+    # Add price change
+    if row.get("price_change_formatted"):
+        html += f'{row["price_change_formatted"]} '
+    
+    # Add days active tag
+    if pd.notnull(row.get("days_active")) and row["days_active"] != "--":
+        days_value = row.get("days_active_value", 0)
+        
+        # Set colors based on status and age
+        if row.get("status") == "non active":
+            bg_color, text_color = "#f0f0f0", "#707070"  # Grey for inactive
+        elif days_value == 0:
+            bg_color, text_color = "#e8f5e9", "#2e7d32"  # Green for today
+        elif days_value <= 3:
+            bg_color, text_color = "#e3f2fd", "#1565c0"  # Blue for recent
+        elif days_value <= 14:
+            bg_color, text_color = "#fff3e0", "#e65100"  # Orange for 2 weeks
+        else:
+            bg_color, text_color = "#ffebee", "#c62828"  # Red for older
+            
+        html += f'<span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-left:1px; background-color:{bg_color}; color:{text_color};">{row["days_active"]}</span>'
+    
+    return f'<div style="text-align:center; width:100%;">{html}</div>'
+
+def format_activity_date(row):
+    """Format activity date info."""
+    if "activity_date" not in row or pd.isna(row["activity_date"]):
+        return ""
+    
+    # Skip if same as updated time
+    if pd.notnull(row.get("updated_time_sort")) and pd.notnull(row.get("activity_date_sort")):
+        time_diff = abs((row["activity_date_sort"] - row["updated_time_sort"]).total_seconds())
+        if time_diff < 60:
+            return ""
+        
+    activity_date = row["activity_date"]
+    
+    # Format based on status
+    if row["status"] == "active":
+        html = f'<span style="color:#1976d2; font-size:0.7rem;">🔄</span><span style="font-size:0.9rem; font-weight:normal; line-height:1.2;">{activity_date}</span>'
+    else:
+        html = f'<span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-left:3px; background-color:#f5f5f5; color:#666;">📦</span><span style="font-size:0.9rem; font-weight:normal; line-height:1.2;">{activity_date}</span> '
+
+    return f'<div style="text-align:center; width:100%;">{html}</div>'
+
+def format_active_days(row):
+    """Format active days with styling."""
+    if not pd.notnull(row.get("days_active")) or row["days_active"] == "--":
+        return ""
+        
+    days_value = row.get("days_active_value", 0)
+    
+    # Set colors based on age
+    if days_value == 0:
+        bg_color, text_color = "#e8f5e9", "#2e7d32"  # Green for today
+    elif days_value <= 3:
+        bg_color, text_color = "#e3f2fd", "#1565c0"  # Blue for recent
+    elif days_value <= 14:
+        bg_color, text_color = "#fff3e0", "#e65100"  # Orange for 2 weeks
+    else:
+        bg_color, text_color = "#ffebee", "#c62828"  # Red for older
+        
+    html = f'<span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-left:3px; background-color:{bg_color}; color:{text_color};">{row["days_active"]}</span>'
+    return f'<div style="text-align:center; width:100%;">{html}</div>'
+
+def format_property_tags(row):
+    """Format property tags."""
+    tags = []
+    tag_flags = generate_tags_for_row(row)
+    
+    # Format distance tag
+    distance_value = row.get("distance_sort")
+    if distance_value is not None and not pd.isna(distance_value):
+        walking_minutes = (distance_value / 5) * 60
+        
+        # Format walking time
+        if walking_minutes < 60:
+            time_text = f"{int(walking_minutes)}м"
+        else:
+            hours = int(walking_minutes // 60)
+            minutes = int(walking_minutes % 60)
+            time_text = f"{hours}ч{minutes}м" if minutes > 0 else f"{hours}ч"
+
+        # Set colors based on walking time
+        if walking_minutes < 12:
+            bg_color, text_color = "#4285f4", "#ffffff"
+        elif walking_minutes < 20:
+            bg_color, text_color = "#aecbfa", "#174ea6"
+        else:
+            bg_color, text_color = "#dadce0", "#3c4043"
+
+        tags.append(create_tag_span(time_text, bg_color, text_color))
+
+    # Add neighborhood tag
+    if neighborhood := tag_flags.get("neighborhood"):
+        if tag_flags["is_hamovniki"]:
+            bg_color, text_color = "#e0f7f7", "#0c5460"
+        elif tag_flags["is_arbat"]:
+            bg_color, text_color = "#d0d1ff", "#3f3fa3"
+        else:
+            bg_color, text_color = "#dadce0", "#3c4043"
+
+        tags.append(create_tag_span(neighborhood, bg_color, text_color))
+        
+    # Add metro station tag
+    if metro_station := row.get("metro_station"):
+        if isinstance(metro_station, str) and metro_station.strip():
+            import re
+            # Clean station name
+            clean_station = re.sub(r'\s*\([^)]*\)', '', metro_station).strip()
+            
+            # Find matching station
+            line_number = None
+            for station, line in METRO_STATIONS_TO_LINE.items():
+                if station in clean_station or clean_station in station:
+                    line_number = line
+                    break
+            
+            if line_number:
+                bg_color = LINE_TO_COLOR.get(line_number, "#dadce0")
+                
+                if line_number == 14:  # MCC line
+                    text_color = "#000000"
+                    station_display = clean_station
+                    tag_style = f"display:inline-block; padding:1px 4px; border-radius:3px; margin-right:1px; white-space:nowrap; border:1px solid #EF161E;"
+                    tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{station_display}</span>')
+                else:
+                    text_color = "#ffffff"
+                    tags.append(create_tag_span(clean_station, bg_color, text_color))
+
+    return create_flex_container("".join(tags)) if tags else ""

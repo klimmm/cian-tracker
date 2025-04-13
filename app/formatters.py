@@ -3,16 +3,16 @@ import re
 import pandas as pd
 from datetime import datetime, timedelta
 import logging
-from typing import Union, Optional, Callable, Any, Dict
+from typing import Any, Optional, Callable, Dict
 
 logger = logging.getLogger(__name__)
 
 class FormatUtils:
-    """Utility functions for text and value formatting."""
+    """Utilities for text and value formatting."""
     
     @staticmethod
-    def is_numeric(value: Any) -> bool:
-        """Check if a value can be converted to a number."""
+    def is_numeric(value):
+        """Check if value can be converted to a number."""
         if value is None:
             return False
         try:
@@ -22,19 +22,8 @@ class FormatUtils:
             return False
             
     @staticmethod
-    def format_number(value: Any, include_currency: bool = True, 
-                     abbreviate: bool = False, default: str = "--") -> str:
-        """Format numbers with flexible options.
-        
-        Args:
-            value: Numeric value to format
-            include_currency: Whether to append currency symbol
-            abbreviate: Whether to use K/M abbreviations for large numbers
-            default: Value to return for None/invalid inputs
-            
-        Returns:
-            Formatted number string
-        """
+    def format_number(value, include_currency=True, abbreviate=False, default="--"):
+        """Format numbers with flexible options."""
         if not FormatUtils.is_numeric(value):
             return default
 
@@ -52,45 +41,20 @@ class FormatUtils:
             else:
                 result = "{:,}".format(num).replace(",", " ")
                 
-            if include_currency:
-                result = f"{result} ₽"
-                
-            return result
+            return f"{result} ₽" if include_currency else result
         except (ValueError, TypeError):
             return default
             
     @staticmethod
-    def format_text(value: Any, formatter: Callable[[Any], str], default: str = "") -> str:
-        """Apply a formatter function to a value with default handling.
-        
-        Args:
-            value: Value to format
-            formatter: Function to apply
-            default: Default value if input is None/NaN
-            
-        Returns:
-            Formatted string
-        """
+    def format_text(value, formatter, default=""):
+        """Apply formatter with default handling."""
         if value is None or pd.isna(value):
             return default
         return formatter(value)
     
     @staticmethod
-    def pluralize_ru(number: int, default_form: str, 
-                    acc_one_form: str, acc_few_form: str, 
-                    acc_many_form: str) -> str:
-        """Returns the correct Russian word form based on number.
-        
-        Args:
-            number: The number to base the form on
-            default_form: Default form to use if no specific form applies
-            acc_one_form: Form for accusative case, singular (1)
-            acc_few_form: Form for accusative case, few (2-4)
-            acc_many_form: Form for accusative case, many (5+)
-            
-        Returns:
-            The appropriate word form
-        """
+    def pluralize_ru(number, default_form, acc_one_form, acc_few_form, acc_many_form):
+        """Return correct Russian word form based on number."""
         n = abs(number) % 100
         if 11 <= n <= 19:
             return acc_many_form
@@ -107,22 +71,11 @@ class FormatUtils:
 
 
 class PriceFormatter:
-    """Unified price and financial value formatting functions."""
+    """Price and financial value formatting."""
     
     @staticmethod
-    def format_price(value: Any, include_currency: bool = True, 
-                    abbreviate: bool = False, default: str = "--") -> str:
-        """Format price with flexible options.
-        
-        Args:
-            value: Numeric price value
-            include_currency: Whether to append currency symbol
-            abbreviate: Whether to use K/M abbreviations for large numbers
-            default: Value to return for None/invalid inputs
-            
-        Returns:
-            Formatted price string
-        """
+    def format_price(value, include_currency=True, abbreviate=False, default="--"):
+        """Format price with options."""
         if value is None or pd.isna(value) or value == 0:
             return default
             
@@ -139,25 +92,14 @@ class PriceFormatter:
             else:
                 result = f"{'{:,}'.format(amount_num).replace(',', ' ')}"
                 
-            if include_currency:
-                result = f"{result} ₽"
-                
-            return result
+            return f"{result} ₽" if include_currency else result
             
         except (ValueError, TypeError):
             return default
     
     @staticmethod
-    def format_price_change(value: Any, decimal_places: int = 0) -> str:
-        """Enhanced format for price changes with styling hints.
-        
-        Args:
-            value: Change in price value (positive or negative)
-            decimal_places: Number of decimal places to show
-            
-        Returns:
-            Formatted string with styling information or empty string
-        """
+    def format_price_change(value, decimal_places=0):
+        """Format price changes with styling hints."""
         if value is None or pd.isna(value):
             return ""
         if isinstance(value, str) and value.lower() == "new":
@@ -171,12 +113,12 @@ class PriceFormatter:
         if abs(value) < 1:
             return ""
 
-        # Colors for price changes
+        # Format with appropriate styling
         color = "#2a9d8f" if value < 0 else "#d62828"
         bg_color = "#e6f7f5" if value < 0 else "#fbe9e7"
         arrow = "↓" if value < 0 else "↑"
         
-        # Format the number based on size
+        # Abbreviate large numbers
         if abs(value) >= 1000:
             display = f"{abs(int(value))//1000}K"
         else:
@@ -190,18 +132,17 @@ class PriceFormatter:
         )
     
     @staticmethod
-    def format_commission(value: Any) -> str:
-        """Format commission value as percentage or default if unknown."""
+    def format_commission(value):
+        """Format commission value."""
         if value == 0:
             return "0%"
         elif isinstance(value, (int, float)):
             return f"{int(value)}%" if value.is_integer() else f"{value}%"
-        else:
-            return "--"
+        return "--"
     
     @staticmethod
-    def format_deposit(value: Any) -> str:
-        """Format deposit values with appropriate abbreviations."""
+    def format_deposit(value):
+        """Format deposit value."""
         if value is None or pd.isna(value) or value == "--":
             return "--"
         if value == 0:
@@ -211,8 +152,8 @@ class PriceFormatter:
         return "--"
     
     @staticmethod
-    def calculate_monthly_burden(rent: float, commission_pct: float, deposit: float) -> Optional[float]:
-        """Calculate average monthly financial burden over 12 months."""
+    def calculate_monthly_burden(rent, commission_pct, deposit):
+        """Calculate monthly burden over 12 months."""
         try:
             if pd.isna(rent) or rent <= 0:
                 return None
@@ -223,9 +164,7 @@ class PriceFormatter:
             annual_rent = rent * 12
             commission_fee = rent * (comm / 100)
             
-            total_burden = (annual_rent + commission_fee + deposit) / 12
-            return total_burden
-            
+            return (annual_rent + commission_fee + deposit) / 12
         except Exception as e:
             logger.error(f"Error calculating burden: {e}")
             return None
@@ -235,17 +174,8 @@ class TimeFormatter:
     """Time and date formatting utilities."""
     
     @staticmethod
-    def format_date(dt: datetime, timezone=None, relative_threshold_hours: int = 24) -> str:
-        """Format date with relative time for recent dates and improved month formatting.
-        
-        Args:
-            dt: Datetime to format
-            timezone: Timezone to use (optional)
-            relative_threshold_hours: Hours threshold for relative time
-            
-        Returns:
-            Formatted date/time string
-        """
+    def format_date(dt, timezone=None, relative_threshold_hours=24):
+        """Format date with relative time for recent dates."""
         if dt is None or pd.isna(dt):
             return "--"
             
@@ -268,45 +198,39 @@ class TimeFormatter:
         elif delta < timedelta(hours=1):
             minutes = int(delta.total_seconds() // 60)
             return f"{minutes} {FormatUtils.pluralize_ru(minutes, 'минут', 'минута', 'минуты', 'минут')} назад"
-        elif delta < timedelta(hours=6):  # Show exact hours only up to 6 hours
+        elif delta < timedelta(hours=6):
             hours = int(delta.total_seconds() // 3600)
             return f"{hours} {FormatUtils.pluralize_ru(hours, 'час', 'час', 'часа', 'часов')} назад"
         elif dt.date() == today:
-            # Use "сегодня" for today but more than 6 hours ago
             return f"сегодня, {dt.hour:02}:{dt.minute:02}"
         elif dt.date() == yesterday:
             return f"вчера, {dt.hour:02}:{dt.minute:02}"
         else:
-            # Format with month name only, no time for dates older than yesterday
             return f"{dt.day} {month_names[dt.month]}"
     
     @staticmethod
-    def format_walking_time(distance_km: Optional[float]) -> str:
-        """Format walking distance into human-readable time."""
+    def format_walking_time(distance_km):
+        """Format walking distance into time."""
         if distance_km is None or pd.isna(distance_km):
             return ""
             
-        # Calculate walking time based on average speed (5 km/h)
+        # Calculate walking time (5 km/h)
         walking_minutes = (distance_km / 5) * 60
 
-        # Format time display
         if walking_minutes < 60:
-            return f"{int(walking_minutes)}м"  # Short version
+            return f"{int(walking_minutes)}м"
         else:
             hours = int(walking_minutes // 60)
             minutes = int(walking_minutes % 60)
-            if minutes == 0:
-                return f"{hours}ч"
-            else:
-                return f"{hours}ч{minutes}м"
+            return f"{hours}ч{minutes}м" if minutes > 0 else f"{hours}ч"
 
 
 class DataExtractor:
     """Utilities for extracting structured data from text."""
     
     @staticmethod
-    def extract_deposit_value(deposit_info: Optional[str]) -> Optional[int]:
-        """Extract numeric deposit value from deposit_info string."""
+    def extract_deposit_value(deposit_info):
+        """Extract numeric deposit value."""
         if deposit_info is None or pd.isna(deposit_info) or deposit_info == "--":
             return None
 
@@ -325,8 +249,8 @@ class DataExtractor:
         return None
     
     @staticmethod
-    def extract_commission_value(value: Any) -> Optional[float]:
-        """Extract commission percentage from text description."""
+    def extract_commission_value(value):
+        """Extract commission percentage from text."""
         if value is None or pd.isna(value):
             return None
             
@@ -340,58 +264,32 @@ class DataExtractor:
         return None
     
     @staticmethod
-    def extract_neighborhood(text: Optional[str]) -> Optional[str]:
-        """Extract neighborhood name from address or district text."""
+    def extract_neighborhood(text):
+        """Extract neighborhood name from text."""
         if text is None or pd.isna(text) or text in ("nan", "None"):
             return None
             
-        # Extract just the neighborhood name if it follows a pattern like "р-н Хамовники"
         if "р-н " in text:
             return text.split("р-н ")[1].strip()
-        else:
-            return text.strip()
+        return text.strip()
 
 
 class HtmlFormatter:
-    """Utilities for creating HTML formatted content."""
+    """Utilities for HTML formatting."""
     
     @staticmethod
-    def create_tag_span(text: str, bg_color: str, text_color: str) -> str:
-        """Create an HTML span tag with styling for a tag/pill.
-        
-        Args:
-            text: Text content
-            bg_color: Background color
-            text_color: Text color
-            
-        Returns:
-            HTML span tag string
-        """
+    def create_tag_span(text, bg_color, text_color):
+        """Create HTML tag span."""
         tag_style = "display:inline-block; padding:1px 4px; border-radius:3px; margin-right:1px; white-space:nowrap;"
         return f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{text}</span>'
     
     @staticmethod
-    def create_flex_container(content: str) -> str:
-        """Wrap content in a flex container.
-        
-        Args:
-            content: HTML content
-            
-        Returns:
-            HTML div with flex container
-        """
+    def create_flex_container(content):
+        """Create flex container for content."""
         return f'<div style="display:flex; flex-wrap:wrap; gap:1px; justify-content:flex-start; padding:0;">{content}</div>'
     
     @staticmethod
-    def create_centered_text(text: str, add_border: bool = False) -> str:
-        """Create centered text container.
-        
-        Args:
-            text: Text content
-            add_border: Whether to add a bottom border
-            
-        Returns:
-            HTML div with centered text
-        """
+    def create_centered_text(text, add_border=False):
+        """Create centered text container."""
         border = 'border-bottom: 1px solid #eee;' if add_border else ''
         return f'<div style="text-align:center; width:100%; {border}">{text}</div>'
