@@ -10,11 +10,6 @@ import requests
 from urllib.parse import urljoin
 from app.config import CONFIG, MOSCOW_TZ
 from app.app_config import AppConfig
-from zoneinfo import ZoneInfo  # Standard library in Python 3.9+
-
-# Define Moscow timezone
-MOSCOW_TZ = ZoneInfo("Europe/Moscow")
-
 
 logger = logging.getLogger(__name__)
 
@@ -145,32 +140,8 @@ LINE_TO_COLOR = {
     17: '#27303F',  # Рублёво-Архангельская линия
     18: '#AC1753',  # Бирюлёвская линия
 }
-# In utils.py
-from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 
-# Define Moscow timezone
-MOSCOW_TZ = ZoneInfo("Europe/Moscow")
 
-def ensure_timezone(dt, target_tz=None):
-    """Ensure a datetime has the correct timezone without changing the actual time."""
-    if dt is None or pd.isna(dt):
-        return None
-        
-    # Default to Moscow timezone if none specified
-    if target_tz is None:
-        target_tz = MOSCOW_TZ
-        
-    # Convert pandas Timestamp to datetime if needed
-    if isinstance(dt, pd.Timestamp):
-        dt = dt.to_pydatetime()
-    
-    # If datetime has no timezone, assume it's already in Moscow local time
-    # Just add the timezone info without shifting the time
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=target_tz)
-        
-    return dt
 class DataManager:
     """Centralized data management."""
     @staticmethod
@@ -240,6 +211,26 @@ class DataManager:
             logger.error(f"Error loading data: {e}")
             return pd.DataFrame(), f"Error: {e}"
     
+    @staticmethod
+    def _extract_update_time():
+        """Extract update time from metadata with proper timezone."""
+        try:
+            meta_url = AppConfig.get_github_url("cian_data", "cian_apartments.meta.json")
+            response = requests.get(meta_url)
+            
+            if response.status_code == 200:
+                metadata = response.json()
+                update_time_str = metadata.get("last_updated", "Unknown")
+                try:
+                    # Apply Moscow timezone
+                    dt = pd.to_datetime(update_time_str).tz_localize('UTC').tz_convert(MOSCOW_TZ)
+                    return dt.strftime("%d.%m.%Y %H:%M:%S")
+                except:
+                    return update_time_str
+            return "Unknown"
+        except Exception as e:
+            logger.error(f"Error reading metadata: {e}")
+            return "Unknown"
 
     @staticmethod
     def process_data(df):
@@ -277,91 +268,51 @@ class DataManager:
         """Process distance and other metrics."""
         df["distance_sort"] = pd.to_numeric(df["distance"], errors="coerce")
         df["distance"] = df["distance_sort"].apply(lambda x: f"{x:.2f} km" if pd.notnull(x) else "")
-    # Also update the _extract_update_time method:
-    @staticmethod
-    def _extract_update_time():
-        """Extract update time from metadata."""
-        try:
-            meta_url = AppConfig.get_github_url("cian_data", "cian_apartments.meta.json")
-            response = requests.get(meta_url)
-            
-            if response.status_code == 200:
-                metadata = response.json()
-                update_time_str = metadata.get("last_updated", "Unknown")
-                try:
-                    # Assume the time is already in Moscow, just add timezone info
-                    dt = pd.to_datetime(update_time_str)
-                    dt = dt.replace(tzinfo=MOSCOW_TZ)  # Use replace instead of localize
-                    return dt.strftime("%d.%m.%Y %H:%M:%S") + " (МСК)"
-                except:
-                    return update_time_str
-            return "Unknown"
-        except Exception as e:
-            logger.error(f"Error reading metadata: {e}")
-            return "Unknown"
 
-    
-    # Then update DataManager._process_dates to use consistent timezone handling
-    @staticmethod
-
-
-    # Fixed DataManager._process_dates method
     @staticmethod
     def _process_dates(df):
-        """Process dates and timestamps."""
-        # Get current time in Moscow timezone
-        now = datetime.now(MOSCOW_TZ)
+        """Process dates and timestamps with Moscow timezone."""
+        # Use Moscow timezone for now
+        now = pd.Timestamp.now(tz=MOSCOW_TZ)
         
-        # Process datetime columns
+        # Convert datetime columns with timezone handling
         for col in ["updated_time", "unpublished_date", "activity_date"]:
-            # Convert to datetime
+            # Convert to datetime and apply timezone
             df[f"{col}_sort"] = pd.to_datetime(df[col], errors="coerce")
-            
-            # Add timezone without changing the time value
+            # If timezone info is missing, assume UTC and convert to Moscow
             df[f"{col}_sort"] = df[f"{col}_sort"].apply(
-                lambda x: ensure_timezone(x) if pd.notnull(x) else None
+                lambda x: x.tz_localize('UTC').tz_convert(MOSCOW_TZ) 
+                if pd.notnull(x) and x.tzinfo is None else x
             )
-            
             # Format for display
-            df[col] = df[f"{col}_sort"].apply(lambda x: format_date(x) if pd.notnull(x) else "--")
+            df[col] = df[f"{col}_sort"].apply(
+                lambda x: format_date(x, MOSCOW_TZ) if pd.notnull(x) else "--"
+            )
         
-        # Calculate days active using timezone-aware datetimes
+        # Rest of the method remains unchanged but will now use timezone-aware datetimes
         df["days_active_value"] = df.apply(
-            lambda r: (now - ensure_timezone(r["updated_time_sort"])).days 
-                if r["status"] == "active" and pd.notnull(r["updated_time_sort"])
-            else (ensure_timezone(r["unpublished_date_sort"]) - ensure_timezone(r["updated_time_sort"])).days 
-                if r["status"] == "non active" and pd.notnull(r["unpublished_date_sort"]) 
-                and pd.notnull(r["updated_time_sort"]) 
-            else None, 
-            axis=1
-        )
-        
-        # Hours for entries where days = 0
+            lambda r: (now - r["updated_time_sort"]).days if r["status"] == "active" and pd.notnull(r["updated_time_sort"])
+            else (r["unpublished_date_sort"] - r["updated_time_sort"]).days if r["status"] == "non active" 
+            and pd.notnull(r["unpublished_date_sort"]) and pd.notnull(r["updated_time_sort"]) else None, axis=1)
+                
+        # Calculate hours for entries where days = 0
         df["hours_active_value"] = df.apply(
-            lambda r: int((now - ensure_timezone(r["updated_time_sort"])).total_seconds() // 3600) 
-                if r["status"] == "active" and pd.notnull(r["updated_time_sort"]) 
-                and (now - ensure_timezone(r["updated_time_sort"])).days == 0
-            else int((ensure_timezone(r["unpublished_date_sort"]) - ensure_timezone(r["updated_time_sort"])).total_seconds() // 3600) 
-                if r["status"] == "non active" and pd.notnull(r["unpublished_date_sort"]) 
-                and pd.notnull(r["updated_time_sort"]) 
-                and (ensure_timezone(r["unpublished_date_sort"]) - ensure_timezone(r["updated_time_sort"])).days == 0
-            else None, 
-            axis=1
-        )
+            lambda r: int((now - r["updated_time_sort"]).total_seconds() // 3600) 
+            if r["status"] == "active" and pd.notnull(r["updated_time_sort"]) and (now - r["updated_time_sort"]).days == 0
+            else int((r["unpublished_date_sort"] - r["updated_time_sort"]).total_seconds() // 3600) 
+            if r["status"] == "non active" and pd.notnull(r["unpublished_date_sort"]) 
+            and pd.notnull(r["updated_time_sort"]) and (r["unpublished_date_sort"] - r["updated_time_sort"]).days == 0
+            else None, axis=1)
         
-        # Format days active with consistent timezone handling
+        # Format days active
         df["days_active"] = df.apply(
-            lambda r: f"{int(r['hours_active_value'])} ч." 
-                if pd.notnull(r['days_active_value']) and r['days_active_value'] == 0 
-                and pd.notnull(r['hours_active_value']) 
-            else f"{int(r['days_active_value'])} дн." 
-                if pd.notnull(r['days_active_value']) and r['days_active_value'] >= 0 
-            else "--", 
-            axis=1
-        )
-        
+            lambda r: f"{int(r['hours_active_value'])} ч." if pd.notnull(r['days_active_value']) and r['days_active_value'] == 0 
+            and pd.notnull(r['hours_active_value']) else f"{int(r['days_active_value'])} дн." 
+            if pd.notnull(r['days_active_value']) and r['days_active_value'] >= 0 else "--", axis=1)
+                    
         # Combined date for sorting
         df["date_sort_combined"] = df["updated_time_sort"]
+
     @staticmethod
     def _process_financial_info(df):
         """Process financial information."""
@@ -539,47 +490,38 @@ def format_number(value, include_currency=True, abbreviate=False, default="--"):
     except:
         return default
 
-# Update format_date function
-def format_date(dt, threshold_hours=24):
-    """Format date with timezone-aware calculations."""
+def format_date(dt, timezone=MOSCOW_TZ, threshold_hours=24):
+    """Format date with relative time for recent dates using Moscow timezone."""
     if dt is None or pd.isna(dt):
         return "--"
-    
-    # Ensure dt has Moscow timezone
-    dt = ensure_timezone(dt, MOSCOW_TZ)
-    
-    # Get current time in Moscow
-    now = datetime.now(MOSCOW_TZ)
-    
-    # Calculate delta with consistent timezones
-    delta = now - dt
-    seconds_ago = delta.total_seconds()
-    
+        
     # Russian month abbreviations
     month_names = {1: "янв", 2: "фев", 3: "мар", 4: "апр", 5: "май", 6: "июн",
-                  7: "июл", 8: "авг", 9: "сен", 10: "окт", 11: "ноя", 12: "дек"}
+                   7: "июл", 8: "авг", 9: "сен", 10: "окт", 11: "ноя", 12: "дек"}
     
-    # Format based on how long ago
-    if seconds_ago < 60:
-        return "только что"
-    elif seconds_ago < 3600:
-        minutes = int(seconds_ago // 60)
-        return f"{minutes} {'минуту' if minutes == 1 else 'минуты' if 2 <= minutes <= 4 else 'минут'} назад"
-    elif seconds_ago < 21600:  # 6 hours
-        hours = int(seconds_ago // 3600)
-        return f"{hours} {'час' if hours == 1 else 'часа' if 2 <= hours <= 4 else 'часов'} назад"
+    # Ensure timezone is applied
+    now = datetime.now(timezone)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone)
     
+    delta = now - dt
     today = now.date()
     yesterday = today - timedelta(days=1)
-    
-    if dt.date() == today:
+
+    if delta < timedelta(minutes=1):
+        return "только что"
+    elif delta < timedelta(hours=1):
+        minutes = int(delta.total_seconds() // 60)
+        return f"{minutes} {'минуту' if minutes == 1 else 'минуты' if 2 <= minutes <= 4 else 'минут'} назад"
+    elif delta < timedelta(hours=6):
+        hours = int(delta.total_seconds() // 3600)
+        return f"{hours} {'час' if hours == 1 else 'часа' if 2 <= hours <= 4 else 'часов'} назад"
+    elif dt.date() == today:
         return f"сегодня, {dt.hour:02}:{dt.minute:02}"
     elif dt.date() == yesterday:
         return f"вчера, {dt.hour:02}:{dt.minute:02}"
     else:
         return f"{dt.day} {month_names[dt.month]}"
-
-
 
 def format_price_change(value, decimal_places=0):
     """Format price changes with styling hints."""
