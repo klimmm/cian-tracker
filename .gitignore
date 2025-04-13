@@ -1,3 +1,4 @@
+various.txt
 cian_apartments_large.csv
 cian_parser-Copy1.p
 cian_parser_large.py
@@ -106,3 +107,6 @@ cian_apartments-Copy3.csv
 cian_apartments-Copy2.csv
 table_config.py
 meh/
+cian_data/cian_apartments_updated.csv
+cian_data/columns_order.ipynb
+cian_data/stats-Copy1.csv
