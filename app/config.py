@@ -51,8 +51,8 @@ CONFIG = {
             # "address",
             # "updated_time",
             "update_title",
-            "activity_date",
-            "days_active",  # Add the new days_active column
+            #"days_active",  # Add the new days_active column
+            #"activity_date",
             "address_title",  # Add the combined column
             # "distance",
             # "price_info",
@@ -98,8 +98,8 @@ CONFIG = {
             "neighborhood": "Район",
             "price_text": "Цена",
             "property_tags": "Пешком",  # Add header for tags
-            "activity_date": "Активность",
-            "days_active": "Дней активна",  # Add header for days_active
+            "activity_date": "Посл. активность",
+            "days_active": "С обновления",  # Add header for days_active
         },
         "sort_map": {
             "updated_time": "date_sort_combined",
@@ -196,9 +196,12 @@ STYLE = {
             "whiteSpace": "normal",
             "height": "auto",
             "minHeight": "60px",
-            "width": "75px",
-            "maxWidth": "85px",  # Uncomment and set this value
+            "width": "90px",
+            "maxWidth": "90px",
+            
+            "minWidth": "90px",
             "overflow": "visible",
+            "textAlign": "left",
             "padding": "3px 4px",
             "lineHeight": "1.2",
         },
@@ -296,7 +299,7 @@ COLUMN_STYLES = [
     },
     {
         "if": {"column_id": "update_title"},
-        "textAlign": "center",
+        "textAlign": "left",
         "whiteSpace": "normal",
         "padding": "2px 4px",
         "lineHeight": "1.2",
@@ -393,7 +396,7 @@ SORT_BUTTONS = [
     },
     {
         "id": "btn-sort-activity",  # New button
-        "label": "По активности",
+        "label": "По посл. активности",
         "value": "activity_date_sort",
         "default_direction": "desc",
     },

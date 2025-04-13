@@ -582,6 +582,7 @@ def create_data_table(df: pd.DataFrame) -> Union[dash_table.DataTable, html.Div]
         "price_change",
         "walking_time",
         "price_text",
+        'days_active',
         "activity_date",  # Make sure this one is included
     }
     

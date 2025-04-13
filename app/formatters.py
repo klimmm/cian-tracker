@@ -277,8 +277,8 @@ class TimeFormatter:
         elif dt.date() == yesterday:
             return f"вчера, {dt.hour:02}:{dt.minute:02}"
         else:
-            # Format with month name
-            return f"{dt.day} {month_names[dt.month]}, {dt.hour:02}:{dt.minute:02}"
+            # Format with month name only, no time for dates older than yesterday
+            return f"{dt.day} {month_names[dt.month]}"
     
     @staticmethod
     def format_walking_time(distance_km: Optional[float]) -> str:

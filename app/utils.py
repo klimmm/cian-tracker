@@ -363,6 +363,10 @@ class DataManager:
         
         # Calculate days_active
         now = pd.Timestamp.now()
+
+        # In utils.py, modify the DataManager._process_dates method where days_active is calculated:
+        
+        # Calculate days_active and hours when days is 0
         df["days_active_value"] = df.apply(
             lambda r: (now - r["updated_time_sort"]).days 
                       if r["status"] == "active" and pd.notnull(r["updated_time_sort"])
@@ -372,10 +376,27 @@ class DataManager:
             axis=1
         )
         
-        # Format days_active for display
-        df["days_active"] = df["days_active_value"].apply(
-            lambda x: f"{x} дн." if pd.notnull(x) and x >= 0 else "--"
+        # Calculate hours for entries where days = 0
+        df["hours_active_value"] = df.apply(
+            lambda r: int((now - r["updated_time_sort"]).total_seconds() // 3600) 
+                      if r["status"] == "active" and pd.notnull(r["updated_time_sort"]) and (now - r["updated_time_sort"]).days == 0
+                      else int((r["unpublished_date_sort"] - r["updated_time_sort"]).total_seconds() // 3600) 
+                      if r["status"] == "non active" and pd.notnull(r["unpublished_date_sort"]) and pd.notnull(r["updated_time_sort"]) 
+                      and (r["unpublished_date_sort"] - r["updated_time_sort"]).days == 0
+                      else None,
+            axis=1
         )
+        
+        # Format days_active for display, showing hours when days = 0
+        df["days_active"] = df.apply(
+            lambda r: f"{int(r['hours_active_value'])} ч." if pd.notnull(r['days_active_value']) and r['days_active_value'] == 0 and pd.notnull(r['hours_active_value'])
+                      else f"{int(r['days_active_value'])} дн." if pd.notnull(r['days_active_value']) and r['days_active_value'] >= 0 
+                      else "--",
+            axis=1
+        )
+                    
+
+
         
         # Combined date for sorting
         df["date_sort_combined"] = df.apply(
@@ -463,6 +484,15 @@ class DataManager:
 
         df["activity_date"] = df.apply(format_activity_date, axis=1)
    
+        df["days_active"] = df.apply(format_active_days, axis=1)
+        # Create a combined update_title and activity_date column
+        df["update_title"] = df.apply(
+            lambda r: f"{r['update_title']}{r['activity_date']}" 
+            if pd.notnull(r['activity_date']) and r['activity_date'] != ""
+            else r['update_title'],
+            axis=1
+        )
+
 
     
     @staticmethod
@@ -508,6 +538,9 @@ class DataManager:
             recent_time = pd.Timestamp.now() - pd.Timedelta(hours=24)
             filtered_df = filtered_df[filtered_df["updated_time_sort"] > recent_time]
 
+
+
+        
         return filtered_df
 
     @staticmethod
@@ -618,48 +651,86 @@ def generate_tags_for_row(row: pd.Series) -> Dict[str, Any]:
 
     return tags
 
-
 def format_update_title(row: pd.Series) -> str:
-    """Format the update_title column with enhanced responsive design."""
+    """Format update_title showing all elements on the same line."""
     time_str = row["updated_time"]
-
-    html = HtmlFormatter.create_centered_text(
-        f'<span style="font-size:0.9rem; font-weight:bold; line-height:1.2;">{time_str}</span>'
-    )
-
+    # Start with the date
+    html = f'<span style="font-size:0.9rem; font-weight:bold; line-height:1.2;">{time_str}</span> '
+    # Add price change or new indicator
     if row.get("price_change_formatted"):
-        html += f'{row["price_change_formatted"]}'
-    else:
-        html += f'<span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-top:2px; background-color:#add8e6; color:#003366;">new</span>'
-
-
-
-
-
-
+        html += f'{row["price_change_formatted"]} '
     
-    # Remove this part
-    # if row["status"] != "active":
-    #     html += HtmlFormatter.create_tag_span("📦 архив", "#f5f5f5", "#666")
+    # Add days_active as a tag if it exists - on the same line
+    if pd.notnull(row.get("days_active")) and row["days_active"] != "--":
+        # Style based on the age - different colors for different age ranges
+        days_value = row.get("days_active_value", 0)
+        
+        # Check if status is non active
+        if row.get("status") == "non active":
+            # Use grey colors for non-active items
+            bg_color, text_color = "#f0f0f0", "#707070"  # Light grey background, dark grey text
+        else:
+            # Define colors based on age for active items
+            if days_value == 0:  # Today
+                bg_color, text_color = "#e8f5e9", "#2e7d32"  # Light green
+            elif days_value <= 3:  # Recent
+                bg_color, text_color = "#e3f2fd", "#1565c0"  # Light blue
+            elif days_value <= 14:  # Within 2 weeks
+                bg_color, text_color = "#fff3e0", "#e65100"  # Light orange
+            else:  # Older
+                bg_color, text_color = "#ffebee", "#c62828"  # Light red
+            
+        html += f'<span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-left:1px; background-color:{bg_color}; color:{text_color};">{row["days_active"]}</span>'
+    return HtmlFormatter.create_centered_text(html)
 
-    return html
+
+
 
 def format_activity_date(row: pd.Series) -> str:
-    """Format activity_date column with the same style as update_title."""
+    """Format activity_date showing when owner was last active with no material changes."""
     if "activity_date" not in row or pd.isna(row["activity_date"]):
         return ""
+    
+    # Check if activity_date is the same as updated_time, if so return empty string
+    if pd.notnull(row.get("updated_time_sort")) and pd.notnull(row.get("activity_date_sort")):
+        # Compare the dates to see if they're on the same day and time (within a minute tolerance)
+        time_diff = abs((row["activity_date_sort"] - row["updated_time_sort"]).total_seconds())
+        if time_diff < 60:  # If they're within a minute of each other
+            return ""
         
     activity_date = row["activity_date"]
     
-    html = HtmlFormatter.create_centered_text(
-        f'<span style="font-size:0.9rem; font-weight:bold; line-height:1.2;">{activity_date}</span>'
-    )
-    
-    # Add the archive tag here instead
-    if row["status"] != "active":
-        html += HtmlFormatter.create_tag_span("📦 архив", "#f5f5f5", "#666")
-    
-    return html
+    # Add a refresh/update icon only for activity updates
+    if row["status"] == "active":
+        html = f'<span style="color:#1976d2; font-size:0.7rem;">🔄</span><span style="font-size:0.9rem; font-weight:normal; line-height:1.2;">{activity_date}</span>'
+    else:
+        # For archived listings, just show the date and archive tag
+        html = f'<span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-left:3px; background-color:#f5f5f5; color:#666;">📦</span><span style="font-size:0.9rem; font-weight:naormal; line-height:1.2;">{activity_date}</span> '
+
+    return HtmlFormatter.create_centered_text(html)
+
+
+def format_active_days(row: pd.Series) -> str:
+    html = ''
+    # Add days_active as a tag if it exists - on the same line
+    if pd.notnull(row.get("days_active")) and row["days_active"] != "--":
+        # Style based on the age - different colors for different age ranges
+        days_value = row.get("days_active_value", 0)
+        
+        # Define colors based on age
+        if days_value == 0:  # Today
+            bg_color, text_color = "#e8f5e9", "#2e7d32"  # Light green
+        elif days_value <= 3:  # Recent
+            bg_color, text_color = "#e3f2fd", "#1565c0"  # Light blue
+        elif days_value <= 14:  # Within 2 weeks
+            bg_color, text_color = "#fff3e0", "#e65100"  # Light orange
+        else:  # Older
+            bg_color, text_color = "#ffebee", "#c62828"  # Light red
+            
+        html = f'<span style="display:inline-block; padding:1px 4px; border-radius:6px; margin-left:3px; background-color:{bg_color}; color:{text_color};">{row["days_active"]}</span>'
+
+    return HtmlFormatter.create_centered_text(html)
+
     
 def format_property_tags(row: pd.Series) -> str:
     """Format property tags with reduced padding."""
