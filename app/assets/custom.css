@@ -1,4 +1,4 @@
-/* Base element styles */
+/* Base styles */
 label.dash-label {
     font-size: 10px !important;
     font-family: Arial, sans-serif !important;
@@ -8,7 +8,7 @@ label.dash-label {
     color: #333 !important;
 }
 
-/* Reset for dash elements */
+/* Cell styling */
 .dash-cell-value {
     font-size: 11px !important;
     white-space: normal !important;
@@ -51,12 +51,13 @@ label.dash-label {
     line-height: 1.2 !important;
 }
 
-/* Column widths */
+/* Column width definitions */
 .dash-spreadsheet td[data-dash-column="address_title"],
 .dash-spreadsheet th[data-dash-column="address_title"] {
     width: 240px !important;
     max-width: 260px !important;
     min-width: 200px !important;
+    text-align: left !important;
 }
 
 .dash-spreadsheet td[data-dash-column="update_title"],
@@ -82,7 +83,7 @@ label.dash-label {
     min-width: 80px !important;
 }
 
-/* Responsive font behavior */
+/* Font responsive behavior */
 .dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value,
 .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value,
 .dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value,
@@ -92,7 +93,7 @@ label.dash-label {
     transition: font-size 0.2s ease-in-out;
 }
 
-/* Specific element styling */
+/* Special elements */
 .dash-spreadsheet td[data-dash-column="activity_date"] .dash-cell-value span {
     font-size: calc(7px + 0.2vw) !important;
     font-weight: bold !important;
@@ -132,17 +133,13 @@ label.dash-label {
 }
 
 .dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value,
-.dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value {
+.dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value,
+.dash-table-container td[data-dash-column="activity_date"] .dash-cell-value {
     text-align: center !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-}
-
-.dash-spreadsheet td[data-dash-column="address_title"],
-.dash-spreadsheet th[data-dash-column="address_title"] {
-    text-align: left !important;
 }
 
 .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value {
@@ -200,7 +197,7 @@ span[style*="background-color:#fbe9e7"]:hover {
     display: none !important;
 }
 
-/* Details column styling */
+/* Details column */
 td.details-column .dash-cell-value {
     display: inline-block !important;
     background-color: #4682B4 !important;
@@ -223,23 +220,6 @@ td.details-column .dash-cell-value:hover {
     box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
 }
 
-td.details-column .dash-cell-value:before,
-td.details-column .dash-cell-value:after {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 1px;
-}
-td.details-column .dash-cell-value:before {
-    top: 0;
-    background: rgba(255,255,255,0.3);
-}
-td.details-column .dash-cell-value:after {
-    bottom: 0;
-    background: rgba(0,0,0,0.1);
-}
-
 /* Clickable elements */
 .dash-spreadsheet td.cell-clickable,
 td.details-column, 
@@ -247,20 +227,13 @@ td[data-dash-column="details"] {
     cursor: pointer !important;
 }
 
-/* Hover behavior */
+/* Hover behavior - simplified */
 .dash-cell:hover,
 .dash-cell:hover *,
 .dash-header:hover,
 .dash-header:hover * {
     background-color: inherit !important;
     color: inherit !important;
-    box-shadow: none !important;
-    z-index: auto !important;
-    position: static !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    transform: none !important;
-    transition: none !important;
 }
 
 /* Details panel */
@@ -284,6 +257,7 @@ td[data-dash-column="details"] {
     visibility: hidden;
     pointer-events: none;
 }
+
 #apartment-details-panel[style*="visibility: visible"],
 #apartment-details-panel[style*="display: block"] {
     opacity: 1;
@@ -314,15 +288,6 @@ td[data-dash-column="details"] {
     min-height: 60px !important;
 }
 
-.dash-table-container td[data-dash-column="activity_date"] .dash-cell-value {
-    line-height: 1.2 !important;
-    text-align: center !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
 /* Days active column */
 .dash-spreadsheet td[data-dash-column="days_active"],
 .dash-spreadsheet th[data-dash-column="days_active"] {
@@ -342,22 +307,17 @@ td[data-dash-column="details"] {
 }
 
 /* Conditional formatting for days active */
-.dash-table-container td[data-dash-column="days_active"] 
-.dash-cell-value[data-dash-value*="0 дн."],
-.dash-table-container td[data-dash-column="days_active"] 
-.dash-cell-value[data-dash-value*="1 дн."] {
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="0 дн."],
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="1 дн."] {
     color: #2e7d32 !important;
 }
 
-.dash-table-container td[data-dash-column="days_active"] 
-.dash-cell-value[data-dash-value*="30 дн."],
-.dash-table-container td[data-dash-column="days_active"] 
-.dash-cell-value[data-dash-value*="60 дн."] {
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="30 дн."],
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="60 дн."] {
     color: #f57c00 !important;
 }
 
-.dash-table-container td[data-dash-column="days_active"] 
-.dash-cell-value[data-dash-value*="90 дн."] {
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="90 дн."] {
     color: #c62828 !important;
 }
 
@@ -380,9 +340,6 @@ td[data-dash-column="details"] {
 .dash-table-container .dash-spreadsheet th .column-header--sort svg {
     opacity: 0 !important;
     display: none;
-    fill: #4682B4 !important;
-    stroke: #4682B4 !important;
-    margin-left: 4px;
 }
 
 .dash-table-container .dash-spreadsheet th.dash-header.column-header--sort {
@@ -390,38 +347,14 @@ td[data-dash-column="details"] {
     color: white !important;
 }
 
-.dash-table-container .dash-spreadsheet th.dash-header.column-header--sort svg {
-    fill: white !important;
-    stroke: white !important;
-}
-
-.dash-table-container .dash-spreadsheet th.dash-header[data-dash-column] 
-.column-header--sort:hover {
-    background-color: rgba(70, 130, 180, 0.15);
-}
-
-.dash-table-container .dash-spreadsheet th .column-header--sort-icon {
-    font-size: 14px !important;
-    margin-left: 4px !important;
-}
-
-.dash-table-container .dash-spreadsheet th[data-dash-column].column-header--sort {
-    cursor: pointer !important;
-}
-
-/* Media Queries */
+/* Media Queries - Combined */
 @media screen and (max-width: 768px) {
-    .dash-spreadsheet th[data-dash-column] .dash-header-cell-value {
-        font-size: 8.5px !important;
-    }
-    .dash-cell-value {
-        font-size: 10.5px !important;
-    }
-
+    .dash-spreadsheet th[data-dash-column] .dash-header-cell-value { font-size: 8.5px !important; }
+    .dash-cell-value { font-size: 10.5px !important; }
+    
     .dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value,
     .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value,
     .dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value,
-    .dash-spreadsheet td[data-dash-column="price_change_formatted"] .dash-cell-value,
     .dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value {
         font-size: calc(9px + 0.2vw) !important;
     }
@@ -431,14 +364,6 @@ td[data-dash-column="details"] {
     .dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value span {
         padding: 1px 3px !important;
         margin: 1px !important;
-    }
-    
-    .dash-table-container td[data-dash-column="update_title"] 
-    span[style*="color:#2a9d8f"],
-    .dash-table-container td[data-dash-column="update_title"] 
-    span[style*="color:#d62828"] {
-        font-size: 0.85em !important;
-        padding: 1px 4px !important;
     }
 
     .dash-spreadsheet td[data-dash-column="address_title"],
@@ -469,47 +394,21 @@ td[data-dash-column="details"] {
         min-width: 75px !important;
     }
 
-    .dash-spreadsheet td[data-dash-column="details"],
-    .dash-spreadsheet th[data-dash-column="details"] {
-        width: 55px !important;
-        max-width: 60px !important;
-        min-width: 50px !important;
-    }
-
     td.details-column .dash-cell-value {
         min-width: 55px !important;
         padding: 3px 8px !important;
     }
-
-    .dash-spreadsheet td[data-dash-column="activity_date"],
-    .dash-spreadsheet th[data-dash-column="activity_date"] {
-        width: 75px !important;
-        max-width: 80px !important;
-        min-width: 70px !important;
-    }
-
-    .dash-spreadsheet td[data-dash-column="days_active"],
-    .dash-spreadsheet th[data-dash-column="days_active"] {
-        width: 60px !important;
-        max-width: 65px !important;
-        min-width: 55px !important;
-    }
 }
 
 @media screen and (max-width: 480px) {
-    .dash-spreadsheet th[data-dash-column] .dash-header-cell-value {
-        font-size: 9px !important;
-    }
-    .dash-cell-value {
-        font-size: 8.5px !important;
-    }
+    .dash-spreadsheet th[data-dash-column] .dash-header-cell-value { font-size: 9px !important; }
+    .dash-cell-value { font-size: 8.5px !important; }
 
     .dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value,
     .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value,
     .dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value,
-    .dash-spreadsheet td[data-dash-column="price_change_formatted"] .dash-cell-value,
     .dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value {
-        font-size: calc(8.5px + 0.15vw) !important;
+        font-size: calc(8.5px + 0.15vw) !important; 
     }
     
     .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value span,
@@ -518,15 +417,6 @@ td[data-dash-column="details"] {
         padding: 1px 2px !important;
         border-radius: 3px !important;
         margin: 0 !important;
-    }
-    
-    .dash-table-container td[data-dash-column="update_title"] 
-    span[style*="color:#2a9d8f"],
-    .dash-table-container td[data-dash-column="update_title"] 
-    span[style*="color:#d62828"] {
-        font-size: 0.8em !important;
-        padding: 1px 3px !important;
-        margin-top: 2px !important;
     }
 
     .dash-spreadsheet td[data-dash-column="address_title"],
@@ -569,21 +459,6 @@ td[data-dash-column="details"] {
         padding: 2px 6px !important;
         font-size: 9px !important;
     }
-
-    .dash-spreadsheet td[data-dash-column="activity_date"],
-    .dash-spreadsheet th[data-dash-column="activity_date"] {
-        width: 65px !important;
-        max-width: 70px !important;
-        min-width: 60px !important;
-    }
-
-    .dash-spreadsheet td[data-dash-column="days_active"],
-    .dash-spreadsheet th[data-dash-column="days_active"] {
-        width: 55px !important;
-        max-width: 60px !important;
-        min-width: 50px !important;
-        font-size: calc(7.5px + 0.15vw) !important;
-    }
 }
 
 @media screen and (max-width: 360px) {
@@ -609,4 +484,4 @@ td[data-dash-column="details"] {
         max-width: 70px !important;
         min-width: 60px !important;
     }
-}
+}        
