@@ -10,10 +10,25 @@ from app.components import PillFactory, ContainerFactory, StyleManager
 from app.formatters import FormatUtils
 from app.app_config import AppConfig
 from app.utils import ErrorHandler
+import requests
+from urllib.parse import urljoin
+from io import BytesIO
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] - %(message)s", datefmt="%H:%M:%S")
 logger = logging.getLogger(__name__)
+
+
+# Add these imports to apartment_card.py
+
+
+# Add these imports at the top of apartment_card.py
+import requests
+from urllib.parse import urljoin
+from io import BytesIO
+
+# Make sure AppConfig is imported
+from app.app_config import AppConfig
 
 
 class ImageHandler:
@@ -33,21 +48,47 @@ class ImageHandler:
     @staticmethod
     def _get_images(offer_id: str) -> List[str]:
         """Internal method to get images with error handling."""
+        # Check hybrid mode configuration for images
+        if AppConfig.should_use_hybrid_for_images():
+            # Try local images first
+            local_images = ImageHandler._get_images_from_local(offer_id)
+            if local_images:
+                logger.info(f"Found {len(local_images)} local images for offer_id {offer_id}")
+                return local_images
+                
+            # Fall back to GitHub
+            logger.info(f"No local images found for offer_id {offer_id}, trying GitHub...")
+            github_images = ImageHandler._get_images_from_github(offer_id)
+            if github_images:
+                logger.info(f"Found {len(github_images)} GitHub images for offer_id {offer_id}")
+                return github_images
+                
+            logger.warning(f"No images found anywhere for offer_id {offer_id}")
+            return []
+        
+        # If not in hybrid mode, use whatever mode is configured
+        if AppConfig.is_using_github():
+            return ImageHandler._get_images_from_github(offer_id)
+        else:
+            return ImageHandler._get_images_from_local(offer_id)
+    
+    @staticmethod
+    def _get_images_from_local(offer_id: str) -> List[str]:
+        """Get images from local filesystem."""
         # Use AppConfig for consistent path handling
         image_dir = AppConfig.get_images_path(str(offer_id))
         logger.info(f"Looking for images in: {image_dir}")
         
         # Check if the directory exists
         if not os.path.exists(image_dir):
-            logger.warning(f"Image directory not found: {image_dir}")
+            logger.info(f"Image directory not found: {image_dir}")
             return []
 
         # List all jpg files in the directory
         image_files = [f for f in os.listdir(image_dir) if f.lower().endswith(".jpg")]
-        logger.info(f"Found {len(image_files)} images for offer_id {offer_id}")
-
+        
         if not image_files:
-            logger.warning(f"No JPG images found in directory: {image_dir}")
+            logger.info(f"No JPG images found in directory: {image_dir}")
             return []
 
         # Encode each image as base64
@@ -59,10 +100,37 @@ class ImageHandler:
                     encoded_string = base64.b64encode(image_file.read()).decode()
                     # Format as data URL
                     image_paths.append(f"data:image/jpeg;base64,{encoded_string}")
-                    logger.info(f"Successfully encoded image: {image_path}")
             except Exception as e:
                 logger.error(f"Error encoding image {image_path}: {e}")
 
+        return image_paths
+    
+    @staticmethod
+    def _get_images_from_github(offer_id: str) -> List[str]:
+        """Get images from GitHub repository."""
+        # Construct the GitHub directory URL
+        github_base = AppConfig.DATA_SOURCE["github"]["base_url"]
+        image_dir_url = urljoin(github_base, f"images/{offer_id}/")
+        logger.info(f"Looking for images in GitHub: {image_dir_url}")
+        
+        image_paths = []
+        
+        # Try a set of standard image names (up to 10 images)
+        for i in range(1, 11):
+            image_url = urljoin(image_dir_url, f"{i}.jpg")
+            try:
+                response = requests.head(image_url)
+                if response.status_code == 200:
+                    # Image exists, get the content
+                    img_response = requests.get(image_url)
+                    if img_response.status_code == 200:
+                        # Convert to base64
+                        encoded_string = base64.b64encode(img_response.content).decode()
+                        image_paths.append(f"data:image/jpeg;base64,{encoded_string}")
+                        logger.info(f"Successfully loaded image from GitHub: {image_url}")
+            except Exception as e:
+                logger.warning(f"Error loading image from GitHub {image_url}: {e}")
+                
         return image_paths
     
     @staticmethod

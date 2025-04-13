@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 MOSCOW_TZ = ZoneInfo("Europe/Moscow")
 
 # Column definitions and display settings
+# Update the display list in CONFIG to include the new columns
 CONFIG = {
     "columns": {
         "display": [
@@ -13,6 +14,8 @@ CONFIG = {
             "description",
             "updated_time",
             "updated_time_sort",
+            "activity_date",
+            "activity_date_sort",
             "price_value_formatted",
             "price_value",
             "cian_estimation_formatted",
@@ -40,18 +43,23 @@ CONFIG = {
             "price_text",
             "property_tags",
             "price_change",
+            "days_active",
+            "days_active_value",
             # "tags"  # Add the new tags column
         ],
         "visible": [
             # "address",
             # "updated_time",
             "update_title",
+            "activity_date",
+            "days_active",  # Add the new days_active column
             "address_title",  # Add the combined column
             # "distance",
             # "price_info",
             # "price_value_formatted",
             "price_text",
             "property_tags",
+            # "monthly_burden_formatted",
             # "neighborhood",
             # "commission_info_abbr",
             # "deposit_info_abbr",
@@ -90,17 +98,25 @@ CONFIG = {
             "neighborhood": "Район",
             "price_text": "Цена",
             "property_tags": "Пешком",  # Add header for tags
+            "activity_date": "Активность",
+            "days_active": "Дней активна",  # Add header for days_active
         },
         "sort_map": {
             "updated_time": "date_sort_combined",
+            "update_title": "date_sort_combined",
+            "activity_date": "activity_date_sort",
+            "activity_date_formatted": "activity_date_sort",
             "price_value_formatted": "price_value",
             "price_text": "price_value",
             "property_tags": "distance_sort",
             "price_change_formatted": "price_change_value",
+            "price_change": "price_change_value",
             "cian_estimation_formatted": "cian_estimation_value",
             "price_difference_formatted": "price_difference_value",
             "distance": "distance_sort",
             "monthly_burden_formatted": "monthly_burden",
+            "days_active": "days_active_value",
+            "address_title": "address",  # Add mapping for address_title
         },
     },
     "months": {
@@ -187,6 +203,20 @@ STYLE = {
             "lineHeight": "1.2",
         },
         {
+            "if": {"column_id": "activity_date_display"},
+            "whiteSpace": "normal",
+            "height": "auto",
+            "minHeight": "60px",
+            "width": "75px",
+            "maxWidth": "85px",
+            "overflow": "visible",
+            "padding": "3px 4px",
+            "lineHeight": "1.2",
+        },
+
+
+        
+        {
             "if": {"column_id": "details"},
             "whiteSpace": "normal",
             "height": "auto",
@@ -250,6 +280,21 @@ COLUMN_STYLES = [
         "lineHeight": "1.2",
     },
     {
+        "if": {"column_id": "activity_date_display"},
+        "textAlign": "center",
+        "whiteSpace": "normal",
+        "padding": "2px 4px",  # Exact same as update_title
+        "lineHeight": "1.2",   # Exact same as update_title
+    },
+    {
+        "if": {"column_id": "days_active"},  # Add styling for days_active
+        "textAlign": "center",
+        "fontWeight": "bold",
+        "whiteSpace": "nowrap",
+        "padding": "2px 4px",
+        "lineHeight": "1.2",
+    },
+    {
         "if": {"column_id": "update_title"},
         "textAlign": "center",
         "whiteSpace": "normal",
@@ -295,7 +340,7 @@ COLUMN_STYLES = [
     },
     {"if": {"column_id": "details_button"}, "textAlign": "center", "maxWidth": "60px"},
 ]
-
+    
 HEADER_STYLES = [
     {"if": {"column_id": col}, "textAlign": "center"}
     for col in [
@@ -308,12 +353,13 @@ HEADER_STYLES = [
         "price_text",
         "status",
         "monthly_burden_formatted",
+        "activity_date_display",
+        "days_active",  # Add days_active to center-aligned headers
     ]
 ] + [
     {"if": {"column_id": col}, "textAlign": "left"}
     for col in ["address_title", "metro_station"]
 ]
-
 
 PRICE_BUTTONS = [
     {"id": "btn-price-60k", "label": "65K", "value": 65000},
@@ -342,7 +388,13 @@ SORT_BUTTONS = [
     {
         "id": "btn-sort-time",
         "label": "По дате",
-        "value": "updated_time_sort",
+        "value": "updated_time_sort", 
+        "default_direction": "desc",
+    },
+    {
+        "id": "btn-sort-activity",  # New button
+        "label": "По активности",
+        "value": "activity_date_sort",
         "default_direction": "desc",
     },
     {
@@ -351,7 +403,7 @@ SORT_BUTTONS = [
         "value": "distance_sort",
         "default": True,
         "default_direction": "asc",
-    },  # Make this the default
+    },
 ]
 # Add a style for sort buttons
 BUTTON_STYLES["sort"] = {"backgroundColor": "#e0e0e8", **STYLE["button_base"]}

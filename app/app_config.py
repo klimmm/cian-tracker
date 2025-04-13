@@ -2,7 +2,8 @@
 import os
 import logging
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import Optional, Union
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -12,22 +13,44 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# app/app_config.py (with fix for type error)
+
 class AppConfig:
     """Centralized application configuration with consistent path handling."""
     
     # Class variable for the data directory path
     _DATA_DIR: Optional[Path] = None
     
+    # Enhanced data source configuration with top-level type for backward compatibility
+    DATA_SOURCE = {
+        # Add a top-level default type for backward compatibility
+        "type": "hybrid",  # Main overall type: "local", "github", or "hybrid"
+        
+        # Main data files - always GitHub
+        "main_data": {
+            "type": "github",
+            "files": ["cian_apartments.csv", "cian_apartments.meta.json"]
+        },
+        # Apartment details - hybrid approach
+        "apartment_details": {
+            "type": "hybrid",  # Options: "local", "github", "hybrid" (try local first, then github)
+            "files": ["price_history.csv", "stats.csv", "features.csv", 
+                      "rental_terms.csv", "apartment_details.csv", "building_details.csv"]
+        },
+        # Images - hybrid approach
+        "images": {
+            "type": "hybrid"
+        },
+        # GitHub settings
+        "github": {
+            "base_url": "https://raw.githubusercontent.com/klimmm/cian-tracker/refs/heads/main/",
+            "branch": "main"
+        }
+    }
+    
     @classmethod
     def initialize(cls, data_dir: Optional[Union[str, Path]] = None) -> 'AppConfig':
-        """Initialize the application configuration.
-        
-        Args:
-            data_dir: Optional custom data directory path
-        
-        Returns:
-            The AppConfig class for method chaining
-        """
+        """Initialize the application configuration."""
         if data_dir:
             cls._DATA_DIR = Path(data_dir)
         else:
@@ -35,11 +58,20 @@ class AppConfig:
             cls._DATA_DIR = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             
         logger.info(f"Initialized AppConfig with data directory: {cls._DATA_DIR}")
+        logger.info(f"Data source type: {cls.DATA_SOURCE.get('type', 'hybrid')} (overall)")
+        logger.info(f"Main data source: {cls.DATA_SOURCE.get('main_data', {}).get('type', 'github')}")
+        logger.info(f"Apartment details source: {cls.DATA_SOURCE.get('apartment_details', {}).get('type', 'hybrid')}")
+        logger.info(f"Images source: {cls.DATA_SOURCE.get('images', {}).get('type', 'hybrid')}")
         
-        # Ensure critical directories exist
-        cls._ensure_directory_structure()
+        # Ensure critical directories exist if using local files at all
+        if cls.DATA_SOURCE.get('type') != 'github' or \
+           cls.DATA_SOURCE.get('apartment_details', {}).get('type') != 'github' or \
+           cls.DATA_SOURCE.get('images', {}).get('type') != 'github':
+            cls._ensure_directory_structure()
         
         return cls
+        
+
     
     @classmethod
     def _ensure_directory_structure(cls) -> None:
@@ -117,6 +149,78 @@ class AppConfig:
             Path: The complete path
         """
         return cls.get_path("assets", *parts)
+
+    
+    @classmethod
+    def always_use_github_for(cls, filename: str) -> bool:
+        """Check if a specific file should always be loaded from GitHub.
+        
+        Args:
+            filename: Name of the file to check
+            
+        Returns:
+            bool: True if the file should always be loaded from GitHub
+        """
+        main_data_files = cls.DATA_SOURCE.get("main_data", {}).get("files", [])
+        return filename in main_data_files
+    
+    @classmethod
+    def should_use_hybrid_for_apartment_details(cls) -> bool:
+        """Check if apartment details should use a hybrid approach.
+        
+        Returns:
+            bool: True if apartment details should use hybrid approach
+        """
+        apartment_details_type = cls.DATA_SOURCE.get("apartment_details", {}).get("type")
+        return apartment_details_type == "hybrid"
+    
+    @classmethod
+    def should_use_hybrid_for_images(cls) -> bool:
+        """Check if images should use a hybrid approach.
+        
+        Returns:
+            bool: True if images should use hybrid approach
+        """
+        images_type = cls.DATA_SOURCE.get("images", {}).get("type")
+        return images_type == "hybrid"
+    
+    @classmethod
+    def get_github_url(cls, *parts: str) -> str:
+        """Get a URL for a file in the GitHub repository.
+        
+        Args:
+            *parts: Path segments to append to the GitHub base URL
+            
+        Returns:
+            str: The complete GitHub URL
+        """
+        base_url = cls.DATA_SOURCE.get("github", {}).get("base_url", 
+                   "https://raw.githubusercontent.com/klimmm/cian-tracker/refs/heads/main/")
+        path = "/".join(parts)
+        return f"{base_url}{path}"
+        
+    @classmethod
+    def is_using_github(cls) -> bool:
+        """Check if the application is configured to use GitHub as a data source.
+        
+        Returns:
+            bool: True if using GitHub, False if using local files
+        """
+        return cls.DATA_SOURCE["type"] == "github"
+    
+   
+    @classmethod
+    def is_using_github(cls) -> bool:
+        """Check if the application is configured to use GitHub as a data source.
+        
+        Returns:
+            bool: True if main type is github, False otherwise
+        """
+        # For backward compatibility
+        return cls.DATA_SOURCE.get("type") == "github"
+
+
+        
 
 # Legacy functions are deprecated and should be removed in future versions
 # For backward compatibility only

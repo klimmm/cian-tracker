@@ -185,7 +185,7 @@ class PriceFormatter:
 
         return (
             f'<span style="color:{color}; font-weight:bold; background-color:{bg_color}; '
-            f'padding:2px 4px; border-radius:4px; display:inline-block; margin-top:2px;">'
+            f'padding:2px 4px; font-size:0.5rem !important; border-radius:4px; display:inline-block; margin-top:2px;">'
             f"{arrow} {display}</span>"
         )
     
@@ -236,7 +236,7 @@ class TimeFormatter:
     
     @staticmethod
     def format_date(dt: datetime, timezone=None, relative_threshold_hours: int = 24) -> str:
-        """Format date with relative time for recent dates.
+        """Format date with relative time for recent dates and improved month formatting.
         
         Args:
             dt: Datetime to format
@@ -249,6 +249,12 @@ class TimeFormatter:
         if dt is None or pd.isna(dt):
             return "--"
             
+        # Russian month names abbreviations
+        month_names = {
+            1: "янв", 2: "фев", 3: "мар", 4: "апр", 5: "май", 6: "июн",
+            7: "июл", 8: "авг", 9: "сен", 10: "окт", 11: "ноя", 12: "дек"
+        }
+            
         now = datetime.now(timezone) if timezone else datetime.now()
         if dt.tzinfo is None and timezone:
             dt = dt.replace(tzinfo=timezone)
@@ -256,23 +262,23 @@ class TimeFormatter:
         delta = now - dt
         today = now.date()
         yesterday = today - timedelta(days=1)
-
+    
         if delta < timedelta(minutes=1):
             return "только что"
         elif delta < timedelta(hours=1):
             minutes = int(delta.total_seconds() // 60)
             return f"{minutes} {FormatUtils.pluralize_ru(minutes, 'минут', 'минута', 'минуты', 'минут')} назад"
-        elif delta < timedelta(hours=relative_threshold_hours):
+        elif delta < timedelta(hours=6):  # Show exact hours only up to 6 hours
             hours = int(delta.total_seconds() // 3600)
             return f"{hours} {FormatUtils.pluralize_ru(hours, 'час', 'час', 'часа', 'часов')} назад"
         elif dt.date() == today:
+            # Use "сегодня" for today but more than 6 hours ago
             return f"сегодня, {dt.hour:02}:{dt.minute:02}"
         elif dt.date() == yesterday:
             return f"вчера, {dt.hour:02}:{dt.minute:02}"
         else:
-            # Format with month name (requires month_names dict to be passed or defined elsewhere)
-            # For example: f"{dt.day} {month_names[dt.month]}, {dt.hour:02}:{dt.minute:02}"
-            return f"{dt.day:02}.{dt.month:02}, {dt.hour:02}:{dt.minute:02}"
+            # Format with month name
+            return f"{dt.day} {month_names[dt.month]}, {dt.hour:02}:{dt.minute:02}"
     
     @staticmethod
     def format_walking_time(distance_km: Optional[float]) -> str:

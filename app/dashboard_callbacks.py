@@ -582,13 +582,12 @@ def create_data_table(df: pd.DataFrame) -> Union[dash_table.DataTable, html.Div]
         "price_change",
         "walking_time",
         "price_text",
+        "activity_date",  # Make sure this one is included
     }
-
+    
     columns = [
         {
-            "name": CONFIG["columns"]["headers"].get(
-                c, "Детали" if c == "details" else c
-            ),
+            "name": CONFIG["columns"]["headers"].get(c, "Детали" if c == "details" else c),
             "id": c,
             "type": "numeric" if c in numeric_cols else "text",
             "presentation": "markdown" if c in markdown_cols else None,

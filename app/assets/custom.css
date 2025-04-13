@@ -84,12 +84,21 @@ label.dash-label {
 
 /* ===== RESPONSIVE FONT BEHAVIOR ===== */
 /* Base font sizes for important columns */
+/* Add activity_date to the responsive font size rule */
 .dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value,
 .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value,
 .dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value,
-.dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value {
-    font-size: calc(10px + 0.2vw) !important; /* Viewport-based responsive font size */
-    transition: font-size 0.2s ease-in-out; /* Smooth font size transitions */
+.dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value,
+.dash-spreadsheet td[data-dash-column="activity_date"] .dash-cell-value {
+    font-size: calc(10px + 0.2vw) !important;
+    transition: font-size 0.2s ease-in-out;
+}
+
+/* Set exact font sizes for spans if needed */
+.dash-spreadsheet td[data-dash-column="activity_date"] .dash-cell-value span {
+    font-size: calc(7px + 0.2vw) !important;
+    font-weight: bold !important;
+    line-height: 1.2 !important;
 }
 
 /* Font size for specific elements inside columns */
@@ -154,7 +163,7 @@ label.dash-label {
 /* Override the tiny font size for price changes */
 .dash-table-container td[data-dash-column="update_title"] span[style*="color:#2a9d8f"],
 .dash-table-container td[data-dash-column="update_title"] span[style*="color:#d62828"] {
-    font-size: 0.9em !important;
+    font-size: 0.7rem !important;
     font-weight: bold !important;
     margin-top: 4px !important;
     padding: 2px 5px !important;
@@ -300,7 +309,7 @@ td[data-dash-column="details"] {
 @media screen and (max-width: 768px) {
     /* Base font sizes */
     .dash-spreadsheet th[data-dash-column] .dash-header-cell-value {
-        font-size: 10.5px !important;
+        font-size: 8.5px !important;
     }
     .dash-cell-value {
         font-size: 10.5px !important;
@@ -310,6 +319,7 @@ td[data-dash-column="details"] {
     .dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value,
     .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value,
     .dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value,
+    .dash-spreadsheet td[data-dash-column="price_change_formatted"] .dash-cell-value,
     .dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value {
         font-size: calc(9px + 0.2vw) !important;
     }
@@ -376,16 +386,18 @@ td[data-dash-column="details"] {
 @media screen and (max-width: 480px) {
     /* Base font sizes */
     .dash-spreadsheet th[data-dash-column] .dash-header-cell-value {
-        font-size: 10px !important;
+        font-size: 9px !important;
     }
     .dash-cell-value {
-        font-size: 9.5px !important;
+        font-size: 8.5px !important;
     }
 
     /* Responsive font sizes for key columns */
     .dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value,
     .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value,
     .dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value,
+    .dash-spreadsheet td[data-dash-column="price_change_formatted"] .dash-cell-value,
+
     .dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value {
         font-size: calc(8.5px + 0.15vw) !important;
     }
@@ -571,4 +583,157 @@ td[data-dash-column="details"] {
     margin: 0 1px 0 0 !important;
     line-height: 1.1 !important;
     font-size: 0.9em !important;
+}
+
+
+/* Make activity_date column EXACTLY match update_title styling */
+.dash-spreadsheet td[data-dash-column="activity_date"],
+.dash-spreadsheet th[data-dash-column="activity_date"] {
+    text-align: center !important;
+    width: 75px !important;
+    max-width: 85px !important;
+    min-width: 75px !important;
+    overflow: visible !important;
+    
+    /* These are the exact values needed to match update_title */
+    padding: 2px 4px !important; /* Changed from 3px 4px */
+    line-height: 1.2 !important; /* Changed from 14px */
+    white-space: normal !important;
+    height: auto !important;
+    min-height: 60px !important;
+}
+
+/* Ensure cell value styling matches exactly */
+.dash-table-container td[data-dash-column="activity_date"] .dash-cell-value {
+    line-height: 1.2 !important;
+    text-align: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Also add column styles to COLUMN_STYLES in config.py */
+/* Ensure style is maintained in responsive views */
+@media screen and (max-width: 768px) {
+    .dash-spreadsheet td[data-dash-column="activity_date"],
+    .dash-spreadsheet th[data-dash-column="activity_date"] {
+        width: 75px !important;
+        max-width: 80px !important;
+        min-width: 70px !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .dash-spreadsheet td[data-dash-column="activity_date"],
+    .dash-spreadsheet th[data-dash-column="activity_date"] {
+        width: 65px !important;
+        max-width: 70px !important;
+        min-width: 60px !important;
+    }
+}
+
+/* Styling for days_active column */
+.dash-spreadsheet td[data-dash-column="days_active"],
+.dash-spreadsheet th[data-dash-column="days_active"] {
+    text-align: center !important;
+    width: 65px !important;
+    max-width: 70px !important;
+    min-width: 60px !important;
+    overflow: visible !important;
+    padding: 2px 4px !important;
+    line-height: 1.2 !important;
+}
+
+/* Style for the cell content */
+.dash-spreadsheet td[data-dash-column="days_active"] .dash-cell-value {
+    font-weight: bold !important;
+    font-size: calc(7px + 0.2vw) !important;
+    text-align: center !important;
+}
+
+/* Add conditional formatting for days active */
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="0 дн."],
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="1 дн."] {
+    color: #2e7d32 !important; /* Green for new listings */
+}
+
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="30 дн."],
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="60 дн."] {
+    color: #f57c00 !important; /* Orange for older listings */
+}
+
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="90 дн."] {
+    color: #c62828 !important; /* Red for very old listings */
+}
+
+/* Responsive styling */
+@media screen and (max-width: 768px) {
+    .dash-spreadsheet td[data-dash-column="days_active"],
+    .dash-spreadsheet th[data-dash-column="days_active"] {
+        width: 60px !important;
+        max-width: 65px !important;
+        min-width: 55px !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .dash-spreadsheet td[data-dash-column="days_active"],
+    .dash-spreadsheet th[data-dash-column="days_active"] {
+        width: 55px !important;
+        max-width: 60px !important;
+        min-width: 50px !important;
+        font-size: calc(7.5px + 0.15vw) !important;
+    }
+}
+
+/* Make sort arrows more visible */
+.dash-table-container .dash-spreadsheet th .column-header--sort {
+    position: relative;
+}
+
+.dash-table-container .dash-spreadsheet th .column-header--sort:after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(70, 130, 180, 0.1);
+    pointer-events: none;
+}
+
+.dash-table-container .dash-spreadsheet th .column-header--sort svg {
+    opacity: 0 !important;
+    display: none;
+    fill: #4682B4 !important;
+    stroke: #4682B4 !important;
+    margin-left: 4px;
+}
+
+/* Active sort header styling */
+.dash-table-container .dash-spreadsheet th.dash-header.column-header--sort {
+    background-color: #4682B4 !important;
+    color: white !important;
+}
+
+.dash-table-container .dash-spreadsheet th.dash-header.column-header--sort svg {
+    fill: white !important;
+    stroke: white !important;
+}
+
+/* Sortable column header hover state */
+.dash-table-container .dash-spreadsheet th.dash-header[data-dash-column] .column-header--sort:hover {
+    background-color: rgba(70, 130, 180, 0.15);
+}
+
+/* Make sort icons more noticeable */
+.dash-table-container .dash-spreadsheet th .column-header--sort-icon {
+    font-size: 14px !important;
+    margin-left: 4px !important;
+}
+
+/* Show cursor for sortable columns */
+.dash-table-container .dash-spreadsheet th[data-dash-column].column-header--sort {
+    cursor: pointer !important;
 }
