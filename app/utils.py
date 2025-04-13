@@ -732,12 +732,138 @@ def format_active_days(row: pd.Series) -> str:
     return HtmlFormatter.create_centered_text(html)
 
     
+# Add these constants to utils.py
+# Mapping of metro stations to line numbers
+METRO_STATIONS_TO_LINE = {
+    # Line 1 (Сокольническая)
+    'Бульвар Рокоссовского': 1, 'Черкизовская': 1, 'Преображенская площадь': 1, 'Сокольники': 1, 
+    'Красносельская': 1, 'Комсомольская': 1, 'Красные ворота': 1, 'Чистые пруды': 1, 
+    'Лубянка': 1, 'Охотный ряд': 1, 'Библиотека им. Ленина': 1, 'Кропоткинская': 1, 
+    'Парк Культуры': 1, 'Фрунзенская': 1, 'Спортивная': 1, 'Воробьёвы горы': 1, 
+    'Университет': 1, 'Проспект Вернадского': 1, 'Юго-Западная': 1, 'Тропарёво': 1,
+    
+    # Line 2 (Замоскворецкая)
+    'Алма-Атинская': 2, 'Красногвардейская': 2, 'Домодедовская': 2, 'Орехово': 2, 
+    'Царицыно': 2, 'Кантемировская': 2, 'Каширская': 2, 'Коломенская': 2, 
+    'Автозаводская': 2, 'Павелецкая': 2, 'Новокузнецкая': 2, 'Театральная': 2, 
+    'Тверская': 2, 'Маяковская': 2, 'Белорусская': 2, 'Динамо': 2, 
+    'Аэропорт': 2, 'Сокол': 2, 'Войковская': 2, 'Водный стадион': 2, 'Речной вокзал': 2,
+    
+    # Line 3 (Арбатско-Покровская)
+    'Пятницкое шоссе': 3, 'Митино': 3, 'Волоколамская': 3, 'Мякинино': 3, 
+    'Строгино': 3, 'Крылатское': 3, 'Молодежная': 3, 'Кунцевская': 3, 
+    'Славянский бульвар': 3, 'Парк Победы': 3, 'Киевская': 3, 'Смоленская': 3, 
+    'Арбатская': 3, 'Площадь Революции': 3, 'Курская': 3, 'Бауманская': 3, 
+    'Электрозаводская': 3, 'Семеновская': 3, 'Партизанская': 3, 'Измайловская': 3, 
+    'Первомайская': 3, 'Щелковская': 3,
+    
+    # Line 4 (Филевская)
+    'Александровский сад': 4, 'Выставочная': 4, 'Международная': 4, 'Студенческая': 4, 
+    'Кутузовская': 4, 'Фили': 4, 'Багратионовская': 4, 'Филёвский парк': 4, 'Пионерская': 4,
+    
+    # Line 5 (Кольцевая)
+    'Новослободская': 5, 'Проспект Мира': 5, 'Добрынинская': 5, 'Октябрьская': 5, 'Краснопресненская': 5,
+    
+    # Line 6 (Калужско-Рижская)
+    'Медведково': 6, 'Бабушкинская': 6, 'Свиблово': 6, 'Ботанический сад': 6, 
+    'ВДНХ': 6, 'Алексеевская': 6, 'Рижская': 6, 'Сухаревская': 6, 
+    'Тургеневская': 6, 'Китай-город': 6, 'Третьяковская': 6, 'Шаболовская': 6, 
+    'Ленинский проспект': 6, 'Академическая': 6, 'Профсоюзная': 6, 'Новые Черемушки': 6, 
+    'Калужская': 6, 'Беляево': 6, 'Коньково': 6, 'Теплый Стан': 6, 
+    'Ясенево': 6, 'Новоясеневская': 6,
+    
+    # Line 7 (Таганско-Краснопресненская)
+    'Жулебино': 7, 'Лермонтовский проспект': 7, 'Выхино': 7, 'Рязанский проспект': 7, 
+    'Кузьминки': 7, 'Текстильщики': 7, 'Волгоградский проспект': 7, 'Пролетарская': 7, 
+    'Таганская': 7, 'Кузнецкий мост': 7, 'Пушкинская': 7, 'Баррикадная': 7, 
+    'Улица 1905 года': 7, 'Беговая': 7, 'Полежаевская': 7, 'Октябрьское поле': 7, 
+    'Щукинская': 7, 'Спартак': 7, 'Тушинская': 7, 'Сходненская': 7, 'Планерная': 7,
+    
+    # Line 8 (Калининская)
+    'Новокосино': 8, 'Новогиреево': 8, 'Перово': 8, 'Шоссе Энтузиастов': 8, 
+    'Авиамоторная': 8, 'Площадь Ильича': 8, 'Марксистская': 8, 'Деловой центр': 8,
+    
+    # Line 9 (Серпуховско-Тимирязевская)
+    'Алтуфьево': 9, 'Бибирево': 9, 'Отрадное': 9, 'Владыкино': 9, 
+    'Петровско-Разумовская': 9, 'Тимирязевская': 9, 'Дмитровская': 9, 'Савеловская': 9, 
+    'Менделеевская': 9, 'Цветной бульвар': 9, 'Чеховская': 9, 'Боровицкая': 9, 
+    'Полянка': 9, 'Серпуховская': 9, 'Тульская': 9, 'Нагатинская': 9, 
+    'Нагорная': 9, 'Нахимовский проспект': 9, 'Севастопольская': 9, 'Чертановская': 9, 
+    'Южная': 9, 'Пражская': 9, 'Улица Академика Янгеля': 9, 'Аннино': 9, 'Бульвар Дмитрия Донского': 9,
+    
+    # Line 10 (Люблинско-Дмитровская)
+    'Марьина Роща': 10, 'Достоевская': 10, 'Трубная': 10, 'Сретенский бульвар': 10, 
+    'Чкаловская': 10, 'Римская': 10, 'Крестьянская застава': 10, 'Дубровка': 10, 
+    'Кожуховская': 10, 'Печатники': 10, 'Волжская': 10, 'Люблино': 10, 
+    'Братиславская': 10, 'Марьино': 10, 'Борисово': 10, 'Шипиловская': 10, 'Зябликово': 10,
+    
+    # Line 11 (Каховская)
+    'Варшавская': 11, 'Каховская': 11,
+    
+    # Line 12 (Бутовская)
+    'Битцевский парк': 12, 'Лесопарковая': 12, 'Улица Старокачаловская': 12, 
+    'Улица Скобелевская': 12, 'Бульвар адмирала Ушакова': 12, 'Улица Горчакова': 12, 'Бунинская аллея': 12,
+    
+    # Line 14 (Московское центральное кольцо / MCC / МЦК)
+    'Окружная': 14, 'Владыкино МЦК': 14, 'Ботанический сад МЦК': 14, 'Ростокино': 14,
+    'Белокаменная': 14, 'Бульвар Рокоссовского МЦК': 14, 'Локомотив': 14, 'Измайлово': 14,
+    'Соколиная Гора': 14, 'Шоссе Энтузиастов МЦК': 14, 'Андроновка': 14, 'Нижегородская': 14,
+    'Новохохловская': 14, 'Угрешская': 14, 'Дубровка МЦК': 14, 'Автозаводская МЦК': 14,
+    'ЗИЛ': 14, 'Верхние Котлы': 14, 'Крымская': 14, 'Гагаринский тоннель': 14,
+    'Площадь Гагарина': 14, 'Лужники': 14, 'Кутузовская МЦК': 14, 'Москва-Сити': 14,
+    'Шелепиха': 14, 'Хорошёво': 14, 'Зорге': 14, 'Панфиловская': 14,
+    'Стрешнево': 14, 'Балтийская': 14, 'Коптево': 14, 'Лихоборы': 14,
+    'МЦК': 14, 'МЦД': 14  # Add common abbreviations that might appear
+}
+
+# Line colors mapped from the provided color codes
+LINE_TO_COLOR = {
+    1: '#EF161E',  # Сокольническая линия
+    2: '#2DBE2C',  # Замоскворецкая линия
+    3: '#0078BE',  # Арбатско-Покровская линия
+    4: '#00BFFF',  # Филёвская линия
+    5: '#8D5B2D',  # Кольцевая линия
+    6: '#ED9121',  # Калужско-Рижская линия
+    7: '#800080',  # Таганско-Краснопресненская линия
+    8: '#FFD702',  # Калининская/Солнцевская линия
+    9: '#999999',  # Серпуховско-Тимирязевская линия
+    10: '#99CC00',  # Люблинско-Дмитровская линия
+    11: '#82C0C0',  # Большая кольцевая/Каховская линия
+    12: '#A1B3D4',  # Бутовская линия
+    13: '#B9C8E7',  # Московский монорельс
+    14: '#FFFFFF',  # Московское центральное кольцо
+    15: '#DE64A1',  # Некрасовская линия
+    16: '#03795F',  # Троицкая линия
+    17: '#27303F',  # Рублёво-Архангельская линия
+    18: '#AC1753',  # Бирюлёвская линия
+}
+
+# Add these methods to the HtmlFormatter class in formatters.py
+def create_tag_span_with_border(text, bg_color, text_color, border_color, border_width):
+    """Create an HTML span tag with styling for a tag/pill that includes a border.
+    
+    Args:
+        text: Text content
+        bg_color: Background color
+        text_color: Text color
+        border_color: Border color
+        border_width: Border width
+        
+    Returns:
+        HTML span tag string with border
+    """
+    tag_style = f"display:inline-block; padding:1px 4px; border-radius:3px; margin-right:1px; white-space:nowrap; border:{border_width} solid {border_color};"
+    return f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{text}</span>'
+
+# Modified format_property_tags function in utils.py
 def format_property_tags(row: pd.Series) -> str:
     """Format property tags with reduced padding."""
+    import re  # Make sure re is imported
+    
     tags = []
     tag_flags = generate_tags_for_row(row)
     distance_value = row.get("distance_sort")
-
+    # Existing code for distance tags
     if distance_value is not None and not pd.isna(distance_value):
         walking_minutes = (distance_value / 5) * 60
         time_text = TimeFormatter.format_walking_time(distance_value)
@@ -753,6 +879,7 @@ def format_property_tags(row: pd.Series) -> str:
 
         tags.append(HtmlFormatter.create_tag_span(time_text, bg_color, text_color))
 
+    # Existing code for neighborhood tags
     if neighborhood := tag_flags.get("neighborhood"):
         if tag_flags["is_hamovniki"]:
             bg_color, text_color = "#e0f7f7", "#0c5460"
@@ -762,9 +889,46 @@ def format_property_tags(row: pd.Series) -> str:
             bg_color, text_color = "#dadce0", "#3c4043"
 
         tags.append(HtmlFormatter.create_tag_span(neighborhood, bg_color, text_color))
+    # Add metro station tag if available
+    if metro_station := row.get("metro_station"):
+        if isinstance(metro_station, str) and metro_station.strip():
+            # Clean the metro station name (remove parentheses, etc.)
+            clean_station = re.sub(r'\s*\([^)]*\)', '', metro_station).strip()
+            
+            # Try to find a matching station
+            line_number = None
+            for station, line in METRO_STATIONS_TO_LINE.items():
+                if station in clean_station or clean_station in station:
+                    line_number = line
+                    break
+            
+            if line_number:
+                # Get the color for this line
+                bg_color = LINE_TO_COLOR.get(line_number, "#dadce0")  # Default gray if line not found
+                
+                # Special styling for MCC (Line 14) with red border
+                if line_number == 14:
+                    text_color = "#000000"  # Black text for better visibility on white
+                    # Add MCC prefix if not in the name already
+                    if "МЦК" not in clean_station and "MCC" not in clean_station and "мцк" not in clean_station.lower():
+                        station_display = f"{clean_station}"
+                    else:
+                        station_display = clean_station
+                    
+                    # Create special tag with red border for MCC
+                    # Using HtmlFormatter.create_tag_span_with_border directly at first
+                    tag_style = f"display:inline-block; padding:1px 4px; border-radius:3px; margin-right:1px; white-space:nowrap; border:1px solid #EF161E;"
+                    tags.append(f'<span style="{tag_style} background-color:{bg_color}; color:{text_color};">{station_display}</span>')
+                else:
+                    text_color = "#ffffff"  # White text for all other lines
+                    # Create the standard tag with station name and line color
+                    tags.append(HtmlFormatter.create_tag_span(clean_station, bg_color, text_color))
+
+
 
     return HtmlFormatter.create_flex_container("".join(tags)) if tags else ""
 
+    
 
 def format_rental_period(value: Optional[str]) -> str:
     """Format rental period with more intuitive abbreviation."""
