@@ -105,7 +105,7 @@ for index, apartment in cian_apartments.iterrows():
         changes['updated_time_updates'] += 1
 
 # Save the updated data back to CSV
-output_file = 'updated_cian_apartments.csv'
+output_file = 'cian_apartments.csv'
 cian_apartments.to_csv(output_file, index=False)
 logger.info(f"Updated data saved to '{output_file}'")
 
