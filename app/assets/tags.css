@@ -1,0 +1,311 @@
+/* ===== Tag Styles & Pill Components ===== */
+.pill {
+  display: inline-block;
+  border-radius: var(--radius-md);
+  font-family: var(--font-family);
+  white-space: nowrap;
+  margin: var(--space-xs);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-xs); /* Uses the responsive font size variable */
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.pill:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Pill sizes - Made more responsive with clamp */
+.pill--xs {
+  font-size: var(--font-xs);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.pill--sm {
+  font-size: var(--font-sm);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.pill--md {
+  font-size: var(--font-md);
+  padding: var(--space-sm) var(--space-md);
+}
+
+/* Pill variants */
+.pill--default {
+  background-color: var(--color-bg-light);
+  color: var(--color-text-secondary);
+}
+
+.pill--primary {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.pill--success {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.pill--warning {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.pill--error {
+  background-color: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.pill--neutral {
+  background-color: var(--color-neutral-light);
+  color: var(--color-neutral);
+}
+
+/* Dashboard tag - Enhanced with responsive font size */
+.dashboard-tag {
+  display: inline-block;
+  font-size: var(--font-xs);
+  background-color: #f0f0f0;
+  color: var(--color-text-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+  white-space: nowrap;
+  margin: 0;
+  line-height: var(--line-height-sm);
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== Price Tags ===== */
+.tag-price {
+  background-color: #f0f7ff;
+  font-size: var(--font-sm);
+  color: #2271b1;
+  font-weight: bold;
+}
+
+.tag-price-down {
+  background-color: #e6f7f5;
+  color: #2a9d8f;
+}
+
+.tag-price-up {
+  background-color: #fbe9e7;
+  color: #d62828;
+}
+
+.tag-good-price {
+  background-color: #fcf3cd;
+  color: #856404;
+}
+
+.tag-cian-estimate {
+  background-color: #f5f5f5;
+  color: #555555;
+  font-size: clamp(9px, 0.85vw, 0.9rem); /* More responsive sizing */
+}
+
+/* ===== Days Tags ===== */
+.tag-days-new {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.tag-days-recent {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.tag-days-medium {
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.tag-days-old {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.tag-days-inactive {
+  background-color: #f0f0f0;
+  color: #707070;
+}
+
+/* ===== Walk Tags ===== */
+.tag-walk-close {
+  background-color: #4285f4;
+  color: #ffffff;
+}
+
+.tag-walk-medium {
+  background-color: #aecbfa;
+  color: #174ea6;
+}
+
+.tag-walk-far {
+  background-color: #dadce0;
+  color: #3c4043;
+}
+
+/* ===== Neighborhood Tags ===== */
+.tag-neighborhood-hamovniki {
+  background-color: #e0f7f7;
+  color: #0c5460;
+}
+
+.tag-neighborhood-arbat {
+  background-color: #d0d1ff;
+  color: #3f3fa3;
+}
+
+.tag-neighborhood-other {
+  background-color: #dadce0;
+  color: #3c4043;
+}
+
+/* ===== Activity Tags ===== */
+.tag-activity-date-active {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.tag-activity-date-inactive {
+  background-color: #f0f0f0;
+  color: #707070;
+}
+
+/* ===== Metro Tags ===== */
+.tag-metro {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* ===== Tag Container Styles ===== */
+.tag-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  justify-content: flex-start;
+  padding: 0;
+  max-width: 100%;
+}
+
+.tag-container-center {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  justify-content: center;
+  padding: 0;
+  max-width: 100%;
+}
+
+.tag-container-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  max-width: 100%;
+}
+
+/* Media queries for responsive tag sizing at different breakpoints */
+@media screen and (max-width: 768px) {
+  .pill, .dashboard-tag {
+    font-size: calc(var(--font-xs) * 0.95);
+    padding: calc(var(--space-xs) * 0.9) var(--space-sm);
+  }
+  
+  .pill--xs {
+    font-size: calc(var(--font-xs) * 0.95);
+  }
+  
+  .pill--sm {
+    font-size: calc(var(--font-sm) * 0.95);
+  }
+  
+  .pill--md {
+    font-size: calc(var(--font-md) * 0.95);
+    padding: calc(var(--space-sm) * 0.9) calc(var(--space-md) * 0.9);
+  }
+  
+  .tag-container, 
+  .tag-container-center, 
+  .tag-container-column {
+    gap: calc(var(--space-xs) * 0.9);
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .pill, .dashboard-tag {
+    font-size: calc(var(--font-xs) * 0.9);
+    padding: calc(var(--space-xs) * 0.8) calc(var(--space-sm) * 0.9);
+    margin: calc(var(--space-xs) * 0.8);
+  }
+  
+  .pill--xs {
+    font-size: calc(var(--font-xs) * 0.9);
+  }
+  
+  .pill--sm {
+    font-size: calc(var(--font-sm) * 0.9);
+  }
+  
+  .pill--md {
+    font-size: calc(var(--font-md) * 0.9);
+    padding: calc(var(--space-sm) * 0.8) calc(var(--space-md) * 0.8);
+  }
+  
+  .tag-container, 
+  .tag-container-center, 
+  .tag-container-column {
+    gap: calc(var(--space-xs) * 0.8);
+  }
+}
+
+/* New breakpoint for very small mobile screens (390px) */
+@media screen and (max-width: 390px) {
+  .pill, .dashboard-tag {
+    font-size: calc(var(--font-xs) * 0.85);
+    padding: calc(var(--space-xs) * 0.7) calc(var(--space-sm) * 0.8);
+    margin: calc(var(--space-xs) * 0.7);
+    border-radius: calc(var(--radius-sm) * 0.9);
+    letter-spacing: -0.02em; /* Tighter letter spacing for small screens */
+  }
+  
+  .pill--xs {
+    font-size: calc(var(--font-xs) * 0.85);
+    padding: calc(var(--space-xs) * 0.7) calc(var(--space-sm) * 0.8);
+  }
+  
+  .pill--sm {
+    font-size: calc(var(--font-sm) * 0.85);
+    padding: calc(var(--space-xs) * 0.7) calc(var(--space-sm) * 0.8);
+  }
+  
+  .pill--md {
+    font-size: calc(var(--font-md) * 0.85);
+    padding: calc(var(--space-sm) * 0.7) calc(var(--space-md) * 0.7);
+  }
+  
+  /* More compact tag containers */
+  .tag-container, 
+  .tag-container-center, 
+  .tag-container-column {
+    gap: calc(var(--space-xs) * 0.6);
+  }
+  
+  /* Adjust specific tag types for tiny screens */
+  .tag-price, 
+  .tag-cian-estimate {
+    font-size: calc(var(--font-sm) * 0.85);
+  }
+}

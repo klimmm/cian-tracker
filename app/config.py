@@ -54,7 +54,7 @@ CONFIG = {
             "status": "Статус",
             "unpublished_date": "Снято",
             "address_title": "Квартира",
-            "update_title": "Посл. обновление",
+            "update_title": "Обновл.",
             "neighborhood": "Район",
             "price_text": "Цена",
             "property_tags": "Пешком",
@@ -109,206 +109,49 @@ CONFIG = {
     ],
 }
 
-# Style definitions
+# Font definition (for reference only)
 FONT = "Arial,sans-serif"
-STYLE = {
-    "container": {"fontFamily": FONT, "padding": "5px", "maxWidth": "100%"},
-    "header": {
-        "fontFamily": FONT,
-        "textAlign": "center",
-        "fontSize": "8px",
-        "borderBottom": "1px solid #ddd",
-    },
-    "update_time": {"fontFamily": FONT, "fontStyle": "bold", "fontSize": "12px"},
-    "table": {"overflowX": "auto", "width": "auto"},
-    "cell": {
-        "fontFamily": FONT,
-        "textAlign": "center",
-        "padding": "3px",
-        "maxWidth": "auto",
-        "fontSize": "8px",
-        "whiteSpace": "nowrap",
-    },
-    "header_cell": {
-        "fontFamily": FONT,
-        "backgroundColor": "#4682B4",
-        "color": "white",
-        "fontSize": "9.5px",
-    },
-    "filter": {"display": "none"},
-    "data": {"lineHeight": "14px"},
-    "input": {"marginRight": "5px", "width": "110px", "height": "15px"},
-    "input_number": {"width": "110px", "height": "15px"},
-    "label": {"fontSize": "11px", "marginRight": "3px", "display": "block"},
-    "button_base": {
-        "display": "inline-block",
-        "padding": "3px 8px",
-        "fontSize": "10px",
-        "border": "1px solid #ccc",
-        "margin": "0 5px 5px 0",
-        "cursor": "pointer",
-    },
-    "cell_conditional": [
-        {
-            "if": {"column_id": "update_title"},
-            "whiteSpace": "normal",
-            "height": "auto",
-            "minHeight": "60px",
-            "width": "90px",
-            "maxWidth": "90px",
-            "minWidth": "90px",
-            "overflow": "visible",
-            "textAlign": "left",
-            "padding": "3px 4px",
-            "lineHeight": "1.2",
-        },
-        {
-            "if": {"column_id": "activity_date_display"},
-            "whiteSpace": "normal",
-            "height": "auto",
-            "minHeight": "60px",
-            "width": "75px",
-            "maxWidth": "85px",
-            "overflow": "visible",
-            "padding": "3px 4px",
-            "lineHeight": "1.2",
-        },
-        {
-            "if": {"column_id": "details"},
-            "whiteSpace": "normal",
-            "height": "auto",
-            "minHeight": "60px",
-            "width": "75px",
-            "maxWidth": "85px",
-            "overflow": "visible",
-            "padding": "3px 4px",
-            "lineHeight": "1.2",
-        },
-        {
-            "if": {"column_id": "address_title"},
-            "whiteSpace": "normal",
-            "height": "auto",
-            "overflow": "hidden",
-            "textOverflow": "ellipsis",
-        },
-        {
-            "if": {"column_id": "tags"},
-            "whiteSpace": "normal",
-            "height": "auto",
-            "width": "120px",
-            "overflow": "visible",
-            "textOverflow": "clip",
-        },
-        {
-            "if": {"column_id": "details_button"},
-            "maxWidth": "80px",
-            "textAlign": "center",
-        },
-    ],
-}
-
-# Button styles
+# Button styles with classes
 BUTTON_STYLES = {
-    "nearest": {"backgroundColor": "#d9edf7", **STYLE["button_base"]},
-    "below_estimate": {"backgroundColor": "#fef3d5", **STYLE["button_base"]},
-    "updated_today": {"backgroundColor": "#dff0d8", **STYLE["button_base"]},
-    "inactive": {"backgroundColor": "#f4f4f4", **STYLE["button_base"]},
-    "price": {"backgroundColor": "#e8e8e0", **STYLE["button_base"]},
-    "distance": {"backgroundColor": "#e0e4e8", **STYLE["button_base"]},
-    "sort": {"backgroundColor": "#e0e0e8", **STYLE["button_base"]},
+    "nearest": {"className": "dashboard-button button-nearest"},
+    "below_estimate": {"className": "dashboard-button button-below-estimate"},
+    "updated_today": {"className": "dashboard-button button-updated-today"},
+    "inactive": {"className": "dashboard-button button-inactive"},
+    "price": {"className": "dashboard-button button-price"},
+    "distance": {"className": "dashboard-button button-distance"},
+    "sort": {"className": "dashboard-button button-sort"},
 }
 
-# Column styles for conditionals
+# Style definitions - using CSS classes instead of inline styles
+STYLE = {
+    "container": {"className": "main-container"},
+    "header": {"className": "dashboard-header"},
+    "update_time": {"className": "update-time"},
+    "table": {"className": "apartment-table"},
+    "cell": {"className": "dash-cell"},
+    "header_cell": {"className": "dash-header-cell"},
+    "filter": {"display": "none"},  # keep this one as it's an override
+    "input": {"className": "dashboard-input"},
+    "input_number": {"className": "dashboard-input dashboard-input-number"},
+    "label": {"className": "dashboard-label"},
+}
+
+
+# Only keep conditional styles (data-dependent styling)
 COLUMN_STYLES = [
     {
         "if": {"filter_query": '{status} contains "non active"'},
         "backgroundColor": "#f4f4f4",
         "color": "#888",
     },
-    {"if": {"column_id": "tags"}, "textAlign": "left", "whiteSpace": "normal"},
+    # Only kept special conditions that can't be handled with CSS
     {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
-    {
-        "if": {"column_id": "price_text"},
-        "textAlign": "center",
-        "padding": "0 4px",
-        "whiteSpace": "normal",
-        "lineHeight": "1.2",
-    },
-    {
-        "if": {"column_id": "activity_date_display"},
-        "textAlign": "center",
-        "whiteSpace": "normal",
-        "padding": "2px 4px",
-        "lineHeight": "1.2",
-    },
-    {
-        "if": {"column_id": "days_active"},
-        "textAlign": "center",
-        "fontWeight": "bold",
-        "whiteSpace": "nowrap",
-        "padding": "2px 4px",
-        "lineHeight": "1.2",
-    },
-    {
-        "if": {"column_id": "update_title"},
-        "textAlign": "left",
-        "whiteSpace": "normal",
-        "padding": "2px 4px",
-        "lineHeight": "1.2",
-    },
     {"if": {"column_id": "updated_time"}, "fontWeight": "bold", "textAlign": "center"},
-    {
-        "if": {"column_id": "price_value_formatted"},
-        "fontWeight": "bold",
-        "textAlign": "center",
-    },
-    {
-        "if": {"column_id": "update_title"},
-        "textAlign": "center",
-        "whiteSpace": "normal",
-        "padding": "2px 4px",
-        "lineHeight": "1.2",
-        "height": "auto",
-        "minHeight": "60px",
-    },
-    {
-        "if": {"column_id": "property_tags"},
-        "padding": "1px",
-        "textAlign": "left",
-        "lineHeight": "1.2",
-    },
-    {"if": {"column_id": "address"}, "textAlign": "left"},
-    {"if": {"column_id": "distance"}, "maxWidth": "40px"},
-    {"if": {"column_id": "metro_station"}, "textAlign": "left"},
-    {"if": {"column_id": "title"}, "textAlign": "left"},
-    {
-        "if": {"column_id": "address_title"},
-        "textAlign": "left",
-        "whiteSpace": "normal",
-        "height": "auto",
-    },
-    {"if": {"column_id": "details_button"}, "textAlign": "center", "maxWidth": "60px"},
+    {"if": {"column_id": "price_value_formatted"}, "fontWeight": "bold", "textAlign": "center"},
 ]
 
-# Header styles
-HEADER_STYLES = [
-    {"if": {"column_id": col}, "textAlign": "center"}
-    for col in [
-        "distance",
-        "updated_time",
-        "unpublished_date",
-        "price_value_formatted",
-        "cian_estimation_formatted",
-        "price_change_formatted",
-        "price_text",
-        "status",
-        "activity_date_display",
-        "days_active",
-    ]
-] + [
-    {"if": {"column_id": col}, "textAlign": "left"}
-    for col in ["address_title", "metro_station"]
-]
+# Using CSS for header styling instead
+HEADER_STYLES = []
 
 # Button definitions
 PRICE_BUTTONS = [

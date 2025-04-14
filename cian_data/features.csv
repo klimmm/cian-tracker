@@ -1036,3 +1036,4 @@ offer_id,has_refrigerator,has_dishwasher,has_washing_machine,has_air_conditioner
 316237337,True,False,True,False,True,True,True,True,True,False
 316187925,True,False,True,True,True,True,True,True,False,True
 315908091,True,True,True,True,True,True,True,True,False,True
+296697408,True,False,True,False,False,False,False,True,True,False

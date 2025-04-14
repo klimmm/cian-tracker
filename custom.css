@@ -1,0 +1,515 @@
+/* Optimized custom.css - Consolidated for better performance */
+
+/* ===== Base variables for consistent styling ===== */
+:root {
+  --primary-color: #4682B4;
+  --primary-dark: #365F8A;
+  --light-bg: #f8f8f8;
+  --text-normal: #333;
+  --text-light: #666;
+  --border-light: #eee;
+  --border-mid: #ccc;
+  --font-size-xs: 10px;
+  --font-size-sm: 11px;
+  --font-size-md: 12px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.1);
+  --shadow-md: 0 2px 4px rgba(0,0,0,0.15);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.2);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+}
+
+/* Base label styling */
+label.dash-label {
+  font-size: var(--font-size-xs) !important;
+  font-family: Arial, sans-serif !important;
+  font-weight: normal !important;
+  margin: 0 3px 0 0 !important;
+  padding: 0 !important;
+  color: var(--text-normal) !important;
+}
+
+/* ===== Cell styling ===== */
+.dash-cell-value {
+  font-size: var(--font-size-sm) !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.2 !important;
+}
+
+.dash-table-container .dash-cell-value p,
+.dash-table-container td[data-dash-column="update_title"] p {
+  margin: 0;
+  padding: 0;
+  display: inline;
+}
+
+/* ===== Header styling ===== */
+.dash-spreadsheet th[data-dash-column] .dash-header-cell-value {
+  font-size: 9px !important;
+  font-weight: bold !important;
+  white-space: normal !important;
+  line-height: 1.2 !important;
+  font-family: Arial, sans-serif !important;
+}
+
+.dash-spreadsheet th[data-dash-column] .column-header-name {
+  font-size: 9px !important;
+}
+
+/* ===== Inline display elements ===== */
+.dash-table-container td[data-dash-column="update_title"] * {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.dash-table-container td .dash-cell-value div[style*="display:flex"],
+.dash-table-container td .dash-cell-value div[style*="display: flex"] {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  line-height: 1.2 !important;
+}
+
+/* ===== Column width definitions ===== */
+.dash-spreadsheet td[data-dash-column="address_title"],
+.dash-spreadsheet th[data-dash-column="address_title"] {
+  width: 240px !important;
+  max-width: 260px !important;
+  min-width: 200px !important;
+  text-align: left !important;
+}
+
+.dash-spreadsheet td[data-dash-column="update_title"],
+.dash-spreadsheet th[data-dash-column="update_title"] {
+  text-align: center !important;
+  width: 100px !important;
+  max-width: 100px !important;
+  min-width: 100px !important;
+  overflow: visible !important;
+}
+
+.dash-spreadsheet td[data-dash-column="price_text"],
+.dash-spreadsheet th[data-dash-column="price_text"] {
+  width: 80px !important;
+  max-width: 90px !important;
+  min-width: 70px !important;
+}
+
+.dash-spreadsheet td[data-dash-column="property_tags"],
+.dash-spreadsheet th[data-dash-column="property_tags"] {
+  width: 90px !important;
+  max-width: 100px !important;
+  min-width: 80px !important;
+}
+
+/* ===== Font responsive behavior ===== */
+.dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value,
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value,
+.dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value,
+.dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value,
+.dash-spreadsheet td[data-dash-column="activity_date"] .dash-cell-value {
+  font-size: calc(10px + 0.2vw) !important;
+  transition: font-size 0.2s ease-in-out;
+}
+
+/* ===== Special elements ===== */
+.dash-spreadsheet td[data-dash-column="activity_date"] .dash-cell-value span {
+  font-size: calc(7px + 0.2vw) !important;
+  font-weight: bold !important;
+  line-height: 1.2 !important;
+}
+
+.dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value a,
+.dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value strong {
+  font-size: 1em !important;
+  font-weight: 600 !important;
+}
+
+/* ===== Links styling ===== */
+.dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value a {
+  color: #1a73e8 !important;
+  text-decoration: none !important;
+}
+.dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value a:hover {
+  text-decoration: underline !important;
+}
+
+/* ===== Tags styling ===== */
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value span,
+.dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value span,
+.dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value span {
+  font-size: 0.8em !important;
+  white-space: nowrap !important;
+  padding: 1px 4px !important;
+  border-radius: var(--radius-sm) !important;
+  margin: 1px 2px !important;
+  display: inline-block !important;
+}
+
+/* ===== Text alignments ===== */
+.dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value {
+  line-height: 1.4 !important;
+}
+
+.dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value,
+.dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value,
+.dash-table-container td[data-dash-column="activity_date"] .dash-cell-value {
+  text-align: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 2px !important;
+  justify-content: flex-start !important;
+}
+
+/* ===== Price changes styling ===== */
+.dash-table-container td[data-dash-column="update_title"] 
+span[style*="color:#2a9d8f"],
+.dash-table-container td[data-dash-column="update_title"] 
+span[style*="color:#d62828"] {
+  font-size: 0.7rem !important;
+  font-weight: bold !important;
+  margin-top: 4px !important;
+  padding: 2px 5px !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.dash-table-container td[data-dash-column="update_title"] 
+span[style*="background-color:#e6f7f5"],
+.dash-table-container td[data-dash-column="update_title"] 
+span[style*="background-color:#fbe9e7"] {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dash-table-container td[data-dash-column="update_title"] 
+span[style*="background-color:#e6f7f5"]:hover,
+.dash-table-container td[data-dash-column="update_title"] 
+span[style*="background-color:#fbe9e7"]:hover {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* ===== Table layout ===== */
+#table-container,
+.dash-spreadsheet-container {
+  max-width: 100%;
+  width: 100%;
+  margin: 0 auto;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.dash-spreadsheet-container .dash-spreadsheet-inner table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+.dash-spreadsheet-menu,
+.dash-filter.column-0 {
+  display: none !important;
+}
+
+/* ===== Details column ===== */
+td.details-column .dash-cell-value {
+  display: inline-block !important;
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  border: none !important;
+  padding: 3px 10px !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: var(--font-size-sm) !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  position: relative !important;
+  min-width: 65px !important;
+  transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+td.details-column .dash-cell-value:hover {
+  background-color: var(--primary-dark) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* ===== Clickable elements ===== */
+.dash-spreadsheet td.cell-clickable,
+td.details-column, 
+td[data-dash-column="details"] {
+  cursor: pointer !important;
+}
+
+/* ===== Details panel ===== */
+#apartment-details-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  background-color: #fff;
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-md);
+  padding: 15px;
+  overflow: auto;
+  width: 90%;
+  max-width: 500px;
+  max-height: 100%;
+  min-height: 600px;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#apartment-details-panel[style*="visibility: visible"],
+#apartment-details-panel[style*="display: block"] {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ===== Highlighted row ===== */
+.highlighted-row td {
+  background-color: #e6f3ff !important;
+  border-bottom: 2px solid var(--primary-color) !important;
+  transition: background-color 0.3s ease;
+}
+
+/* ===== Activity date column ===== */
+.dash-spreadsheet td[data-dash-column="activity_date"],
+.dash-spreadsheet th[data-dash-column="activity_date"] {
+  text-align: center !important;
+  width: 85px !important;
+  max-width: 85px !important;
+  min-width: 85px !important;
+  overflow: visible !important;
+  padding: 2px 4px !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  height: auto !important;
+  min-height: 60px !important;
+}
+
+/* ===== Days active column ===== */
+.dash-spreadsheet td[data-dash-column="days_active"],
+.dash-spreadsheet th[data-dash-column="days_active"] {
+  text-align: center !important;
+  width: 65px !important;
+  max-width: 70px !important;
+  min-width: 60px !important;
+  overflow: visible !important;
+  padding: 2px 4px !important;
+  line-height: 1.2 !important;
+}
+
+.dash-spreadsheet td[data-dash-column="days_active"] .dash-cell-value {
+  font-weight: bold !important;
+  font-size: calc(7px + 0.2vw) !important;
+  text-align: center !important;
+}
+
+/* ===== Conditional formatting for days active ===== */
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="0 дн."],
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="1 дн."] {
+  color: #2e7d32 !important;
+}
+
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="30 дн."],
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="60 дн."] {
+  color: #f57c00 !important;
+}
+
+.dash-table-container td[data-dash-column="days_active"] .dash-cell-value[data-dash-value*="90 дн."] {
+  color: #c62828 !important;
+}
+
+/* ===== Sort indicators ===== */
+.dash-table-container .dash-spreadsheet th .column-header--sort {
+  position: relative;
+}
+
+.dash-table-container .dash-spreadsheet th .column-header--sort:after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-color: rgba(70, 130, 180, 0.1);
+  pointer-events: none;
+}
+
+.dash-table-container .dash-spreadsheet th .column-header--sort svg {
+  opacity: 0 !important;
+  display: none;
+}
+
+.dash-table-container .dash-spreadsheet th.dash-header.column-header--sort {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+}
+
+/* ===== Media Queries ===== */
+@media screen and (max-width: 768px) {
+  .dash-spreadsheet th[data-dash-column] .dash-header-cell-value { 
+    font-size: 8.5px !important; 
+  }
+  
+  .dash-cell-value { 
+    font-size: 10.5px !important; 
+  }
+  
+  .dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value,
+  .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value,
+  .dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value,
+  .dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value {
+    font-size: calc(9px + 0.2vw) !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value span,
+  .dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value span,
+  .dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value span {
+    padding: 1px 3px !important;
+    margin: 1px !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="address_title"],
+  .dash-spreadsheet th[data-dash-column="address_title"] {
+    width: 200px !important;
+    max-width: 200px !important;
+    min-width: 190px !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="update_title"],
+  .dash-spreadsheet th[data-dash-column="update_title"] {
+    width: 90px !important;
+    max-width: 90px !important;
+    min-width: 90px !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="price_text"],
+  .dash-spreadsheet th[data-dash-column="price_text"] {
+    width: 75px !important;
+    max-width: 80px !important;
+    min-width: 65px !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="property_tags"],
+  .dash-spreadsheet th[data-dash-column="property_tags"] {
+    width: 85px !important;
+    max-width: 90px !important;
+    min-width: 75px !important;
+  }
+
+  td.details-column .dash-cell-value {
+    min-width: 55px !important;
+    padding: 3px 8px !important;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .dash-spreadsheet th[data-dash-column] .dash-header-cell-value { 
+    font-size: 9px !important; 
+  }
+  
+  .dash-cell-value { 
+    font-size: 8.5px !important; 
+  }
+
+  .dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value,
+  .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value,
+  .dash-spreadsheet td[data-dash-column="address_title"] .dash-cell-value,
+  .dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value {
+    font-size: calc(8.5px + 0.15vw) !important; 
+  }
+  
+  .dash-spreadsheet td[data-dash-column="property_tags"] .dash-cell-value span,
+  .dash-spreadsheet td[data-dash-column="update_title"] .dash-cell-value span,
+  .dash-spreadsheet td[data-dash-column="price_text"] .dash-cell-value span {
+    padding: 1px 2px !important;
+    border-radius: 3px !important;
+    margin: 0 !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="address_title"],
+  .dash-spreadsheet th[data-dash-column="address_title"] {
+    width: 180px !important;
+    max-width: 180px !important;
+    min-width: 160px !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="update_title"],
+  .dash-spreadsheet th[data-dash-column="update_title"] {
+    width: 80px !important;
+    max-width: 80px !important;
+    min-width: 80px !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="price_text"],
+  .dash-spreadsheet th[data-dash-column="price_text"] {
+    width: 65px !important;
+    max-width: 70px !important;
+    min-width: 60px !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="property_tags"],
+  .dash-spreadsheet th[data-dash-column="property_tags"] {
+    width: 75px !important;
+    max-width: 80px !important;
+    min-width: 70px !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="details"],
+  .dash-spreadsheet th[data-dash-column="details"] {
+    width: 50px !important;
+    max-width: 55px !important;
+    min-width: 45px !important;
+  }
+
+  td.details-column .dash-cell-value {
+    min-width: 45px !important;
+    padding: 2px 6px !important;
+    font-size: 9px !important;
+  }
+}
+
+@media screen and (max-width: 360px) {
+  .dash-spreadsheet td[data-dash-column="address_title"],
+  .dash-spreadsheet th[data-dash-column="address_title"] {
+    width: 140px !important;
+    max-width: 140px !important;
+    min-width: 130px !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="update_title"],
+  .dash-spreadsheet th[data-dash-column="update_title"],
+  .dash-spreadsheet td[data-dash-column="price_text"],
+  .dash-spreadsheet th[data-dash-column="price_text"] {
+    width: 100px !important;
+    max-width: 100px !important;
+    min-width: 90px !important;
+  }
+
+  .dash-spreadsheet td[data-dash-column="property_tags"],
+  .dash-spreadsheet th[data-dash-column="property_tags"] {
+    width: 65px !important;
+    max-width: 70px !important;
+    min-width: 60px !important;
+  }
+}

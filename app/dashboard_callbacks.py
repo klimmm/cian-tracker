@@ -1,21 +1,21 @@
-# app/dashboard_callbacks.py - Optimized
+# app/dashboard_callbacks.py - Refactored to use CSS classes
 from dash import callback_context as ctx
 from dash.dependencies import Input, Output, State, MATCH
 import dash
 import logging
 import pandas as pd
-from app.utils import DataManager, load_apartment_details
+from app.data_manager import DataManager, load_apartment_details
 from app.apartment_card import create_apartment_details_card
-from app.config import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS, BUTTON_STYLES
+from app.config import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS
 from dash import dash_table, html
-from app.config import CONFIG, STYLE, COLUMN_STYLES, HEADER_STYLES
-from app.components import StyleManager
+from app.config import CONFIG, COLUMN_STYLES, HEADER_STYLES
+from app.components import TableFactory
 
 logger = logging.getLogger(__name__)
 
 
 def register_all_callbacks(app):
-    """Register all callbacks."""
+    """Register all application callbacks in a structured manner."""
     register_data_callbacks(app)
     register_filter_callbacks(app)
     register_style_callbacks(app)
@@ -23,7 +23,7 @@ def register_all_callbacks(app):
 
 
 def register_data_callbacks(app):
-    """Register data-related callbacks."""
+    """Register data loading and processing callbacks."""
 
     @app.callback(
         [
@@ -34,8 +34,9 @@ def register_data_callbacks(app):
         prevent_initial_call=False,
     )
     def load_apartment_data(_):
-        """Load apartment data and update store."""
+        """Load and process apartment data for display."""
         try:
+            # Load data from source
             df, update_time = DataManager.load_data()
             if df.empty:
                 return [], "Error: No data loaded"
@@ -55,7 +56,7 @@ def register_data_callbacks(app):
             ]
             available_cols = [col for col in required_cols if col in df.columns]
 
-            # Convert to dict
+            # Convert to dictionary for storage
             df_dict = df[available_cols].to_dict("records") if not df.empty else []
 
             return df_dict, f"Актуально на: {update_time}"
@@ -66,7 +67,7 @@ def register_data_callbacks(app):
 
 
 def register_filter_callbacks(app):
-    """Register filter-related callbacks."""
+    """Register filter and sorting callbacks."""
 
     @app.callback(
         [Output("filter-store", "data")],
@@ -83,7 +84,7 @@ def register_filter_callbacks(app):
         prevent_initial_call=True,
     )
     def update_filters(*args):
-        """Update filters based on button clicks."""
+        """Update filters based on user interactions."""
         # Get triggered button
         if not (ctx_msg := ctx.triggered[0] if ctx.triggered else None):
             return [dash.no_update]
@@ -91,7 +92,7 @@ def register_filter_callbacks(app):
         trigger_id = ctx_msg["prop_id"].split(".")[0]
         current_filters = args[-1] or {}
 
-        # Handle filter updates based on button type
+        # Handle price button clicks
         if trigger_id in [btn["id"] for btn in PRICE_BUTTONS]:
             current_filters["active_price_btn"] = trigger_id
             current_filters["price_value"] = next(
@@ -99,6 +100,7 @@ def register_filter_callbacks(app):
                 current_filters.get("price_value", 80000),
             )
 
+        # Handle distance button clicks
         elif trigger_id in [btn["id"] for btn in DISTANCE_BUTTONS]:
             current_filters["active_dist_btn"] = trigger_id
             current_filters["distance_value"] = next(
@@ -106,7 +108,7 @@ def register_filter_callbacks(app):
                 current_filters.get("distance_value", 3.0),
             )
 
-        # Toggle filters
+        # Handle toggle filters
         elif trigger_id in [
             "btn-nearest",
             "btn-below-estimate",
@@ -148,17 +150,17 @@ def register_filter_callbacks(app):
         [Input("filter-store", "data"), Input("apartment-data-store", "data")],
     )
     def update_table_content(filters, data):
-        """Update table based on filters."""
+        """Update table based on filters and data."""
         if not data:
             return [html.Div("Нет данных")]
 
-        # Convert to DataFrame
+        # Convert to DataFrame for processing
         df = pd.DataFrame(data)
 
         # Apply filtering and sorting
         df = DataManager.filter_and_sort_data(df, filters)
 
-        # Create table
+        # Create and return data table
         return [create_data_table(df)]
 
     @app.callback(
@@ -167,7 +169,7 @@ def register_filter_callbacks(app):
         [State("apartment-data-store", "data")],
     )
     def update_sort(sort_by, filters, data):
-        """Handle table sorting."""
+        """Handle table sorting from column headers."""
         if not data:
             return []
 
@@ -181,7 +183,7 @@ def register_filter_callbacks(app):
         prevent_initial_call=False,
     )
     def update_sort_button_text(filters):
-        """Update sort button text with indicators."""
+        """Update sort button text with direction indicators."""
         if not filters:
             return [btn["label"] for btn in SORT_BUTTONS]
 
@@ -199,100 +201,86 @@ def register_filter_callbacks(app):
 
 
 def register_style_callbacks(app):
-    """Register style-related callbacks."""
+    """Register styling callbacks for UI elements."""
 
     @app.callback(
         [
-            *[Output(btn["id"], "style") for btn in PRICE_BUTTONS],
-            *[Output(btn["id"], "style") for btn in DISTANCE_BUTTONS],
-            Output("btn-nearest", "style"),
-            Output("btn-below-estimate", "style"),
-            Output("btn-inactive", "style"),
-            Output("btn-updated-today", "style"),
-            *[Output(btn["id"], "style") for btn in SORT_BUTTONS],
+            *[Output(btn["id"], "className") for btn in PRICE_BUTTONS],
+            *[Output(btn["id"], "className") for btn in DISTANCE_BUTTONS],
+            Output("btn-nearest", "className"),
+            Output("btn-below-estimate", "className"),
+            Output("btn-inactive", "className"),
+            Output("btn-updated-today", "className"),
+            *[Output(btn["id"], "className") for btn in SORT_BUTTONS],
         ],
         [Input("filter-store", "data")],
     )
     def update_button_styles(filters):
-        """Update button styles based on filter state."""
+        """Update button classes based on active state."""
         if not filters:
             return dash.no_update
 
-        styles = []
+        classes = []
 
-        # Create button styles function
-        def get_button_style(button, index, type_name, is_active=False):
-            base_style = StyleManager.merge_styles(
-                BUTTON_STYLES.get(type_name, {}), {"flex": "1"}
-            )
-
+        # Helper function for creating button classes
+        def get_button_class(button_type, is_active=False):
+            base_class = f"btn btn--{button_type}"
             if is_active:
-                base_style.update({"opacity": 1.0, "boxShadow": "0 0 5px #4682B4"})
-            else:
-                base_style.update({"opacity": 0.6})
-
-            return base_style
+                base_class += " btn--active"
+            return base_class
 
         # Price buttons
-        for i, btn in enumerate(PRICE_BUTTONS):
-            styles.append(
-                get_button_style(
-                    btn,
-                    i,
-                    "price",
+        for btn in PRICE_BUTTONS:
+            classes.append(
+                get_button_class(
+                    "default",
                     is_active=(btn["id"] == filters.get("active_price_btn")),
                 )
             )
 
         # Distance buttons
-        for i, btn in enumerate(DISTANCE_BUTTONS):
-            styles.append(
-                get_button_style(
-                    btn,
-                    i,
-                    "distance",
+        for btn in DISTANCE_BUTTONS:
+            classes.append(
+                get_button_class(
+                    "default",
                     is_active=(btn["id"] == filters.get("active_dist_btn")),
                 )
             )
 
         # Filter toggle buttons
-        for filter_name, button_id in [
-            ("nearest", "btn-nearest"),
-            ("below_estimate", "btn-below-estimate"),
-            ("inactive", "btn-inactive"),
-            ("updated_today", "btn-updated-today"),
-        ]:
-            base_style = StyleManager.merge_styles(
-                BUTTON_STYLES.get(filter_name, {}), {"flex": "1"}
+        filter_button_mapping = [
+            ("btn-nearest", "primary", "nearest"),
+            ("btn-below-estimate", "warning", "below_estimate"),
+            ("btn-inactive", "default", "inactive"),
+            ("btn-updated-today", "success", "updated_today"),
+        ]
+        
+        for button_id, variant, filter_name in filter_button_mapping:
+            classes.append(
+                get_button_class(
+                    variant,
+                    is_active=filters.get(filter_name, False),
+                )
             )
 
-            if filters.get(filter_name):
-                base_style.update({"opacity": 1.0, "boxShadow": "0 0 5px #4682B4"})
-            else:
-                base_style.update({"opacity": 0.6})
-
-            styles.append(base_style)
-
         # Sort buttons
-        for i, btn in enumerate(SORT_BUTTONS):
-            styles.append(
-                get_button_style(
-                    btn,
-                    i,
-                    "sort",
+        for btn in SORT_BUTTONS:
+            classes.append(
+                get_button_class(
+                    "default",
                     is_active=(btn["id"] == filters.get("active_sort_btn")),
                 )
             )
 
-        return styles
+        return classes
 
 
 def register_details_callbacks(app):
-    """Register apartment details callbacks."""
+    """Register callbacks for apartment details panel."""
 
     @app.callback(
         [
-            Output("apartment-details-panel", "style"),
+            Output("apartment-details-panel", "className"),
             Output("apartment-details-card", "children"),
             Output("selected-apartment-store", "data"),
         ],
@@ -305,7 +293,7 @@ def register_details_callbacks(app):
         [
             State("apartment-table", "data"),
             State("selected-apartment-store", "data"),
-            State("apartment-details-panel", "style"),
+            State("apartment-details-panel", "className"),
         ],
         prevent_initial_call=True,
     )
@@ -316,31 +304,18 @@ def register_details_callbacks(app):
         close_clicks,
         table_data,
         selected_data,
-        current_style,
+        current_class,
     ):
         """Handle apartment details panel interactions."""
         triggered_id = ctx.triggered_id
 
-        # Setup panel styles
-        current_style = current_style or {}
-        hidden_style = {
-            **current_style,
-            "opacity": "0",
-            "visibility": "hidden",
-            "pointer-events": "none",
-            "display": "none",
-        }
-        visible_style = {
-            **current_style,
-            "opacity": "1",
-            "visibility": "visible",
-            "pointer-events": "auto",
-            "display": "block",
-        }
+        # Setup panel classes
+        hidden_class = "details-panel details-panel--hidden"
+        visible_class = "details-panel details-panel--visible"
 
         # Handle close action
         if triggered_id == "close-details-button":
-            return hidden_style, dash.no_update, None
+            return hidden_class, dash.no_update, None
 
         # Handle table cell click
         if (
@@ -349,6 +324,19 @@ def register_details_callbacks(app):
             and active_cell.get("column_id") == "details"
         ):
             row_idx = active_cell["row"]
+            if row_idx >= len(table_data):
+                logger.error(
+                    f"Row index {row_idx} out of bounds for table data length {len(table_data)}"
+                )
+                return (
+                    visible_class,
+                    html.Div(
+                        "Ошибка: индекс строки вне диапазона.", 
+                        className="apartment-no-data"
+                    ),
+                    None,
+                )
+
             row_data = table_data[row_idx]
             offer_id = row_data.get("offer_id")
 
@@ -367,12 +355,15 @@ def register_details_callbacks(app):
                     "table_data": table_data,
                 }
 
-                return visible_style, details_card, selected
+                return visible_class, details_card, selected
             except Exception as e:
                 logger.error(f"Error loading details: {e}")
                 return (
-                    visible_style,
-                    html.Div(f"Ошибка загрузки: {e}", style={"color": "red"}),
+                    visible_class,
+                    html.Div(
+                        f"Ошибка загрузки: {e}", 
+                        className="apartment-no-data error"
+                    ),
                     None,
                 )
 
@@ -421,7 +412,10 @@ def register_details_callbacks(app):
                 logger.error(f"Error loading details: {e}")
                 return (
                     dash.no_update,
-                    html.Div(f"Ошибка загрузки: {e}", style={"color": "red"}),
+                    html.Div(
+                        f"Ошибка загрузки: {e}", 
+                        className="apartment-no-data error"
+                    ),
                     selected_data,
                 )
 
@@ -470,94 +464,51 @@ def register_details_callbacks(app):
 
 
 def create_data_table(df):
-    """Create a DataTable with consistent configuration."""
+    """Create a DataTable for apartment data with styling fully regulated by CSS."""
+    from dash import html
+
     if df.empty:
-        return html.Div("Нет данных")
+        return html.Div("Нет данных", className="no-data-message")
 
-    # Define columns
-    visible = CONFIG["columns"]["visible"] + ["details"]
-    numeric_cols = {
-        "distance",
-        "price_value_formatted",
-        "cian_estimation_formatted",
-        "price_difference_formatted",
-        "monthly_burden_formatted",
+    # Define which columns to display.
+    visible_columns = CONFIG["columns"]["visible"] + ["details"]
+    numeric_columns = {
+        "distance", "price_value_formatted", "cian_estimation_formatted", 
+        "price_difference_formatted", "monthly_burden_formatted"
     }
-    markdown_cols = {
-        "price_change_formatted",
-        "address_title",
-        "offer_link",
-        "price_info",
-        "update_title",
-        "property_tags",
-        "price_change",
-        "walking_time",
-        "price_text",
-        "days_active",
-        "activity_date"
+    markdown_columns = {
+        "price_change_formatted", "address_title", "offer_link", "price_info",
+        "update_title", "property_tags", "price_change", "walking_time",
+        "price_text", "days_active", "activity_date"
     }
 
+    # Build the column definitions.
     columns = [
         {
             "name": CONFIG["columns"]["headers"].get(
                 c, "Детали" if c == "details" else c
             ),
             "id": c,
-            "type": "numeric" if c in numeric_cols else "text",
-            "presentation": "markdown" if c in markdown_cols else None,
+            "type": "numeric" if c in numeric_columns else "text",
+            "presentation": "markdown" if c in markdown_columns else None,
         }
-        for c in visible
+        for c in visible_columns
+        if c in df.columns
     ]
 
-    # Special styling
-    details_style = {"if": {"column_id": "details"}, "className": "details-column"}
-    markdown_style = [
-        {"if": {"column_id": col}, "textAlign": "center"} for col in markdown_cols
-    ]
-
-    # Create DataTable
-    return dash_table.DataTable(
+    # Create and return the DataTable using the TableFactory.
+    # Note: Instead of using a className property, you can target the table via its ID ("apartment-table") 
+    # or through other selectors in your external CSS.
+    return TableFactory.create_data_table(
         id="apartment-table",
         columns=columns,
-        data=df.to_dict("records") if not df.empty else [],
+        data=df.to_dict("records"),
         sort_action="custom",
         sort_mode="multi",
         sort_by=[],
         hidden_columns=CONFIG["hidden_cols"] + ["offer_id"],
-        style_table={
-            "overflowX": "auto",
-            "maxWidth": "1200px",
-            "width": "100%",
-            "margin": "0 auto",
-        },
-        style_cell=STYLE["cell"],
-        style_cell_conditional=STYLE.get("cell_conditional", [])
-        + [details_style]
-        + markdown_style,
-        style_header=STYLE["header_cell"],
-        style_header_conditional=HEADER_STYLES,
-        style_data=STYLE["data"],
-        style_filter=STYLE["filter"],
-        style_data_conditional=COLUMN_STYLES
-        + [
-            {
-                "if": {"column_id": "details"},
-                "fontWeight": "normal",
-                "cursor": "pointer !important",
-            }
-        ],
         page_size=100,
         page_action="native",
         markdown_options={"html": True},
-        cell_selectable=True,
-        css=[
-            {
-                "selector": ".dash-cell:nth-child(n+1):nth-child(-n+15)",
-                "rule": "padding: 5px !important;",
-            },
-            {
-                "selector": "td.details-column",
-                "rule": "background-color: transparent !important; text-align: center !important; padding: 3px 5px !important;",
-            },
-        ],
+        cell_selectable=True
     )
