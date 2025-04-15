@@ -38,7 +38,6 @@ CONFIG = {
             "days_active",
             "days_active_value",
         ],
-        "visible": ["update_title", "address_title", "price_text", "property_tags"],
         "headers": {
             "offer_id": "ID",
             "distance": "Расст.",
@@ -99,14 +98,6 @@ CONFIG = {
         )
     },
     "base_url": "https://www.cian.ru/rent/flat/",
-    "hidden_cols": [
-        "price_value",
-        "distance_sort",
-        "updated_time_sort",
-        "cian_estimation_value",
-        "price_difference_value",
-        "unpublished_date_sort",
-    ],
 }
 
 # Font definition (for reference only)
@@ -135,21 +126,3 @@ STYLE = {
     "input_number": {"className": "dashboard-input dashboard-input-number"},
     "label": {"className": "dashboard-label"},
 }
-
-
-# Only keep conditional styles (data-dependent styling)
-COLUMN_STYLES = [
-    {
-        "if": {"filter_query": '{status} contains "non active"'},
-        "backgroundColor": "#f4f4f4",
-        "color": "#888",
-    },
-    # Only kept special conditions that can't be handled with CSS
-    {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
-    {"if": {"column_id": "updated_time"}, "fontWeight": "bold", "textAlign": "center"},
-    {"if": {"column_id": "price_value_formatted"}, "fontWeight": "bold", "textAlign": "center"},
-]
-
-# Using CSS for header styling instead
-HEADER_STYLES = []
-

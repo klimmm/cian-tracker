@@ -2,7 +2,6 @@
 import pandas as pd
 import logging
 import re
-from datetime import datetime, timedelta
 from app.config import CONFIG, MOSCOW_TZ
 
 logger = logging.getLogger(__name__)
@@ -31,9 +30,38 @@ class DateFormatter:
 
         return dt
 
-    @staticmethod
+    def get_minute_word(minutes: int) -> str:
+        """
+        Returns the correct form of the word 'минута' for a given number of minutes.
+
+        Examples:
+            1 -> "минута"
+            2 -> "минуты"
+            5 -> "минут"
+            21 -> "минута"
+            22 -> "минуты"
+            25 -> "минут"
+        """
+        last_two = minutes % 100
+        # For numbers 11-14, always use the plural form "минут"
+        if 11 <= last_two <= 14:
+            return "минут"
+
+        last_digit = minutes % 10
+        if last_digit == 1:
+            return "минута"
+        elif last_digit in {2, 3, 4}:
+            return "минуты"
+        else:
+            return "минут"
+
     def format_date(dt, threshold_hours=24):
         """Format date with timezone awareness."""
+        import pandas as pd  # Ensure you have pandas imported
+        from datetime import datetime, timedelta
+
+        # Assuming MOSCOW_TZ, DateFormatter, and CONFIG are defined elsewhere in your code.
+
         if dt is None or pd.isna(dt):
             return "--"
 
@@ -55,10 +83,12 @@ class DateFormatter:
             return "только что"
         elif seconds_ago < 3600:
             minutes = int(seconds_ago // 60)
-            return f"{minutes} {'минуту' if minutes == 1 else 'минуты' if 2 <= minutes <= 4 else 'минут'} назад"
+            minute_word = DateFormatter.get_minute_word(minutes)
+            return f"{minutes} {minute_word} назад"
         elif seconds_ago < 21600:  # 6 hours
             hours = int(seconds_ago // 3600)
-            return f"{hours} {'час' if hours == 1 else 'часа' if 2 <= hours <= 4 else 'часов'} назад"
+            hour_word = "час" if hours == 1 else "часа" if 2 <= hours <= 4 else "часов"
+            return f"{hours} {hour_word} назад"
 
         today = now.date()
         yesterday = today - timedelta(days=1)
@@ -69,7 +99,6 @@ class DateFormatter:
             return f"вчера, {dt.hour:02}:{dt.minute:02}"
         else:
             return f"{dt.day} {month_names[dt.month]}"
-
 
 
 class NumberFormatter:

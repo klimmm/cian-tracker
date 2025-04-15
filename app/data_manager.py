@@ -10,6 +10,7 @@ from app.config import CONFIG, MOSCOW_TZ
 from app.app_config import AppConfig
 from app.columns import ColumnFormatter
 import re
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,6 +27,7 @@ class ErrorHandler:
         except Exception as e:
             logger.error(f"Error in {operation_name}: {str(e)}")
             return default_return
+
 
 class DataManager:
     """Centralized data management."""
@@ -88,18 +90,19 @@ class DataManager:
         except Exception as e:
             logger.error(f"Error loading data: {e}")
             return pd.DataFrame(), f"Error: {e}"
+
     @staticmethod
     def extract_title_data(df):
         """Extract room count, area, and floor information from titles into new columns."""
         if "title" not in df.columns:
             return df
-        
+
         # Process each title row by row to avoid creating temporary columns
         room_counts = []
         areas = []
         floors = []
         total_floors_list = []
-        
+
         for title in df["title"]:
             # Ensure title is a string
             title = str(title) if title is not None else ""
@@ -109,40 +112,40 @@ class DataManager:
                 floors.append(None)
                 total_floors_list.append(None)
                 continue
-            
+
             # Extract room count
             room_count = None
             if "Студия" in title:
                 room_count = 0  # 0 represents studio
             elif "Апартаменты-студия" in title:
                 room_count = 0  # 0 represents studio
-                
+
             else:
-                room_match = re.search(r'(\d+)-комн', title)
+                room_match = re.search(r"(\d+)-комн", title)
                 if room_match:
                     try:
                         room_count = int(room_match.group(1))
                     except (ValueError, TypeError):
                         room_count = None
             room_counts.append(room_count)
-            
+
             # Extract area
             # Extract area
             # Extract area
             area = None
-            area_match = re.search(r'(\d+[,.]?\d*)\s*м[г²²]?', title)
+            area_match = re.search(r"(\d+[,.]?\d*)\s*м[г²²]?", title)
             if area_match:
                 try:
-                    area_str = area_match.group(1).replace(',', '.')
+                    area_str = area_match.group(1).replace(",", ".")
                     area = float(area_str)
                 except (ValueError, TypeError):
                     area = None
             areas.append(area)  # добавляем в список
-            
+
             # Extract floor info
             floor = None
             total_floors = None
-            floor_match = re.search(r'(\d+)/(\d+)\s*этаж', title)
+            floor_match = re.search(r"(\d+)/(\d+)\s*этаж", title)
             if floor_match:
                 try:
                     floor = int(floor_match.group(1))
@@ -152,14 +155,15 @@ class DataManager:
                     total_floors = None
             floors.append(floor)
             total_floors_list.append(total_floors)
-        
+
         # Add extracted columns to dataframe
         df["room_count"] = room_counts
         df["area"] = areas
         df["floor"] = floors
         df["total_floors"] = total_floors_list
-        
+
         return df
+
     @staticmethod
     def _extract_update_time():
         """Extract update time from metadata."""
@@ -209,25 +213,24 @@ class DataManager:
         # Extract structured data from title
         if "title" in df.columns:
             df = DataManager.extract_title_data(df)
-    
+
         # Process links
         base_url = CONFIG["base_url"]
-        '''df["address"] = df.apply(
+        """df["address"] = df.apply(
             lambda r: f"[{r['address']}]({base_url}{r['offer_id']}/)", axis=1
         )
-        df["offer_link"] = df["offer_id"].apply(lambda x: f"[View]({base_url}{x}/)")'''
+        df["offer_link"] = df["offer_id"].apply(lambda x: f"[View]({base_url}{x}/)")"""
 
-    
         # Process metrics
         df["distance_sort"] = pd.to_numeric(df["distance"], errors="coerce")
         df["distance"] = df["distance_sort"].apply(
             lambda x: f"{x:.2f} km" if pd.notnull(x) else ""
         )
-        
+
         # Format address_title column
         df["address_title"] = df.apply(
             lambda r: ColumnFormatter.format_address_title(r, base_url), axis=1
-        )    
+        )
         # Process dates
         now = datetime.now(MOSCOW_TZ)
         for col in ["updated_time", "unpublished_date", "activity_date"]:
@@ -238,11 +241,11 @@ class DataManager:
                         DateFormatter.ensure_timezone(x) if pd.notnull(x) else None
                     )
                 )
-    
+
                 df[col] = df[f"{col}_sort"].apply(
                     lambda x: DateFormatter.format_date(x) if pd.notnull(x) else "--"
                 )
-    
+
         # Calculate days active
         if all(col in df.columns for col in ["updated_time_sort", "status"]):
             df["days_active_value"] = df.apply(
@@ -262,7 +265,7 @@ class DataManager:
                 ),
                 axis=1,
             )
-    
+
             # Hours for entries where days = 0
             df["hours_active_value"] = df.apply(
                 lambda r: (
@@ -301,7 +304,7 @@ class DataManager:
                 ),
                 axis=1,
             )
-    
+
             # Format days active
             df["days_active"] = df.apply(
                 lambda r: (
@@ -318,16 +321,17 @@ class DataManager:
                 ),
                 axis=1,
             )
-    
+
         # Combined date for sorting
         if "updated_time_sort" in df.columns:
             df["date_sort_combined"] = df["updated_time_sort"]
-    
+
         # Format financial info
         DataManager._process_financial_info(df)
-    
+
         # Create display columns
         DataManager._create_display_columns(df)
+
     @staticmethod
     def _process_financial_info(df):
         """Process financial information."""
@@ -416,7 +420,9 @@ class DataManager:
 
             if filters.get("updated_today") and "updated_time_sort" in df.columns:
                 recent_time = pd.Timestamp.now(MOSCOW_TZ) - pd.Timedelta(hours=24)
-                df["updated_time_sort"] = pd.to_datetime(df["updated_time_sort"], errors='coerce')
+                df["updated_time_sort"] = pd.to_datetime(
+                    df["updated_time_sort"], errors="coerce"
+                )
                 df = df[df["updated_time_sort"] > recent_time]
 
             # Apply sorting from filters

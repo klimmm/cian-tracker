@@ -1,5 +1,5 @@
-# app/layout.py - Fixed version
-from dash import dcc, html, dash_table
+# app/layout.py
+from dash import dcc, html
 from app.button_factory import (
     DEFAULT_PRICE,
     DEFAULT_PRICE_BTN,
@@ -12,8 +12,7 @@ from app.button_factory import (
     sort_buttons,
     filter_buttons,
 )
-from app.config import CONFIG  # Import CONFIG for column definitions
-from app.components import TableFactory
+from app.table_factory import TableFactory
 
 
 # Update this function in layout.py to move navigation panel to the top
@@ -40,12 +39,11 @@ def create_apartment_details_panel():
                                 "← Пред.",
                                 id="prev-apartment-button",
                                 className="details-nav-button details-nav-button--prev",
-                                n_clicks=0
+                                n_clicks=0,
                             ),
                             # Center - title
                             html.H3(
-                                "Информация о квартире", 
-                                className="details-panel-title"
+                                "Информация о квартире", className="details-panel-title"
                             ),
                             # Right side - next button and close button
                             html.Div(
@@ -55,52 +53,30 @@ def create_apartment_details_panel():
                                         "След. →",
                                         id="next-apartment-button",
                                         className="details-nav-button details-nav-button--next",
-                                        n_clicks=0
+                                        n_clicks=0,
                                     ),
                                     html.Button(
                                         "×",
                                         id="close-details-button",
                                         className="details-close-x",
-                                        n_clicks=0
-                                    )
+                                        n_clicks=0,
+                                    ),
                                 ],
                             ),
                         ],
                     ),
                     # Scrollable content area - start with empty div to prevent errors
                     html.Div(
-                        id="apartment-details-card", 
+                        id="apartment-details-card",
                         className="details-panel-content",
-                        children=[]  # Start with empty array
+                        children=[],  # Start with empty array
                     ),
-                    # Remove or comment out the bottom navigation footer
-                    # html.Div(
-                    #     className="details-nav",
-                    #     children=[
-                    #         html.Button(
-                    #             "← Предыдущая",
-                    #             id="prev-apartment-button",
-                    #             className="details-nav-button",
-                    #             n_clicks=0
-                    #         ),
-                    #         html.Div(
-                    #             id="apartment-position-info",
-                    #             className="details-nav-info",
-                    #             children=["Квартира"],
-                    #         ),
-                    #         html.Button(
-                    #             "Следующая →",
-                    #             id="next-apartment-button",
-                    #             className="details-nav-button",
-                    #             n_clicks=0
-                    #         ),
-                    #     ],
-                    # ),
                 ],
             ),
         ],
-        id="details-panel-container"  # Add container ID for easier targeting
+        id="details-panel-container",  # Add container ID for easier targeting
     )
+
 
 def create_app_layout(app):
     """Create the improved application layout structure with inline button labels and buttons."""
@@ -155,8 +131,12 @@ def create_app_layout(app):
                 [
                     html.Div(
                         [
-                            html.Div(price_buttons, style={"flex": "1", "minWidth": "0"}),
-                            html.Div(distance_buttons, style={"flex": "1", "minWidth": "0"}),
+                            html.Div(
+                                price_buttons, style={"flex": "1", "minWidth": "0"}
+                            ),
+                            html.Div(
+                                distance_buttons, style={"flex": "1", "minWidth": "0"}
+                            ),
                         ],
                         className="button-group-pair",
                     ),
@@ -168,8 +148,12 @@ def create_app_layout(app):
                 [
                     html.Div(
                         [
-                            html.Div(filter_buttons, style={"flex": "1", "minWidth": "0"}),
-                            html.Div(sort_buttons, style={"flex": "1", "minWidth": "0"}),
+                            html.Div(
+                                filter_buttons, style={"flex": "1", "minWidth": "0"}
+                            ),
+                            html.Div(
+                                sort_buttons, style={"flex": "1", "minWidth": "0"}
+                            ),
                         ],
                         className="button-group-pair",
                     ),
@@ -184,40 +168,7 @@ def create_app_layout(app):
     apartment_details_panel = create_apartment_details_panel()
 
     # Initialize empty data table to ensure it exists in the layout
-    empty_data_table = TableFactory.create_data_table(
-        id="apartment-table",
-        data=[],
-        columns=[],
-        sort_action="custom",
-        sort_mode="multi",
-        sort_by=[],
-        page_size=100,
-        page_action="native",
-        hidden_columns=CONFIG["hidden_cols"] + ["offer_id"] if "hidden_cols" in CONFIG else ["offer_id"],
-        style_header={
-            'backgroundColor': 'var(--color-primary)',
-            'color': 'white',
-            'fontWeight': 'bold',
-        },
-        style_cell={
-            'textAlign': 'left',
-            'padding': '8px',
-            'fontFamily': 'var(--font-family)',
-            'fontSize': 'var(--font-sm)',
-            'overflow': 'hidden',
-            'textOverflow': 'ellipsis'
-        },
-        style_cell_conditional=[
-            {
-                'if': {'column_id': 'details'},
-                'textAlign': 'center',
-                'cursor': 'pointer',
-                'width': '80px'
-            }
-        ],
-        markdown_options={"html": True},
-        cell_selectable=True
-    )
+    empty_data_table = TableFactory.create_data_table()
 
     # Main layout structure
     return html.Div(
@@ -236,9 +187,11 @@ def create_app_layout(app):
                         id="loading-main",
                         children=[
                             html.Div(
-                                id="table-container", 
+                                id="table-container",
                                 className="table-responsive",
-                                children=[empty_data_table]  # Include empty table in initial layout
+                                children=[
+                                    empty_data_table
+                                ],  # Include empty table in initial layout
                             ),
                             apartment_details_panel,
                         ],
