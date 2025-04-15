@@ -7,8 +7,8 @@ import pandas as pd
 from app.data_manager import DataManager
 from app.button_factory import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS
 from app.config import CONFIG
-from apartment_card_callbacks import register_apartment_card_callbacks
-from table_callbacks import register_table_callbacks
+from app.apartment_card_callbacks import register_apartment_card_callbacks
+from app.table_callbacks import register_table_callbacks
 
 logger = logging.getLogger(__name__)
 
