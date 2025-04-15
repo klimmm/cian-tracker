@@ -1,0 +1,134 @@
+
+
+/* ===== Design System Variables ===== */
+:root {
+  /* Typography */
+  --font-family: 'Inter', Arial, sans-serif;
+  --font-xs: 10px;    /* Small UI elements, tags */
+  --font-sm: 12px;    /* Table content, buttons */
+  --font-md: 14px;    /* General text, form elements */
+  --font-lg: 16px;    /* Subheadings */
+  --font-xl: 18px;    /* Main headings */
+  
+  /* Colors */
+  --color-primary: #4682B4;
+  --color-primary-light: #E6F0F9;
+  --color-success: #2E7D32;
+  --color-warning: #F9A825;
+  --color-text-primary: #333333;
+  --color-text-secondary: #666666;
+  --color-bg-main: #FFFFFF;
+  --color-bg-light: #F8F9FA;
+  --color-border: #E0E0E0;
+  
+  /* Spacing - FIXED VALUES, not responsive */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  
+  /* UI Elements */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+
+/* ===== Table Container ===== */
+#table-view-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px; /* use var(--space-md) if available */
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
+}
+
+/* ===== Dash DataTable Styling ===== */
+#apartment-table .dash-spreadsheet-container {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-family);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-width: 100%;
+}
+
+/* ===== Header Styling ===== */
+#apartment-table .dash-header {
+  background-color: var(--color-primary);
+  color: white;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  text-align: left;
+  padding: 4px 6px;
+  border: none;
+}
+
+/* ===== Cell Styling ===== */
+#apartment-table .dash-cell {
+  padding: 1px 2px !important;
+  font-size: var(--font-sm);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  min-width: 0;
+  word-wrap: break-word;
+}
+.dash-cell.column-details .dash-cell-value {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ===== Zebra Striping ===== */
+#apartment-table .dash-spreadsheet-container tr:nth-child(even) .dash-cell {
+  background-color: var(--color-bg-light);
+}
+
+/* ===== Hover State ===== */
+#apartment-table .dash-spreadsheet-container tr:hover .dash-cell {
+  background-color: var(--color-primary-light);
+}
+
+/* ===== Mobile Adjustments (Keep if Needed) ===== */
+@media screen and (max-width: 768px) {
+  #table-view-container {
+    padding: 8px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  #table-view-container {
+    padding: 6px;
+  }
+}
+
+/* Center content and remove padding inside the "details" column cell */
+td[data-dash-column="details"] {
+  padding: 0 !important;            /* Remove all padding */
+  text-align: center !important;    /* Center text horizontally */
+}
+
+/* Optional: Remove padding and fully center the icon within the inner div */
+td[data-dash-column="details"] .dash-cell-value {
+  padding: 0 !important;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+
+/* Globally reduce cell padding */
+.dash-cell {
+  padding: 1px 2px !important;
+}

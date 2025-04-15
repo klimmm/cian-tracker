@@ -1,5 +1,113 @@
+/* dashboard.css - Properly fixed with correct column widths and consistent 
+
+/* ===== Hide Dash menu ===== */
 .dash-spreadsheet-menu,
 .column-header--sort,
 .dash-filter.column-0 {
   display: none !important;
+}
+
+/* ===== Design System Variables ===== */
+:root {
+  /* Typography */
+  --font-family: 'Inter', Arial, sans-serif;
+  --font-xs: 10px;    /* Small UI elements, tags */
+  --font-sm: 12px;    /* Table content, buttons */
+  --font-md: 14px;    /* General text, form elements */
+  --font-lg: 16px;    /* Subheadings */
+  --font-xl: 18px;    /* Main headings */
+  
+  /* Colors */
+  --color-primary: #4682B4;
+  --color-primary-light: #E6F0F9;
+  --color-success: #2E7D32;
+  --color-warning: #F9A825;
+  --color-text-primary: #333333;
+  --color-text-secondary: #666666;
+  --color-bg-main: #FFFFFF;
+  --color-bg-light: #F8F9FA;
+  --color-border: #E0E0E0;
+  
+  /* Spacing - FIXED VALUES, not responsive */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  
+  /* UI Elements */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== Body & Typography ===== */
+body {
+  font-family: var(--font-family);
+  color: var(--color-text-primary);
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg-main);
+  font-size: var(--font-md);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  margin-top: 0;
+}
+
+/* ===== Layout Containers ===== */
+.main-container {
+  padding: var(--space-md);
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  margin: 0 auto;
+}
+
+.content-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+
+/* ===== Dashboard Header ===== */
+.dashboard-header {
+  font-size: var(--font-lg);
+  color: var(--color-primary);
+  margin-bottom: var(--space-md);
+  text-align: center;
+}
+
+.update-time {
+  font-style: italic;
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin-bottom: var(--space-md);
+  display: block;
+}
+
+
+
+/* ===== No Data Message ===== */
+.no-data-message {
+  text-align: center;
+  padding: var(--space-lg);
+  font-size: var(--font-md);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-light);
+  border-radius: var(--radius-md);
+  margin: var(--space-md);
+}
+
+
+/* ===== Utility Class ===== */
+body.no-scroll {
+  overflow: hidden;
 }

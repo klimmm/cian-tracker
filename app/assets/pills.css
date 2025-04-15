@@ -1,0 +1,89 @@
+
+:root {
+  --color-error-light: #FFEBEE;
+  --radius-sm: 4px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --font-family: 'Inter', Arial, sans-serif;
+  --color-bg-light: #F8F9FA;
+  --color-text-secondary: #666666;
+  --color-border: #E0E0E0;
+  --color-primary-light: #E6F0F9;
+  --color-success: #2E7D32;
+  --color-success-light: #E8F5E9;
+  --color-warning: #F9A825;
+  --color-warning-light: #FFF8E1;
+  --color-neutral: #607D8B;
+  --color-neutral-light: #ECEFF1;
+}
+/* ===== Pill Styling - SIMPLIFIED AND CONSISTENT ===== */
+.pill {
+  display: inline-block;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  margin: 2px 4px;
+  box-shadow: var(--shadow-sm);
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-family);
+}
+
+/* Fixed pill sizes - NO RESPONSIVENESS that breaks consistency */
+.pill--xs {
+  font-size: 10px !important;
+  padding: 2px 4px !important;
+}
+
+.pill--sm {
+  font-size: 12px !important;
+  padding: 3px 6px !important;
+}
+
+.pill--md {
+  font-size: 14px !important;
+  padding: 4px 8px !important;
+}
+
+/* Pill variants */
+.pill--default {
+  background-color: var(--color-bg-light);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.pill--primary {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary-light);
+}
+
+.pill--success {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+  border: 1px solid var(--color-success-light);
+}
+
+.pill--warning {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
+  border: 1px solid var(--color-warning-light);
+}
+
+.pill--error {
+  background-color: var(--color-error-light);
+  color: var(--color-error);
+  border: 1px solid var(--color-error-light);
+}
+
+.pill--neutral {
+  background-color: var(--color-neutral-light);
+  color: var(--color-neutral);
+  border: 1px solid var(--color-neutral-light);
+}
+
+.pill--metro {
+  color: #ffffff;
+  border: none;
+  font-weight: 500;
+}

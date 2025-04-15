@@ -171,25 +171,25 @@ DISTANCE_BUTTONS = [
 SORT_BUTTONS = [
     {
         "id": "btn-sort-price",
-        "label": "По цене",
+        "label": "Цена",
         "value": "price_value",
         "default_direction": "asc",
     },
     {
         "id": "btn-sort-time",
-        "label": "По дате",
+        "label": "Дата",
         "value": "updated_time_sort",
         "default_direction": "desc",
     },
     {
         "id": "btn-sort-activity",
-        "label": "По посл. активности",
+        "label": "Актуальность",
         "value": "activity_date_sort",
         "default_direction": "desc",
     },
     {
         "id": "btn-sort-distance",
-        "label": "По расстоянию",
+        "label": "Расстояние",
         "value": "distance_sort",
         "default": True,
         "default_direction": "asc",

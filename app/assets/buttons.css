@@ -1,0 +1,126 @@
+/* ===== Button Styles ===== */
+.btn {
+  font-family: var(--font-family);
+  border: 1px solid;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 500;
+  box-sizing: border-box;
+  outline: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--sm {
+  font-size: var(--font-xs);
+  padding: 4px 8px;
+}
+
+.btn--md {
+  font-size: var(--font-sm);
+  padding: 6px 12px;
+}
+
+.btn--default {
+  background-color: var(--color-bg-main);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.btn--primary {
+  background-color: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.btn--success {
+  background-color: var(--color-success);
+  color: white;
+  border-color: var(--color-success);
+}
+
+.btn--warning {
+  background-color: var(--color-warning);
+  color: white;
+  border-color: var(--color-warning);
+}
+
+.btn--active {
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+  font-weight: 600;
+}
+
+/* ===== Button Group ===== */
+.button-group {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.button-group--horizontal {
+  flex-direction: row;
+}
+
+.button-group .btn {
+  margin: 0;
+  flex: 1 0 auto;
+  min-width: fit-content;
+}
+
+.button-group-container {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: var(--space-sm);
+  background-color: var(--color-bg-main);
+  border-radius: var(--radius-sm);
+  width: 100%;
+  max-width: 100%;
+  box-shadow: var(--shadow-sm);
+}
+
+.button-group-container .dash-label {
+  margin-bottom: var(--space-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  width: auto;
+  min-width: auto;
+  display: block;
+  white-space: normal;
+}
+
+/* ===== Controls Container ===== */
+.controls-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+  padding: var(--space-md);
+  background-color: var(--color-bg-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  width: 100%;
+}
+
+/* Responsive adjustment for controls */
+@media screen and (max-width: 768px) {
+  .controls-container {
+    flex-direction: column;
+    padding: var(--space-sm);
+  }
+  
+  .controls-row {
+    flex-direction: column;
+  }
+}

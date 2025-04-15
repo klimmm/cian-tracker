@@ -1,26 +1,17 @@
-# data_manager.py
+# app/data_manager.py
 import pandas as pd
 import os
 import logging
 import traceback
 import requests
 from datetime import datetime
-
-# Import formatters from the other module
-from formatters import (
-    DateFormatter, NumberFormatter, 
-    ColumnFormatter, 
-    MOSCOW_TZ, CONFIG, 
-    LINE_COLORS, METRO_TO_LINE
-)
-
-# You might want to relocate these constants to a common config module
-# but I'm keeping them here for this example
+from app.formatters import DateFormatter, NumberFormatter
 from app.config import CONFIG, MOSCOW_TZ
 from app.app_config import AppConfig
-from app.metro import LINE_COLORS, METRO_TO_LINE
+from app.columns import ColumnFormatter
 
 logger = logging.getLogger(__name__)
+
 
 class ErrorHandler:
     """Centralized error handling utilities."""
@@ -293,11 +284,11 @@ class DataManager:
                 axis=1,
             )
 
-        '''# Format price changes
+        """# Format price changes
         if "price_change_value" in df.columns:
             df["price_change_formatted"] = df["price_change_value"].apply(
                 TagFormatter.format_price_change_tag
-            )'''
+            )"""
 
     @staticmethod
     def _create_display_columns(df):
@@ -314,9 +305,7 @@ class DataManager:
         if "price_change_formatted" in df.columns:
             df["price_change"] = df["price_change_formatted"]
 
-
         df["update_title"] = df.apply(ColumnFormatter.format_update_title, axis=1)
-
 
     @staticmethod
     def filter_and_sort_data(df, filters=None, sort_by=None):
@@ -376,6 +365,7 @@ class DataManager:
                     df = df.sort_values(col, ascending=item["direction"] == "asc")
 
         return df
+
 
 def load_apartment_details(offer_id):
     """Load details for a specific apartment."""

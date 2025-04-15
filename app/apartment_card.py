@@ -1,13 +1,13 @@
-# app/apartment_card.py - Corrected implementation
+# app/apartment_card.py
 from dash import html, dcc
 import logging
-import re
 import os
 import base64
 import requests
-from app.components import ContainerFactory
 from app.app_config import AppConfig
 from app.apartment import ApartmentCard
+from app.components import ContainerFactory
+
 logger = logging.getLogger(__name__)
 
 

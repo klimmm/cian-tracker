@@ -1,16 +1,14 @@
-# Updated portions of apartment.py
-from dash import html, dcc
+# Updated imports for apartment.py
+from dash import html
 import logging
 import re
-import os
-import base64
-import requests
-from app.components import ContainerFactory, StyleManager
-from app.pills_factory import PillFactory
-from app.app_config import AppConfig
+from app.pill_factory import PillFactory
 from app.formatters import NumberFormatter
+from app.components import ContainerFactory
+
 
 logger = logging.getLogger(__name__)
+
 
 class ApartmentCard:
     """ Improved apartment card implementation with enhanced visuals."""
@@ -55,9 +53,7 @@ class ApartmentCard:
         # Create main price container
         price_container = PillFactory.create_pill_container(
             price_elements,
-            gap="sm",
-            align="center",
-            custom_style={"marginBottom": StyleManager.SPACING["md"]}
+            align="center"
         )
         
         # Add price history if available
@@ -65,17 +61,14 @@ class ApartmentCard:
         if price_history_elements:
             history_container = PillFactory.create_pill_container(
                 price_history_elements,
-                gap="xs",
-                wrap=True,
-                custom_style={"marginTop": StyleManager.SPACING["sm"]}
+                wrap=True
             )
             elements.append(history_container)
 
         return ContainerFactory.create_section(
             elements,
             title="Цена",
-            divider=True,
-            custom_style={"marginBottom": StyleManager.SPACING["md"]}
+            divider=False
         )
 
     @staticmethod
@@ -98,22 +91,13 @@ class ApartmentCard:
                 if field == "security_deposit" and NumberFormatter.is_numeric(value):
                     value = NumberFormatter.format_number(value)
                 terms_items.append(
-                    PillFactory.create_pill(f"{label}: {value}", "neutral", "sm")
+                    PillFactory.create_pill(f"{label}: {value}", "neutral")
                 )
 
         if not terms_items:
             return None
             
-        return ContainerFactory.create_section(
-            PillFactory.create_pill_container(
-                terms_items, 
-                gap="sm",
-                wrap=True
-            ),
-            title="Условия аренды",
-            divider=True,
-            custom_style={"marginBottom": StyleManager.SPACING["md"]}
-        )
+        return PillFactory.create_pill_container(terms_items, wrap=True)
 
     @staticmethod
     def create_property_features_section(apartment_data):
@@ -200,45 +184,27 @@ class ApartmentCard:
         # Apartment features
         if apartment_features:
             section_content.append(
-                ContainerFactory.create_section(
-                    PillFactory.create_pill_container(
-                        apartment_features, 
-                        gap="sm",
-                        wrap=True
-                    ),
-                    title="Квартира",
-                    divider=False,
-                    custom_style={"marginBottom": StyleManager.SPACING["md"]}
+                PillFactory.create_pill_container(
+                    apartment_features,
+                    wrap=True
                 )
             )
         
         # Building features
         if building_features:
             section_content.append(
-                ContainerFactory.create_section(
-                    PillFactory.create_pill_container(
-                        building_features, 
-                        gap="sm",
-                        wrap=True
-                    ),
-                    title="Здание",
-                    divider=False,
-                    custom_style={"marginBottom": StyleManager.SPACING["md"]}
+                PillFactory.create_pill_container(
+                    building_features,
+                    wrap=True
                 )
             )
         
         # Amenities
         if amenities_features:
             section_content.append(
-                ContainerFactory.create_section(
-                    PillFactory.create_pill_container(
-                        amenities_features, 
-                        gap="sm",
-                        wrap=True
-                    ),
-                    title="Удобства",
-                    divider=False,
-                    custom_style={"marginBottom": StyleManager.SPACING["md"]}
+                PillFactory.create_pill_container(
+                    amenities_features, 
+                    wrap=True
                 )
             )
 
@@ -246,9 +212,7 @@ class ApartmentCard:
         if section_content:
             return ContainerFactory.create_section(
                 section_content,
-                title="Характеристики",
-                divider=True,
-                custom_style={"marginBottom": StyleManager.SPACING["md"]}
+                divider=True
             )
         return None
     
@@ -293,7 +257,6 @@ class ApartmentCard:
             address_elements.append(
                 PillFactory.create_pill_container(
                     info_elements,
-                    gap="sm",
                     align="center",
                     wrap=True
                 )

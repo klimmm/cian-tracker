@@ -80,12 +80,12 @@ def create_filter_buttons():
     filter_buttons = [
         {
             "id": "btn-updated-today",
-            "label": "Свежие объявления",
+            "label": "Свежие",
             "variant": "success"
         },
         {
             "id": "btn-nearest",
-            "label": "Рядом с метро",
+            "label": "Рядом",
             "variant": "primary"
         },
         {
@@ -103,7 +103,7 @@ def create_filter_buttons():
     # Create button group using modernized components
     return ButtonFactory.create_button_group(
         filter_buttons, 
-        label_text="Быстрые фильтры", 
+        label_text="Фильтры", 
         direction="horizontal"
     )
 
@@ -161,7 +161,7 @@ def create_app_layout(app):
         DISTANCE_BUTTONS, "Максимальное расстояние (км):", DEFAULT_DISTANCE_BTN
     )
     sort_buttons = ButtonFactory.create_button_group(
-        SORT_BUTTONS, "Сортировать по:", "btn-sort-time"
+        SORT_BUTTONS, "Сортировать:", "btn-sort-time"
     )
     filter_buttons = create_filter_buttons()
 
