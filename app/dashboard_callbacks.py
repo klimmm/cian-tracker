@@ -1,9 +1,10 @@
-# app/dashboard_callbacks.py - Refactored to use CSS classes
+# app/dashboard_callbacks.py - Fixed version with resolved callback conflicts
 from dash import callback_context as ctx
-from dash.dependencies import Input, Output, State, MATCH
+from dash.dependencies import Input, Output, State, MATCH, ALL
 import dash
 import logging
 import pandas as pd
+import json  # Added import for JSON parsing
 from app.data_manager import DataManager, load_apartment_details
 from app.apartment_card import create_apartment_details_card
 from app.button_factory import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS
@@ -20,6 +21,53 @@ def register_all_callbacks(app):
     register_filter_callbacks(app)
     register_style_callbacks(app)
     register_details_callbacks(app)
+    register_table_buttons(app)
+
+    
+# Update the register_table_buttons function to use allow_duplicate
+def register_table_buttons(app):
+    """Register optional button-based callbacks (only used if table clicks don't work)."""
+    
+    @app.callback(
+        Output("apartment-table", "data", allow_duplicate=True),
+        [Input("filter-store", "data"), Input("apartment-data-store", "data")],
+        prevent_initial_call=True
+    )
+    def add_button_to_table(filters, data):
+        """Update table data when filters change."""
+        if not data:
+            return dash.no_update
+            
+        # Convert to DataFrame for processing
+        df = pd.DataFrame(data)
+        
+        # Apply filtering and sorting
+        df = DataManager.filter_and_sort_data(df, filters or {})
+        
+        # Return the filtered data
+        return df.to_dict("records")
+
+    @app.callback(
+        [*[Output(f"{btn['id']}-text", "children") for btn in SORT_BUTTONS]],
+        [Input("filter-store", "data")],
+        prevent_initial_call=False,
+    )
+    def update_sort_button_text(filters):
+        """Update sort button text with direction indicators."""
+        if not filters:
+            return [btn["label"] for btn in SORT_BUTTONS]
+
+        active_btn = filters.get("active_sort_btn")
+        sort_direction = filters.get("sort_direction", "asc")
+
+        return [
+            (
+                f"{btn['label']} {'↑' if sort_direction == 'asc' else '↓'}"
+                if btn["id"] == active_btn
+                else btn["label"]
+            )
+            for btn in SORT_BUTTONS
+        ]
 
 
 def register_data_callbacks(app):
@@ -145,59 +193,103 @@ def register_filter_callbacks(app):
 
         return [current_filters]
 
+    # Update the update_table_content function to include more debugging info
+    
+
     @app.callback(
-        [Output("table-container", "children")],
+        [
+            Output("apartment-table", "data"),
+            Output("apartment-table", "columns"),
+            Output("apartment-table", "style_cell_conditional"),
+            Output("apartment-table", "style_data_conditional"),
+            
+        ],
         [Input("filter-store", "data"), Input("apartment-data-store", "data")],
     )
     def update_table_content(filters, data):
-        """Update table based on filters and data."""
+        """Update table based on filters and data with added debugging."""
         if not data:
-            return [html.Div("Нет данных")]
+            return [], [], []
+    
+        try:
+            # Convert to DataFrame for processing
+            df = pd.DataFrame(data)
+    
+            # Apply filtering and sorting
+            df = DataManager.filter_and_sort_data(df, filters or {})
+    
+            # Define which columns to display
+            visible_columns = CONFIG["columns"]["visible"] + ["details"]
+            numeric_columns = {
+                "distance", "price_value_formatted", "cian_estimation_formatted", 
+                "price_difference_formatted", "monthly_burden_formatted"
+            }
+            markdown_columns = {
+                "price_change_formatted", "address_title", "offer_link", "price_info",
+                "update_title", "property_tags", "price_change", "walking_time",
+                "price_text", "days_active", "activity_date"
+            }
+    
+            # Add a details column with a button if it doesn't exist
+            if "details" not in df.columns:
+                df["details"] = "🔍"
+    
+            # Build the column definitions
+            columns = [
+                {
+                    "name": CONFIG["columns"]["headers"].get(
+                        c, "Детали" if c == "details" else c
+                    ),
+                    "id": c,
+                    "type": "numeric" if c in numeric_columns else "text",
+                    "presentation": "markdown" if c in markdown_columns else None,
+                }
+                for c in visible_columns
+                if c in df.columns
+            ]
+    
+            # Define style_cell_conditional
+            style_cell_conditional = [
+                {
+                    'if': {'column_id': 'details'},
+                    'textAlign': 'center',
+                    'cursor': 'pointer',
+                    'width': '80px'
+                },
 
-        # Convert to DataFrame for processing
-        df = pd.DataFrame(data)
+                
+            ]
 
-        # Apply filtering and sorting
-        df = DataManager.filter_and_sort_data(df, filters)
-
-        # Create and return data table
-        return [create_data_table(df)]
-
+            COLUMN_STYLES = [
+                {
+                    "if": {"filter_query": '{status} contains "non active"'},
+                    "backgroundColor": "#f4f4f4",
+                    "color": "#888",
+                }                        
+            ]       
+            # Return updated table properties
+            return df.to_dict("records"), columns, style_cell_conditional, COLUMN_STYLES
+    
+        except Exception as e:
+            print(f"Error updating table: {e}")
+            return [], [], []
+    
+    # Update the sort callback to use allow_duplicate
     @app.callback(
-        Output("apartment-table", "data"),
+        Output("apartment-table", "data", allow_duplicate=True),
         [Input("apartment-table", "sort_by"), Input("filter-store", "data")],
         [State("apartment-data-store", "data")],
+        prevent_initial_call=True
     )
     def update_sort(sort_by, filters, data):
         """Handle table sorting from column headers."""
         if not data:
             return []
-
+    
         df = pd.DataFrame(data)
         df = DataManager.filter_and_sort_data(df, filters, sort_by)
         return df.to_dict("records")
 
-    @app.callback(
-        [*[Output(f"{btn['id']}-text", "children") for btn in SORT_BUTTONS]],
-        [Input("filter-store", "data")],
-        prevent_initial_call=False,
-    )
-    def update_sort_button_text(filters):
-        """Update sort button text with direction indicators."""
-        if not filters:
-            return [btn["label"] for btn in SORT_BUTTONS]
-
-        active_btn = filters.get("active_sort_btn")
-        sort_direction = filters.get("sort_direction", "asc")
-
-        return [
-            (
-                f"{btn['label']} {'↑' if sort_direction == 'asc' else '↓'}"
-                if btn["id"] == active_btn
-                else btn["label"]
-            )
-            for btn in SORT_BUTTONS
-        ]
 
 
 def register_style_callbacks(app):
@@ -283,6 +375,7 @@ def register_details_callbacks(app):
             Output("apartment-details-panel", "className"),
             Output("apartment-details-card", "children"),
             Output("selected-apartment-store", "data"),
+            Output("details-overlay", "className"),
         ],
         [
             Input("apartment-table", "active_cell"),
@@ -294,8 +387,8 @@ def register_details_callbacks(app):
             State("apartment-table", "data"),
             State("selected-apartment-store", "data"),
             State("apartment-details-panel", "className"),
+            State("details-overlay", "className"),
         ],
-        prevent_initial_call=True,
     )
     def handle_apartment_panel(
         active_cell,
@@ -305,40 +398,59 @@ def register_details_callbacks(app):
         table_data,
         selected_data,
         current_class,
+        overlay_class,
     ):
         """Handle apartment details panel interactions."""
-        triggered_id = ctx.triggered_id
-
         # Setup panel classes
-        hidden_class = "details-panel details-panel--hidden"
-        visible_class = "details-panel details-panel--visible"
-
+        hidden_panel_class = "details-panel details-panel--hidden"
+        visible_panel_class = "details-panel details-panel--visible" 
+        hidden_overlay_class = "details-overlay details-panel--hidden"
+        visible_overlay_class = "details-overlay details-panel--visible"
+        
+        # Get the triggered component
+        ctx_triggered = ctx.triggered if ctx.triggered else []
+        trigger_id = ctx_triggered[0]['prop_id'].split('.')[0] if ctx_triggered else None
+        
+        # For initial load, ensure the panel is hidden
+        if not ctx_triggered or trigger_id is None:
+            return hidden_panel_class, [], None, hidden_overlay_class
+            
         # Handle close action
-        if triggered_id == "close-details-button":
-            return hidden_class, dash.no_update, None
+        if trigger_id == "close-details-button" and close_clicks and close_clicks > 0:
+            return hidden_panel_class, dash.no_update, None, hidden_overlay_class
 
         # Handle table cell click
-        if (
-            triggered_id == "apartment-table"
-            and active_cell
-            and active_cell.get("column_id") == "details"
-        ):
+        if trigger_id == "apartment-table" and active_cell:
+            # Only accept clicks on the details column
+            if active_cell.get("column_id") != "details":
+                return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                
             row_idx = active_cell["row"]
-            if row_idx >= len(table_data):
-                logger.error(
-                    f"Row index {row_idx} out of bounds for table data length {len(table_data)}"
-                )
+            if not table_data or row_idx >= len(table_data):
+                logger.error(f"Row index {row_idx} out of bounds for table data length {len(table_data) if table_data else 0}")
                 return (
-                    visible_class,
+                    visible_panel_class,
                     html.Div(
-                        "Ошибка: индекс строки вне диапазона.", 
+                        "Ошибка: индекс строки вне диапазона или нет данных.", 
                         className="apartment-no-data"
                     ),
                     None,
+                    visible_overlay_class,
                 )
 
             row_data = table_data[row_idx]
             offer_id = row_data.get("offer_id")
+            if not offer_id:
+                logger.error(f"No offer_id found in row data")
+                return (
+                    visible_panel_class,
+                    html.Div(
+                        "Ошибка: не найден ID квартиры.", 
+                        className="apartment-no-data"
+                    ),
+                    None,
+                    visible_overlay_class,
+                )
 
             try:
                 apartment_data = load_apartment_details(offer_id)
@@ -354,39 +466,42 @@ def register_details_callbacks(app):
                     "offer_id": offer_id,
                     "table_data": table_data,
                 }
-
-                return visible_class, details_card, selected
+                
+                logger.info(f"Loaded details for offer_id {offer_id}, showing panel")
+                return visible_panel_class, details_card, selected, visible_overlay_class
             except Exception as e:
                 logger.error(f"Error loading details: {e}")
                 return (
-                    visible_class,
+                    visible_panel_class,
                     html.Div(
                         f"Ошибка загрузки: {e}", 
                         className="apartment-no-data error"
                     ),
                     None,
+                    visible_overlay_class,
                 )
 
         # Handle navigation
         if (
-            triggered_id in ["prev-apartment-button", "next-apartment-button"]
+            trigger_id in ["prev-apartment-button", "next-apartment-button"]
             and selected_data
+            and table_data
         ):
             current_idx = selected_data["row_idx"]
-            table_data = selected_data["table_data"]
+            table_data = selected_data.get("table_data", table_data)
             total_rows = len(table_data)
 
             # Calculate new index
             new_idx = current_idx
-            if triggered_id == "prev-apartment-button" and current_idx > 0:
+            if trigger_id == "prev-apartment-button" and current_idx > 0:
                 new_idx -= 1
             elif (
-                triggered_id == "next-apartment-button" and current_idx < total_rows - 1
+                trigger_id == "next-apartment-button" and current_idx < total_rows - 1
             ):
                 new_idx += 1
 
             if new_idx == current_idx:
-                return dash.no_update, dash.no_update, dash.no_update
+                return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
             # Load new data
             new_row = table_data[new_idx]
@@ -407,7 +522,7 @@ def register_details_callbacks(app):
                     "table_data": table_data,
                 }
 
-                return dash.no_update, details_card, selected
+                return dash.no_update, details_card, selected, dash.no_update
             except Exception as e:
                 logger.error(f"Error loading details: {e}")
                 return (
@@ -417,31 +532,45 @@ def register_details_callbacks(app):
                         className="apartment-no-data error"
                     ),
                     selected_data,
+                    dash.no_update,
                 )
 
-        return dash.no_update, dash.no_update, dash.no_update
+        # For any other case, don't update
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
-    # Slideshow navigation (client-side)
+    # Fixed slideshow navigation callback with simpler approach
     app.clientside_callback(
         """
         function(prev_clicks, next_clicks, slideshow_data) {
-            if (!slideshow_data || !slideshow_data.image_paths || !slideshow_data.image_paths.length) {
+            // Make sure data exists
+            if (!slideshow_data || !slideshow_data.image_paths || slideshow_data.image_paths.length === 0) {
                 return [slideshow_data, "", ""];
             }
             
+            // Get current state
             let currentIndex = slideshow_data.current_index || 0;
             const imagePaths = slideshow_data.image_paths;
             const totalImages = imagePaths.length;
             
-            const prevTriggered = prev_clicks && prev_clicks > 0;
-            const nextTriggered = next_clicks && next_clicks > 0;
-            
-            if (prevTriggered && !nextTriggered) {
-                currentIndex = (currentIndex - 1 + totalImages) % totalImages;
-            } else if (!prevTriggered && nextTriggered) {
-                currentIndex = (currentIndex + 1) % totalImages;
+            // Store previous clicks to detect changes
+            if (typeof window.prevButtonClicks === 'undefined') {
+                window.prevButtonClicks = prev_clicks || 0;
+                window.nextButtonClicks = next_clicks || 0;
             }
             
+            // Determine which button was clicked by comparing with stored values
+            if (prev_clicks > window.prevButtonClicks) {
+                // Move to previous image with wrap-around
+                currentIndex = (currentIndex - 1 + totalImages) % totalImages;
+                window.prevButtonClicks = prev_clicks;
+            } 
+            else if (next_clicks > window.nextButtonClicks) {
+                // Move to next image with wrap-around
+                currentIndex = (currentIndex + 1) % totalImages;
+                window.nextButtonClicks = next_clicks;
+            }
+            
+            // Return updated values
             return [
                 {current_index: currentIndex, image_paths: imagePaths}, 
                 imagePaths[currentIndex],
@@ -461,16 +590,121 @@ def register_details_callbacks(app):
         [State({"type": "slideshow-data", "offer_id": MATCH}, "data")],
         prevent_initial_call=True,
     )
+        
+    # Add a callback to initialize touch events for the slideshow
+    app.clientside_callback(
+        """
+        function(trigger) {
+            // Only execute when details panel becomes visible
+            if (!document.getElementById('apartment-details-panel')) return null;
+            
+            // Initialize touch event handling for slideshows
+            function initializeSwipeSupport() {
+                const slideshows = document.querySelectorAll('.slideshow-container');
+                
+                slideshows.forEach(slideshow => {
+                    // Skip if already initialized
+                    if (slideshow.dataset.swipeInitialized === 'true') return;
+                    
+                    let startX, startY;
+                    let threshold = 50; // Minimum distance for swipe
+                    
+                    slideshow.addEventListener('touchstart', e => {
+                        startX = e.touches[0].clientX;
+                        startY = e.touches[0].clientY;
+                    }, { passive: true });
+                    
+                    slideshow.addEventListener('touchend', e => {
+                        if (!startX) return;
+                        
+                        const endX = e.changedTouches[0].clientX;
+                        const endY = e.changedTouches[0].clientY;
+                        
+                        // Calculate distance
+                        const diffX = startX - endX;
+                        const diffY = startY - endY;
+                        
+                        // Check if horizontal swipe (not vertical scrolling)
+                        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) {
+                            if (diffX > 0) {
+                                // Swipe left - next image
+                                const nextBtn = slideshow.querySelector('.slideshow-nav-btn--next');
+                                if (nextBtn) nextBtn.click();
+                            } else {
+                                // Swipe right - previous image
+                                const prevBtn = slideshow.querySelector('.slideshow-nav-btn--prev');
+                                if (prevBtn) prevBtn.click();
+                            }
+                        }
+                        
+                        // Reset
+                        startX = null;
+                        startY = null;
+                    }, { passive: true });
+                    
+                    // Mark as initialized
+                    slideshow.dataset.swipeInitialized = 'true';
+                });
+            }
+            
+            // Set up a mutation observer to detect when slideshows are added
+            function setupSlideshowObserver() {
+                const detailsPanel = document.getElementById('apartment-details-panel');
+                const observer = new MutationObserver(mutations => {
+                    mutations.forEach(mutation => {
+                        // Check for className changes
+                        if (mutation.attributeName === 'class') {
+                            if (!detailsPanel.classList.contains('details-panel--hidden')) {
+                                // Panel is visible, initialize slideshows after a short delay
+                                setTimeout(initializeSwipeSupport, 100);
+                            }
+                        } else if (mutation.addedNodes.length) {
+                            // Check for new slideshows
+                            mutation.addedNodes.forEach(node => {
+                                if (node.querySelector && node.querySelector('.slideshow-container')) {
+                                    setTimeout(initializeSwipeSupport, 100);
+                                }
+                            });
+                        }
+                    });
+                });
+                
+                // Observe the panel and its descendants
+                if (detailsPanel) {
+                    observer.observe(detailsPanel, { 
+                        attributes: true, 
+                        childList: true, 
+                        subtree: true 
+                    });
+                }
+            }
+            
+            // Initialize immediately for any existing slideshows
+            setTimeout(() => {
+                initializeSwipeSupport();
+                setupSlideshowObserver();
+            }, 200);
+            
+            return null;
+        }
+        """,
+        Output("apartment-data-store", "data", allow_duplicate=True),
+        Input("interval-component", "n_intervals"),
+        prevent_initial_call=True,
+    )
+
+
 
 
 def create_data_table(df):
-    """Create a DataTable for apartment data with styling fully regulated by CSS."""
-    from dash import html
+    """Create a DataTable for apartment data with forced ID."""
+    from dash import dash_table, html
+    import pandas as pd
 
     if df.empty:
         return html.Div("Нет данных", className="no-data-message")
 
-    # Define which columns to display.
+    # Define which columns to display
     visible_columns = CONFIG["columns"]["visible"] + ["details"]
     numeric_columns = {
         "distance", "price_value_formatted", "cian_estimation_formatted", 
@@ -482,7 +716,11 @@ def create_data_table(df):
         "price_text", "days_active", "activity_date"
     }
 
-    # Build the column definitions.
+    # Add a details column with a button if it doesn't exist
+    if "details" not in df.columns:
+        df["details"] = "🔍"
+
+    # Build the column definitions
     columns = [
         {
             "name": CONFIG["columns"]["headers"].get(
@@ -496,19 +734,50 @@ def create_data_table(df):
         if c in df.columns
     ]
 
-    # Create and return the DataTable using the TableFactory.
-    # Note: Instead of using a className property, you can target the table via its ID ("apartment-table") 
-    # or through other selectors in your external CSS.
-    return TableFactory.create_data_table(
-        id="apartment-table",
-        columns=columns,
+    # Create the DataTable directly with explicit ID
+    table = TableFactory.create_data_table(
+        id="apartment-table", 
         data=df.to_dict("records"),
+        columns=columns,
+        conditional_styles=COLUMN_STYLES,
         sort_action="custom",
         sort_mode="multi",
         sort_by=[],
-        hidden_columns=CONFIG["hidden_cols"] + ["offer_id"],
         page_size=100,
         page_action="native",
+        hidden_columns=CONFIG["hidden_cols"] + ["offer_id"],
+        style_header={
+            'backgroundColor': 'var(--color-primary)',
+            'color': 'white',
+            'fontWeight': 'bold',
+        },
+        style_cell={
+            'textAlign': 'left',
+            'padding': '8px',
+            'fontFamily': 'var(--font-family)',
+            'fontSize': 'var(--font-sm)',
+            'overflow': 'hidden',
+            'textOverflow': 'ellipsis'
+        },
+        style_cell_conditional=[
+            {
+                'if': {'column_id': 'details'},
+                'textAlign': 'center',
+                'cursor': 'pointer',
+                'width': '80px'
+            }
+        ],
         markdown_options={"html": True},
         cell_selectable=True
     )
+    
+    # Print for debugging
+    print(f"Created table with ID: {table.id}")
+    return table
+
+
+def check_table_factory():
+    # Create a sample table and check its ID
+    table = TableFactory.create_data_table(...)
+    print("Table ID:", table.id)
+    return table

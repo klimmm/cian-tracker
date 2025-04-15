@@ -67,7 +67,6 @@ class ApartmentCard:
 
         return ContainerFactory.create_section(
             elements,
-            title="Цена",
             divider=False
         )
 

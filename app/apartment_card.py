@@ -109,6 +109,8 @@ class ImageHandler:
 
         return image_paths
 
+    # Update this method in apartment_card.py to remove the loading attribute
+    
     @staticmethod
     def create_slideshow(offer_id):
         """Create responsive slideshow component for images with improved styling."""
@@ -125,26 +127,30 @@ class ImageHandler:
                 className="slideshow-container no-photos"
             )
     
-        # Create slideshow with improved navigation
+        # Create slideshow with improved responsive design
         return ContainerFactory.create_section(
             [
-                # Image container with nav arrows
+                # Image container with nav arrows and touch support
                 html.Div(
                     [
                         html.Img(
                             id={"type": "slideshow-img", "offer_id": offer_id},
                             src=image_paths[0],
                             className="slideshow-img"
+                            # Remove loading="lazy" attribute that's causing the error
                         ),
                         html.Button(
                             "❮",
                             id={"type": "prev-btn", "offer_id": offer_id},
-                            className="slideshow-nav-btn slideshow-nav-btn--prev"
+                            className="slideshow-nav-btn slideshow-nav-btn--prev",
+                            # Add aria-label for accessibility
+                            **{"aria-label": "Previous image"}
                         ),
                         html.Button(
                             "❯",
                             id={"type": "next-btn", "offer_id": offer_id},
-                            className="slideshow-nav-btn slideshow-nav-btn--next"
+                            className="slideshow-nav-btn slideshow-nav-btn--next",
+                            **{"aria-label": "Next image"}
                         ),
                         html.Div(
                             f"1/{len(image_paths)}",
@@ -152,7 +158,9 @@ class ImageHandler:
                             className="slideshow-counter"
                         ),
                     ],
-                    className="slideshow-container"
+                    className="slideshow-container",
+                    # Add data attribute for identifying total images
+                    **{"data-total": str(len(image_paths))}
                 ),
                 dcc.Store(
                     id={"type": "slideshow-data", "offer_id": offer_id},
@@ -207,8 +215,10 @@ def extract_row_data(table_row_data):
         return "", "", "", "", "", "", ""
 
 
+# Update this function in apartment_card.py
+
 def create_apartment_details_card(apartment_data, table_row_data=None, row_idx=None, total_rows=None):
-    """Render apartment data into a detailed card with enhanced design."""
+    """Render apartment data into a detailed card with responsive design."""
     if not apartment_data:
         return html.Div(
             [
@@ -224,42 +234,31 @@ def create_apartment_details_card(apartment_data, table_row_data=None, row_idx=N
         table_row_data
     )
 
-    # Create detailed components with improved styling
+    # Create detailed components with improved responsive styling
     components = [
         # ID Header
         ApartmentCard.create_id_header(offer_id),
         
-        # Slideshow
+        # Slideshow - now with responsive capabilities
         ImageHandler.create_slideshow(offer_id),
         
         # Address section
         ApartmentCard.create_address_section((address, metro, title, distance)),
         
-        # Main info in 2-column layout
-        html.Div([
-            # Price section
-            html.Div(
-                ApartmentCard.create_price_section(
-                    price, 
-                    cian_est, 
-                    apartment_data.get("price_history", [])
-                ),
-                className="info-column"
-            ),
-            
-            # Rental terms section
-            html.Div(
-                ApartmentCard.create_rental_terms_section(
-                    apartment_data.get("terms", {})
-                ),
-                className="info-column"
-            ),
-        ], className="info-columns"),
+
+
+        ApartmentCard.create_price_section(
+                            price, 
+                            cian_est, 
+                            apartment_data.get("price_history", [])),
+        ApartmentCard.create_rental_terms_section(
+            apartment_data.get("terms", {})
+        ),
         
         # Property features section
         ApartmentCard.create_property_features_section(apartment_data),
         
-        # Description section
+        # Description section with responsive typography
         ApartmentCard.create_description_section(description),
         
         # External link
@@ -269,13 +268,15 @@ def create_apartment_details_card(apartment_data, table_row_data=None, row_idx=N
     # Filter out None values
     components = [component for component in components if component is not None]
 
-    # Update position info in the navigation bar via callback
+    # Update position info in the navigation bar
     if row_idx is not None and total_rows is not None:
-        # Position info is now in the navigation bar
+        # Position info is handled elsewhere via navigation bar
         pass
 
-    # Create the main card container with improved styling
+    # Create the main card container with responsive styling
     return html.Div(
         components,
-        className="apartment-card-content"
+        className="apartment-card-content",
+        # Add data attribute for potential JS manipulation
+        **{"data-offer-id": offer_id}
     )

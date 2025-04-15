@@ -140,7 +140,7 @@ class TableFactory:
     """Factory for creating consistent data tables that rely on external CSS for styling."""
 
     @classmethod
-    def create_data_table(cls, id, data, columns, sort_action=None, page_size=10, **kwargs):
+    def create_data_table(cls, id, data, columns, sort_action=None, page_size=10, conditional_styles=None, **kwargs):
         from dash import dash_table
 
         # === Define fixed-width columns and their widths (in %) ===
@@ -192,27 +192,41 @@ class TableFactory:
                 'width': f'{dynamic_width:.2f}%',
                 'textAlign': alignment,
             })
-
+        test_style = [
+            {
+                "if": {"column_id": "price_text"},  # Target a column you know exists
+                "backgroundColor": "yellow",  # Very visible style
+            }
+        ]
+          
         # Table config
         table_props = {
-            
-            'id': id,
             'columns': columns,
             'data': data,
             'page_size': page_size,
             'sort_action': sort_action,
-            'style_cell_conditional': style_cell_conditional,
+            'style_cell_conditional': test_style,
+            'style_data': {
+                'backgroundColor': 'white'
+            },
+                    
             'style_table': {
                 'overflowX': 'auto',
                 'width': '100%',
                 'maxWidth': '100%',
             },
+            # Add style_data_conditional for conditional styling
+            'style_data_conditional': conditional_styles or [],
         }
 
+      
         # Add any additional keyword arguments
         table_props.update({
             k: v for k, v in kwargs.items()
             if k != 'css' or 'css' not in table_props
         })
+        print("Conditional styles:", conditional_styles)
+        return dash_table.DataTable(id="apartment-table",  # Force the ID to be apartment-table
+**table_props)
+        print("Final table properties:", {k: v for k, v in table_props.items() if k == 'style_data_conditional'})
 
-        return dash_table.DataTable(**table_props)

@@ -1,5 +1,5 @@
-# app/layout.py - Corrected and improved
-from dash import dcc, html
+# app/layout.py - Fixed version
+from dash import dcc, html, dash_table
 from app.button_factory import (
     DEFAULT_PRICE,
     DEFAULT_PRICE_BTN,
@@ -12,18 +12,20 @@ from app.button_factory import (
     sort_buttons,
     filter_buttons,
 )
+from app.config import CONFIG  # Import CONFIG for column definitions
+from app.components import TableFactory
 
 
 def create_apartment_details_panel():
     """Create the improved overlay details panel for apartment information."""
     return html.Div(
         [
-            # Background overlay
+            # Background overlay - ensure it starts hidden
             html.Div(
                 id="details-overlay",
                 className="details-overlay details-panel--hidden",
             ),
-            # Main panel
+            # Main panel - ensure it starts hidden
             html.Div(
                 id="apartment-details-panel",
                 className="details-panel details-panel--hidden",
@@ -42,14 +44,17 @@ def create_apartment_details_panel():
                                         "×",
                                         id="close-details-button",
                                         className="details-close-x",
+                                        n_clicks=0  # Initialize with 0 clicks
                                     )
                                 ],
                             ),
                         ],
                     ),
-                    # Scrollable content area
+                    # Scrollable content area - start with empty div to prevent errors
                     html.Div(
-                        id="apartment-details-card", className="details-panel-content"
+                        id="apartment-details-card", 
+                        className="details-panel-content",
+                        children=[]  # Start with empty array
                     ),
                     # Improved navigation footer
                     html.Div(
@@ -59,6 +64,7 @@ def create_apartment_details_panel():
                                 "← Предыдущая",
                                 id="prev-apartment-button",
                                 className="details-nav-button",
+                                n_clicks=0  # Initialize with 0 clicks
                             ),
                             html.Div(
                                 id="apartment-position-info",
@@ -69,14 +75,15 @@ def create_apartment_details_panel():
                                 "Следующая →",
                                 id="next-apartment-button",
                                 className="details-nav-button",
+                                n_clicks=0  # Initialize with 0 clicks
                             ),
                         ],
                     ),
                 ],
             ),
-        ]
+        ],
+        id="details-panel-container"  # Add container ID for easier targeting
     )
-
 
 def create_app_layout(app):
     """Create the improved application layout structure with inline button labels and buttons."""
@@ -159,6 +166,42 @@ def create_app_layout(app):
     # Detail panel for apartment information with improved design
     apartment_details_panel = create_apartment_details_panel()
 
+    # Initialize empty data table to ensure it exists in the layout
+    empty_data_table = TableFactory.create_data_table(
+        id="apartment-table",
+        data=[],
+        columns=[],
+        sort_action="custom",
+        sort_mode="multi",
+        sort_by=[],
+        page_size=100,
+        page_action="native",
+        hidden_columns=CONFIG["hidden_cols"] + ["offer_id"] if "hidden_cols" in CONFIG else ["offer_id"],
+        style_header={
+            'backgroundColor': 'var(--color-primary)',
+            'color': 'white',
+            'fontWeight': 'bold',
+        },
+        style_cell={
+            'textAlign': 'left',
+            'padding': '8px',
+            'fontFamily': 'var(--font-family)',
+            'fontSize': 'var(--font-sm)',
+            'overflow': 'hidden',
+            'textOverflow': 'ellipsis'
+        },
+        style_cell_conditional=[
+            {
+                'if': {'column_id': 'details'},
+                'textAlign': 'center',
+                'cursor': 'pointer',
+                'width': '80px'
+            }
+        ],
+        markdown_options={"html": True},
+        cell_selectable=True
+    )
+
     # Main layout structure
     return html.Div(
         [
@@ -176,7 +219,9 @@ def create_app_layout(app):
                         id="loading-main",
                         children=[
                             html.Div(
-                                id="table-container", className="table-responsive"
+                                id="table-container", 
+                                className="table-responsive",
+                                children=[empty_data_table]  # Include empty table in initial layout
                             ),
                             apartment_details_panel,
                         ],

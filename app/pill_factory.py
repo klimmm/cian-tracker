@@ -56,8 +56,6 @@ class PillFactory:
         "very_close": {"variant": "success", "custom_class": "pill--distance", "max_minutes": 12},
         "close": {"variant": "primary", "custom_class": "pill--distance", "max_minutes": 20},
         "medium": {"variant": "neutral", "custom_class": "pill--distance", "max_minutes": 35},  # Changed to neutral
-
-        
         "far": {"variant": "error", "custom_class": "pill--distance"}
     }
     
@@ -95,29 +93,37 @@ class PillFactory:
         "custom_class": "pill--price",
         "text_format": "оценка: {}"
     }
+    
+    # Styling for inactive pills
+    INACTIVE_STYLE = {
+        "backgroundColor": "#e0e0e0",
+        "color": "#757575",
+        "borderColor": "#bdbdbd"
+    }
+    
     @classmethod
-    def create_property_feature_pill(cls, label, value, feature_type="apartment"):
+    def create_property_feature_pill(cls, label, value, feature_type="apartment", status="active"):
         """Create a property feature pill with the correct styling based on type"""
         config = cls.PROPERTY_PILL_CONFIG.get(
             feature_type, cls.PROPERTY_PILL_CONFIG["apartment"]
         )
         text = f"{label}: {value}"
-        return cls.create_pill(text, variant=config["variant"])
+        return cls.create_pill(text, variant=config["variant"], status=status)
 
     @classmethod
-    def create_amenity_pill(cls, amenity_name):
+    def create_amenity_pill(cls, amenity_name, status="active"):
         """Create an amenity feature pill"""
         config = cls.PROPERTY_PILL_CONFIG["amenity"]
-        return cls.create_pill(amenity_name, variant=config["variant"])
+        return cls.create_pill(amenity_name, variant=config["variant"], status=status)
 
     @classmethod
-    def create_rental_term_pill(cls, label, value):
+    def create_rental_term_pill(cls, label, value, status="active"):
         """Create a rental term pill"""
         config = cls.RENTAL_TERM_PILL_CONFIG
         text = f"{label}: {value}"
-        return cls.create_pill(text, variant=config["variant"])    
+        return cls.create_pill(text, variant=config["variant"], status=status)    
     @classmethod
-    def create_price_pill(cls, price_value, is_good_price=False):
+    def create_price_pill(cls, price_value, is_good_price=False, status="active"):
         """Create a price pill with centralized styling logic based on price tiers."""
         # Extract the numeric value for tier determination
         numeric_value = cls._extract_numeric_value(price_value)
@@ -141,16 +147,17 @@ class PillFactory:
         return cls.create_pill(
             price_value, 
             variant=config["variant"], 
-            custom_class=custom_class
+            custom_class=custom_class,
+            status=status
         )
 
 
     @classmethod
-    def create_price_history_pill(cls, date, price):
+    def create_price_history_pill(cls, date, price, status="active"):
         """Create a price history pill"""
         config = cls.PRICE_HISTORY_PILL_CONFIG
         text = f"{date}: {price}"
-        return cls.create_pill(text, variant=config["variant"])        
+        return cls.create_pill(text, variant=config["variant"], status=status)        
     @staticmethod
     def _extract_numeric_value(price_string):
         """Extract numeric value from a price string."""
@@ -167,18 +174,19 @@ class PillFactory:
             return None
 
     @classmethod
-    def create_cian_estimate_pill(cls, estimate):
+    def create_cian_estimate_pill(cls, estimate, status="active"):
         """Create a CIAN estimate pill with centralized styling."""
         config = cls.CIAN_ESTIMATE_CONFIG
         text = config["text_format"].format(estimate)
         return cls.create_pill(
             text, 
             variant=config["variant"], 
-            custom_class=config["custom_class"]
+            custom_class=config["custom_class"],
+            status=status
         )
 
     @classmethod
-    def create_room_pill(cls, room_count):
+    def create_room_pill(cls, room_count, status="active"):
         """Create a room pill with centralized styling logic."""
         if room_count is None:
             return None
@@ -202,11 +210,12 @@ class PillFactory:
         return cls.create_pill(
             text, 
             variant=config["variant"], 
-            custom_class=config["custom_class"]
+            custom_class=config["custom_class"],
+            status=status
         )
 
     @classmethod
-    def create_area_pill(cls, area):
+    def create_area_pill(cls, area, status="active"):
         """Create an area pill with centralized styling logic."""
         if area is None:
             return None
@@ -229,11 +238,12 @@ class PillFactory:
         return cls.create_pill(
             text, 
             variant=config["variant"], 
-            custom_class=config["custom_class"]
+            custom_class=config["custom_class"],
+            status=status
         )
 
     @classmethod
-    def create_floor_pill(cls, floor, total_floors=None):
+    def create_floor_pill(cls, floor, total_floors=None, status="active"):
         """Create a floor pill with centralized styling logic including the new 2-5 tier."""
         if floor is None:
             return None
@@ -272,17 +282,18 @@ class PillFactory:
         return cls.create_pill(
             text, 
             variant=config["variant"], 
-            custom_class=config["custom_class"]
+            custom_class=config["custom_class"],
+            status=status
         )
 
     @classmethod
-    def create_distance_pill(cls, distance_text):
+    def create_distance_pill(cls, distance_text, status="active"):
         """Create a distance pill"""
         config = cls.DISTANCE_PILL_CONFIG
-        return cls.create_pill(distance_text, variant=config["variant"])
+        return cls.create_pill(distance_text, variant=config["variant"], status=status)
 
     @classmethod
-    def create_walking_time_pill(cls, distance_value):
+    def create_walking_time_pill(cls, distance_value, status="active"):
         """Create walking time pill with centralized styling logic."""
         if distance_value is None or pd.isna(distance_value):
             return None
@@ -306,7 +317,6 @@ class PillFactory:
             time_text = f"{hours}ч{minutes}м" if minutes > 0 else f"{hours}ч"
 
         # Determine configuration based on walking time
-        # Determine configuration based on walking time
         if walking_minutes < cls.WALKING_TIME_CONFIG["very_close"]["max_minutes"]:
             config = cls.WALKING_TIME_CONFIG["very_close"]
         
@@ -320,11 +330,12 @@ class PillFactory:
         return cls.create_pill(
             time_text, 
             variant=config["variant"], 
-            custom_class=config["custom_class"]
+            custom_class=config["custom_class"],
+            status=status
         )
 
     @classmethod
-    def create_price_change_pill(cls, value):
+    def create_price_change_pill(cls, value, status="active"):
         """Create price change pill with centralized styling logic."""
         if not value or pd.isna(value) or value == 0 or value == "new":
             return None
@@ -343,14 +354,15 @@ class PillFactory:
             return cls.create_pill(
                 [arrow_span, f" {display}"],
                 variant=config["variant"],
-                custom_class=config["custom_class"]
+                custom_class=config["custom_class"],
+                status=status
             )
 
         except:
             return None
 
     @classmethod
-    def create_neighborhood_pill(cls, neighborhood):
+    def create_neighborhood_pill(cls, neighborhood, status="active"):
         """Create neighborhood pill with centralized styling logic."""
         if not neighborhood or neighborhood == "nan" or neighborhood == "None":
             return None
@@ -361,7 +373,8 @@ class PillFactory:
                 return cls.create_pill(
                     neighborhood,
                     variant=config["variant"],
-                    custom_class=config["custom_class"]
+                    custom_class=config["custom_class"],
+                    status=status
                 )
 
         # Default to "other" config
@@ -369,7 +382,8 @@ class PillFactory:
         return cls.create_pill(
             neighborhood, 
             variant=config["variant"], 
-            custom_class=config["custom_class"]
+            custom_class=config["custom_class"],
+            status=status
         )
 
     @classmethod
@@ -387,21 +401,23 @@ class PillFactory:
         return cls.create_pill(
             activity_text,
             variant=config["variant"],
-            custom_class=config["custom_class"]
+            custom_class=config["custom_class"],
+            status=status
         )
 
     @classmethod
-    def create_time_pill(cls, time_value):
+    def create_time_pill(cls, time_value, status="active"):
         """Create a time display pill with centralized styling."""
         config = cls.TIME_CONFIG
         return cls.create_pill(
             time_value, 
             variant=config["variant"], 
-            custom_class=config["custom_class"]
+            custom_class=config["custom_class"],
+            status=status
         )
 
     @classmethod
-    def create_metro_pill(cls, metro_station):
+    def create_metro_pill(cls, metro_station, status="active"):
         """Create metro station pill with line color."""
         if (
             not metro_station
@@ -433,10 +449,10 @@ class PillFactory:
             custom_styles["color"] = "#000000"
             custom_styles["border"] = "1px solid #EF161E"
 
-        return cls.create_pill(clean_station, "metro", custom_styles)
+        return cls.create_pill(clean_station, "metro", custom_styles, status=status)
 
     @classmethod
-    def create_pill(cls, text, variant="default", custom_style=None, custom_class=None):
+    def create_pill(cls, text, variant="default", custom_style=None, custom_class=None, status="active"):
         """Create a pill component with standardized styling."""
         if not text:
             return None
@@ -447,15 +463,24 @@ class PillFactory:
         # Add custom class if provided
         if custom_class:
             class_name += f" {custom_class}"
-
+            
+        # Add inactive class if status is 'non active'
+        if status == "non active":
+            class_name += " pill--inactive"
+            
         # Keep only truly dynamic styles, if any
         dynamic_style = custom_style or {}
+        
+        # Apply inactive styling if status is non active
+        if status == "non active":
+            inactive_style = cls.INACTIVE_STYLE.copy()
+            dynamic_style.update(inactive_style)
 
         return html.Div(text, style=dynamic_style, className=class_name)
 
     @classmethod
     def create_pill_container(
-        cls, pills, wrap=False, align=None, custom_style=None, return_as_html=False
+        cls, pills, wrap=False, align=None, custom_style=None, return_as_html=False, status="active"
     ):
         """Create a container for multiple pills with flexible layout."""
         if not pills:

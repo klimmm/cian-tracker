@@ -1,138 +1,363 @@
+/* apartment_responsive.css - Add this file to your project */
 
-/* ===== Details Panel ===== */
+/* ===== Responsive Details Panel ===== */
 .details-panel {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  width: auto;
-  max-width: 800px;
-  min-width: auto;
+  width: 100%;
   height: 100vh;
-  margin: 0 auto;
+  margin: 0;
+  max-width: 100%;
   z-index: 1000;
   padding: 0;
   overflow: hidden;
   background-color: #fff;
-  box-shadow: 0 0 24px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
-}
-
-.details-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-}
-
-.details-panel--hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  display: none;
-}
-
-.details-panel--visible {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  display: flex;
+  border-radius: 0;
 }
 
 .details-panel-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-primary);
   color: white;
-}
-
-.details-panel-title {
-  font-size: var(--font-lg);
-  font-weight: 600;
-  margin: 0;
-  flex: 1;
-}
-
-.details-close-button {
-  background-color: transparent;
-  border: none;
-  color: white;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  margin-left: var(--space-sm);
-}
-
-.details-close-x {
-  background-color: transparent;
-  border: none;
-  color: inherit;
-  font-size: 24px;
-  font-weight: bold;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .details-panel-content, 
 #apartment-details-card {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-md);
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  padding: var(--space-sm);
+  scrollbar-width: thin;
 }
 
 .details-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-md);
+  padding: var(--space-sm);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-bg-light);
 }
 
-.details-nav-info {
-  flex: 1;
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-weight: 500;
+/* ===== Apartment Card Content ===== */
+.apartment-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
-.details-nav-button {
+/* Two-column layout with responsive behavior */
+.info-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.info-column {
+  flex: 1 1 250px; /* Grow, shrink, and base width */
+  min-width: 0; /* Allow columns to shrink below min-content */
+}
+
+/* Typography adjustments */
+.apartment-address {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  margin-bottom: var(--space-xs);
+  line-height: 1.3;
+  word-break: break-word; /* Prevent overflow on small screens */
+}
+
+.apartment-title {
+  font-size: var(--font-md);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-xs);
+}
+
+/* ===== Slideshow Improvements ===== */
+.slideshow-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3; /* Consistent aspect ratio */
+  max-height: 60vh;
+  background-color: var(--color-bg-light);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  touch-action: pan-y; /* Improve touch behavior */
+}
+
+.slideshow-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.slideshow-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.3);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: var(--space-sm) var(--space-md);
-  font-size: var(--font-sm);
-  font-weight: 600;
   cursor: pointer;
-  min-width: 100px;
+  font-size: 24px;
+  z-index: 5;
+  transition: background-color 0.2s;
 }
 
-@media screen and (min-width: 768px) {
+.slideshow-nav-btn:hover {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.slideshow-nav-btn--prev {
+  left: var(--space-sm);
+}
+
+.slideshow-nav-btn--next {
+  right: var(--space-sm);
+}
+
+.slideshow-counter {
+  position: absolute;
+  bottom: var(--space-sm);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-xs);
+  z-index: 5;
+}
+
+/* ===== Pills and containers ===== */
+.pill-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 16px;
+  font-size: var(--font-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* ===== Media Queries ===== */
+
+/* Extra small devices (phones, 390px and down) */
+@media screen and (max-width: 390px) {
+  .details-panel-content, 
+  #apartment-details-card {
+    padding: var(--space-xs);
+  }
+  
+  .slideshow-container {
+    aspect-ratio: 1/1; /* Square aspect ratio for tiny screens */
+  }
+  
+  .slideshow-nav-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+  
+  .info-column {
+    flex-basis: 100%; /* Force single column layout */
+  }
+  
+  .details-nav-button {
+    min-width: auto;
+    padding: var(--space-xs) var(--space-sm);
+    font-size: var(--font-xs);
+  }
+  
+  .pill {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}
+
+/* Small devices (small tablets, 578px and down) */
+@media screen and (min-width: 391px) and (max-width: 578px) {
+  .details-panel-content, 
+  #apartment-details-card {
+    padding: var(--space-sm);
+  }
+  
+  .info-column {
+    flex-basis: 100%; /* Force single column layout */
+  }
+  
+  .slideshow-container {
+    aspect-ratio: 3/2;
+  }
+}
+
+/* Medium devices (tablets, 768px and down) */
+@media screen and (min-width: 579px) and (max-width: 768px) {
+  .info-column {
+    flex-basis: 45%; /* Allow some wrapping */
+  }
+}
+
+/* Large devices (desktops, 768px and up) */
+@media screen and (min-width: 769px) {
   .details-panel {
     top: 5vh;
     bottom: 5vh;
     height: 90vh;
     max-width: 80%;
     border-radius: var(--radius-md);
+    margin: 0 auto;
   }
+  
+  .details-panel-content, 
+  #apartment-details-card {
+    padding: var(--space-md);
+  }
+  
+  .slideshow-nav-btn {
+    width: 48px;
+    height: 48px;
+    font-size: 28px;
+  }
+}
+
+/* Add to apartment_responsive.css */
+
+/* Ensure panels are properly hidden by default */
+.details-panel--hidden {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.details-panel--visible {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.details-overlay.details-panel--visible {
+  display: block !important;
+}
+
+/* Add a smooth fade-in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Ensure the apartment-details-card is properly initialized */
+#apartment-details-card:empty {
+  display: none;
+}
+
+/* Prevent content jumping during load */
+#table-view-container {
+  min-height: 200px;
+}
+
+/* Hidden store elements should not affect layout */
+dcc-store {
+  display: none;
+}
+
+/* Add to apartment_responsive.css */
+
+/* Explicit Open Details Button Styling */
+.details-button {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin: 0 auto;
+  transition: all 0.2s;
+}
+
+.details-button:hover {
+  background-color: var(--color-primary);
+  color: white;
+  transform: scale(1.1);
+}
+
+/* Make sure the buttons are visible in the table */
+#apartment-table .dash-cell[data-dash-column="details"] {
+  text-align: center;
+  vertical-align: middle;
+  padding: 5px !important;
+}
+
+/* Details column hover effect */
+#apartment-table .dash-cell[data-dash-column="details"]:hover {
+  background-color: rgba(70, 130, 180, 0.1);
+}
+
+/* Custom button in details cell */
+.dash-cell-value.details-cell {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  height: 100% !important;
+}
+
+/* Enhanced styles for details panel visibility */
+#apartment-details-panel.details-panel--visible,
+#details-overlay.details-panel--visible {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+#apartment-details-panel.details-panel--hidden,
+#details-overlay.details-panel--hidden {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
