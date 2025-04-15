@@ -16,8 +16,9 @@ from app.config import CONFIG  # Import CONFIG for column definitions
 from app.components import TableFactory
 
 
+# Update this function in layout.py to move navigation panel to the top
 def create_apartment_details_panel():
-    """Create the improved overlay details panel for apartment information."""
+    """Create the improved overlay details panel with navigation at the top."""
     return html.Div(
         [
             # Background overlay - ensure it starts hidden
@@ -30,21 +31,37 @@ def create_apartment_details_panel():
                 id="apartment-details-panel",
                 className="details-panel details-panel--hidden",
                 children=[
-                    # Header with title and close button
+                    # Header with title, navigation, and close button
                     html.Div(
                         className="details-panel-header",
                         children=[
-                            html.H3(
-                                "Информация о квартире", className="details-panel-title"
+                            # Left side - back button
+                            html.Button(
+                                "← Пред.",
+                                id="prev-apartment-button",
+                                className="details-nav-button details-nav-button--prev",
+                                n_clicks=0
                             ),
+                            # Center - title
+                            html.H3(
+                                "Информация о квартире", 
+                                className="details-panel-title"
+                            ),
+                            # Right side - next button and close button
                             html.Div(
-                                className="details-close-button",
+                                className="details-header-right",
                                 children=[
+                                    html.Button(
+                                        "След. →",
+                                        id="next-apartment-button",
+                                        className="details-nav-button details-nav-button--next",
+                                        n_clicks=0
+                                    ),
                                     html.Button(
                                         "×",
                                         id="close-details-button",
                                         className="details-close-x",
-                                        n_clicks=0  # Initialize with 0 clicks
+                                        n_clicks=0
                                     )
                                 ],
                             ),
@@ -56,29 +73,29 @@ def create_apartment_details_panel():
                         className="details-panel-content",
                         children=[]  # Start with empty array
                     ),
-                    # Improved navigation footer
-                    html.Div(
-                        className="details-nav",
-                        children=[
-                            html.Button(
-                                "← Предыдущая",
-                                id="prev-apartment-button",
-                                className="details-nav-button",
-                                n_clicks=0  # Initialize with 0 clicks
-                            ),
-                            html.Div(
-                                id="apartment-position-info",
-                                className="details-nav-info",
-                                children=["Квартира"],
-                            ),
-                            html.Button(
-                                "Следующая →",
-                                id="next-apartment-button",
-                                className="details-nav-button",
-                                n_clicks=0  # Initialize with 0 clicks
-                            ),
-                        ],
-                    ),
+                    # Remove or comment out the bottom navigation footer
+                    # html.Div(
+                    #     className="details-nav",
+                    #     children=[
+                    #         html.Button(
+                    #             "← Предыдущая",
+                    #             id="prev-apartment-button",
+                    #             className="details-nav-button",
+                    #             n_clicks=0
+                    #         ),
+                    #         html.Div(
+                    #             id="apartment-position-info",
+                    #             className="details-nav-info",
+                    #             children=["Квартира"],
+                    #         ),
+                    #         html.Button(
+                    #             "Следующая →",
+                    #             id="next-apartment-button",
+                    #             className="details-nav-button",
+                    #             n_clicks=0
+                    #         ),
+                    #     ],
+                    # ),
                 ],
             ),
         ],

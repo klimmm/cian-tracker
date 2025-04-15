@@ -361,3 +361,108 @@ dcc-store {
   opacity: 0 !important;
   pointer-events: none !important;
 }
+
+
+/* Add these styles to card.css */
+
+/* Improved header with navigation */
+.details-panel-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.details-panel-title {
+  margin: 0;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-md);
+  flex: 1;
+}
+
+.details-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+/* Navigation buttons in header */
+.details-nav-button {
+  padding: var(--space-xs) var(--space-sm);
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.details-nav-button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.details-nav-button:active {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Close button styling */
+.details-close-x {
+  background-color: transparent;
+  color: white;
+  border: none;
+  font-size: 24px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-left: var(--space-xs);
+}
+
+.details-close-x:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 578px) {
+  .details-nav-button {
+    font-size: var(--font-xs);
+    padding: var(--space-xs);
+  }
+  
+  .details-panel-title {
+    font-size: var(--font-sm);
+  }
+  
+  .details-panel-header {
+    padding: var(--space-xs) var(--space-sm);
+  }
+}
+
+/* Media queries for extra small screens */
+@media screen and (max-width: 390px) {
+  .details-nav-button {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+  
+  .details-close-x {
+    width: 28px;
+    height: 28px;
+    font-size: 20px;
+  }
+}

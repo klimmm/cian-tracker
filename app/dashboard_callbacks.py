@@ -538,7 +538,10 @@ def register_details_callbacks(app):
         # For any other case, don't update
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
-    # Fixed slideshow navigation callback with simpler approach
+
+
+
+
     app.clientside_callback(
         """
         function(prev_clicks, next_clicks, slideshow_data) {
@@ -552,22 +555,31 @@ def register_details_callbacks(app):
             const imagePaths = slideshow_data.image_paths;
             const totalImages = imagePaths.length;
             
-            // Store previous clicks to detect changes
-            if (typeof window.prevButtonClicks === 'undefined') {
-                window.prevButtonClicks = prev_clicks || 0;
-                window.nextButtonClicks = next_clicks || 0;
+            // Get offer ID for tracking
+            const ctx = dash_clientside.callback_context;
+            const triggerId = ctx.triggered[0].prop_id;
+            const matches = triggerId.match(/{[^}]*"offer_id"[^}]*:([^}]*)}/);
+            const offerId = matches ? matches[1].trim() : 'unknown';
+            
+            // Create button click trackers specific to this slideshow
+            const stateKey = `slideshow_${offerId}`;
+            if (typeof window[stateKey] === 'undefined') {
+                window[stateKey] = {
+                    prevClicks: prev_clicks || 0,
+                    nextClicks: next_clicks || 0
+                };
             }
             
             // Determine which button was clicked by comparing with stored values
-            if (prev_clicks > window.prevButtonClicks) {
+            if (prev_clicks > window[stateKey].prevClicks) {
                 // Move to previous image with wrap-around
                 currentIndex = (currentIndex - 1 + totalImages) % totalImages;
-                window.prevButtonClicks = prev_clicks;
+                window[stateKey].prevClicks = prev_clicks;
             } 
-            else if (next_clicks > window.nextButtonClicks) {
+            else if (next_clicks > window[stateKey].nextClicks) {
                 // Move to next image with wrap-around
                 currentIndex = (currentIndex + 1) % totalImages;
-                window.nextButtonClicks = next_clicks;
+                window[stateKey].nextClicks = next_clicks;
             }
             
             // Return updated values
@@ -588,108 +600,6 @@ def register_details_callbacks(app):
             Input({"type": "next-btn", "offer_id": MATCH}, "n_clicks"),
         ],
         [State({"type": "slideshow-data", "offer_id": MATCH}, "data")],
-        prevent_initial_call=True,
-    )
-        
-    # Add a callback to initialize touch events for the slideshow
-    app.clientside_callback(
-        """
-        function(trigger) {
-            // Only execute when details panel becomes visible
-            if (!document.getElementById('apartment-details-panel')) return null;
-            
-            // Initialize touch event handling for slideshows
-            function initializeSwipeSupport() {
-                const slideshows = document.querySelectorAll('.slideshow-container');
-                
-                slideshows.forEach(slideshow => {
-                    // Skip if already initialized
-                    if (slideshow.dataset.swipeInitialized === 'true') return;
-                    
-                    let startX, startY;
-                    let threshold = 50; // Minimum distance for swipe
-                    
-                    slideshow.addEventListener('touchstart', e => {
-                        startX = e.touches[0].clientX;
-                        startY = e.touches[0].clientY;
-                    }, { passive: true });
-                    
-                    slideshow.addEventListener('touchend', e => {
-                        if (!startX) return;
-                        
-                        const endX = e.changedTouches[0].clientX;
-                        const endY = e.changedTouches[0].clientY;
-                        
-                        // Calculate distance
-                        const diffX = startX - endX;
-                        const diffY = startY - endY;
-                        
-                        // Check if horizontal swipe (not vertical scrolling)
-                        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) {
-                            if (diffX > 0) {
-                                // Swipe left - next image
-                                const nextBtn = slideshow.querySelector('.slideshow-nav-btn--next');
-                                if (nextBtn) nextBtn.click();
-                            } else {
-                                // Swipe right - previous image
-                                const prevBtn = slideshow.querySelector('.slideshow-nav-btn--prev');
-                                if (prevBtn) prevBtn.click();
-                            }
-                        }
-                        
-                        // Reset
-                        startX = null;
-                        startY = null;
-                    }, { passive: true });
-                    
-                    // Mark as initialized
-                    slideshow.dataset.swipeInitialized = 'true';
-                });
-            }
-            
-            // Set up a mutation observer to detect when slideshows are added
-            function setupSlideshowObserver() {
-                const detailsPanel = document.getElementById('apartment-details-panel');
-                const observer = new MutationObserver(mutations => {
-                    mutations.forEach(mutation => {
-                        // Check for className changes
-                        if (mutation.attributeName === 'class') {
-                            if (!detailsPanel.classList.contains('details-panel--hidden')) {
-                                // Panel is visible, initialize slideshows after a short delay
-                                setTimeout(initializeSwipeSupport, 100);
-                            }
-                        } else if (mutation.addedNodes.length) {
-                            // Check for new slideshows
-                            mutation.addedNodes.forEach(node => {
-                                if (node.querySelector && node.querySelector('.slideshow-container')) {
-                                    setTimeout(initializeSwipeSupport, 100);
-                                }
-                            });
-                        }
-                    });
-                });
-                
-                // Observe the panel and its descendants
-                if (detailsPanel) {
-                    observer.observe(detailsPanel, { 
-                        attributes: true, 
-                        childList: true, 
-                        subtree: true 
-                    });
-                }
-            }
-            
-            // Initialize immediately for any existing slideshows
-            setTimeout(() => {
-                initializeSwipeSupport();
-                setupSlideshowObserver();
-            }, 200);
-            
-            return null;
-        }
-        """,
-        Output("apartment-data-store", "data", allow_duplicate=True),
-        Input("interval-component", "n_intervals"),
         prevent_initial_call=True,
     )
 

@@ -111,6 +111,7 @@ class ImageHandler:
 
     # Update this method in apartment_card.py to remove the loading attribute
     
+
     @staticmethod
     def create_slideshow(offer_id):
         """Create responsive slideshow component for images with improved styling."""
@@ -136,8 +137,8 @@ class ImageHandler:
                         html.Img(
                             id={"type": "slideshow-img", "offer_id": offer_id},
                             src=image_paths[0],
-                            className="slideshow-img"
-                            # Remove loading="lazy" attribute that's causing the error
+                            className="slideshow-img",
+                            # Specifically avoid using loading="lazy" which can cause issues
                         ),
                         html.Button(
                             "❮",
@@ -174,7 +175,7 @@ class ImageHandler:
             divider=True
         )
 
-
+    
 def extract_row_data(table_row_data):
     """Extract essential data from row with error handling."""
     if not table_row_data:
