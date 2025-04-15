@@ -1,3 +1,33 @@
+:root {
+  /* Base colors */
+  --color-error-light: #FFEBEE;
+  --color-error: #D32F2F;
+  --radius-sm: 4px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --font-family: 'Inter', Arial, sans-serif;
+  --color-bg-light: #F8F9FA;
+  --color-text-secondary: #666666;
+  --color-border: #E0E0E0;
+  --color-good-deal-border: #F9A825; /* Amber color for border */
+  /* Semantic colors */
+  --color-primary-light: #E6F0F9;
+  --color-primary: #1976D2;
+  --color-success: #2E7D32;
+  --color-success-light: #E8F5E9;
+  --color-warning: #F9A825;
+  --color-warning-light: #FFF8E1;
+  --color-neutral: #607D8B;
+  --color-neutral-light: #ECEFF1;
+  
+  /* Good deal colors */
+  --color-good-deal-bg: #FEF9E7;  /* Very light gold */
+  --color-good-deal-star-low: var(--color-success);
+  --color-good-deal-star-medium: var(--color-primary);
+  --color-good-deal-star-high: var(--color-neutral);
+  --color-good-deal-border: #F9E79F;  /* Light gold */
+}
+
+
 /* Base pill styling */
 .pill {
   display: inline-block;
