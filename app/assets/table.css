@@ -1,27 +1,24 @@
-
-
 /* ===== Design System Variables ===== */
 :root {
   /* Typography */
   --font-family: 'Inter', Arial, sans-serif;
-  --font-xs: 10px;    /* Small UI elements, tags */
-  --font-sm: 12px;    /* Table content, buttons */
-  --font-md: 14px;    /* General text, form elements */
-  --font-lg: 16px;    /* Subheadings */
-  --font-xl: 18px;    /* Main headings */
+  --font-xs: 10px;
+  --font-sm: 12px;
+  --font-md: 14px;
+  --font-lg: 16px;
+  --font-xl: 18px;
   
-  /* Colors */
-  --color-primary: #4682B4;
-  --color-primary-light: #E6F0F9;
-  --color-success: #2E7D32;
-  --color-warning: #F9A825;
+  /* Colors - Updated for a more modern real estate look */
+  --color-primary: #1976D2;         /* Darker blue for headers */
+  --color-primary-light: #E6F0F9;   /* Very light blue for hover */
+  --color-success: #27AE60;
+  --color-warning: #F39C12;
   --color-text-primary: #333333;
-  --color-text-secondary: #666666;
+  --color-text-secondary: #7F8C8D;
   --color-bg-main: #FFFFFF;
-  --color-bg-light: #F8F9FA;
+  --color-bg-light: #FAFAFA;        /* Very subtle background for even rows */
   --color-border: #E0E0E0;
-  
-  /* Spacing - FIXED VALUES, not responsive */
+  /* Spacing */
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 12px;
@@ -32,16 +29,197 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
+
+/* ===== Table Container ===== */
+#table-view-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-md);
+  width: 100%;
+  max-width: 1000px; /* Restored your original max-width */
+  box-sizing: border-box;
+  overflow-x: auto;
+}
+
+/* ===== Dash DataTable Styling ===== */
+#apartment-table .dash-spreadsheet-container {
+  table-layout: fixed; /* Restored your original table-layout setting */
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-family);
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-width: 100%; /* Preserved original max-width */
+  border: 1px solid var(--color-border);
+}
+
+/* ===== Header Styling - With Contrasting Border Color ===== */
+#apartment-table th.dash-header,
+#apartment-table [class*="dash-header"],
+#apartment-table .dash-spreadsheet th {
+  background-color: #34495e !important;
+  color: white !important;
+  font-size: var(--font-xs) !important;
+  font-weight: normal !important;
+  text-align: center !important;
+  padding: 1px 2px !important;
+  
+  /* Border overrides with contrasting color */
+  border: 1px solid #ffffff !important; /* White border for contrast */
+  border-left: none !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: 1px solid #ffffff !important; /* White bottom border */
+  
+  /* Additional border properties to override inline styles */
+  border-width: 0 0 1px 0 !important;
+  border-style: solid !important;
+  border-color: #ffffff !important; /* White for contrast with dark background */
+}
+
+/* Target the header content wrapper specifically */
+#apartment-table th.dash-header > div,
+#apartment-table [class*="dash-header"] > div {
+  color: white !important;
+  text-align: center !important;
+}
+
+/* Style the sort icons */
+#apartment-table th.dash-header .column-header--sort svg {
+  color: #ecf0f1 !important;
+  opacity: 1;
+  height: 0.8em;
+  width: 0.8em;
+}.7;
+}
+
+/* ===== Cell Styling ===== */
+#apartment-table .dash-cell {
+  padding-left: 2px !important;            /* Remove all padding */
+  font-size: var(--font-sm); /* Restored your original font size */
+  border-bottom: 1px solid var(--color-border);
+  border-right: none;  /* Remove vertical borders as requested */
+  border-left: none;   /* Remove vertical borders as requested */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  min-width: 0;
+  word-wrap: break-word; /* Preserved your original word wrapping */
+  color: var(--color-text-primary);
+}
+
+/* Remove right border from all cells */
+#apartment-table .dash-spreadsheet-container td {
+  border-right: none !important;
+}
+
+/* Remove left border from all cells */
+#apartment-table .dash-spreadsheet-container td:first-child {
+  border-left: none !important;
+}
+
+/* ===== Zebra Striping - Subtle ===== */
+#apartment-table .dash-spreadsheet-container tr:nth-child(even) .dash-cell {
+  background-color: var(--color-bg-light);
+}
+
+/* ===== Hover State ===== */
+#apartment-table .dash-spreadsheet-container tr:hover .dash-cell {
+  background-color: var(--color-primary-light);
+  transition: background-color 0.15s ease-in-out;
+}
+
+/* ===== Details Column Styling ===== */
+td[data-dash-column="details"] {
+  padding: 0 !important;
+  text-align: center !important;
+}
+
+td[data-dash-column="details"] .dash-cell-value {
+  padding: 0 !important;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center !important;
+  align-items: center;
+  height: 100%;
+}
+
+td[data-dash-column="property_tags"] .dash-cell-value {
+  padding: 0 !important;
+  margin: 0 auto;
+  text-align: center !important;
+  display: flex;
+  justify-content: center !important;
+  align-items: center;
+  height: 100%;
+}
+
+
+/* Button styling for any action buttons in the table */
+#apartment-table button, 
+#apartment-table .action-button {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  padding-left: 2px !important;            /* Remove all padding */
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-sm);
+  transition: background-color 0.2s;
+}
+
+#apartment-table button:hover,
+#apartment-table .action-button:hover {
+  background-color: #34495E;  /* Slightly darker on hover */
+}
+
+/* Style for price column - make it stand out */
+td[data-dash-column="price"] .dash-cell-value {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Style for availability/status indicators */
+.status-available {
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+.status-unavailable {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* ===== Mobile Adjustments ===== */
+@media screen and (max-width: 768px) {
+  #table-view-container {
+    padding: var(--space-sm);
+  }
+  
+  #apartment-table .dash-header,
+  #apartment-table .dash-cell {
+  padding-left: 2px !important;            /* Remove all padding */
+    font-size: var(--font-sm);
+  }
+}
+
+@media screen and (max-width: 480px) {
+  #table-view-container {
+    padding: var(--space-xs);
+  }
+}
+
 
 
 /* ===== Table Container ===== */
 #table-view-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 12px; /* use var(--space-md) if available */
+  padding: var(--space-md);
   width: 100%;
   max-width: 1000px;
   box-sizing: border-box;
@@ -64,16 +242,24 @@
 #apartment-table .dash-header {
   background-color: var(--color-primary);
   color: white;
-  font-size: var(--font-sm);
+  font-size: var(--font-xs) !important; /* Reduced from --font-sm to --font-xs */
   font-weight: 600;
   text-align: left;
-  padding: 4px 6px;
+  padding-left: 2px !important;            /* Remove all padding */
   border: none;
+}
+
+/* Target all header-related elements to ensure they respond */
+#apartment-table .dash-header-cell,
+#apartment-table th,
+#apartment-table [role="columnheader"],
+#apartment-table .dash-spreadsheet-container .dash-spreadsheet-inner th {
+  font-size: var(--font-xs) !important; /* Reduced from --font-sm to --font-xs */
 }
 
 /* ===== Cell Styling ===== */
 #apartment-table .dash-cell {
-  padding: 1px 2px !important;
+  padding-left: 2px !important;            /* Remove all padding */
   font-size: var(--font-sm);
   border-bottom: 1px solid var(--color-border);
   overflow: hidden;
@@ -82,6 +268,7 @@
   min-width: 0;
   word-wrap: break-word;
 }
+
 .dash-cell.column-details .dash-cell-value {
   display: flex;
   justify-content: center;
@@ -98,16 +285,79 @@
   background-color: var(--color-primary-light);
 }
 
-/* ===== Mobile Adjustments (Keep if Needed) ===== */
-@media screen and (max-width: 768px) {
+/* ===== Responsive Typography for Breakpoints ===== */
+/* Extra small devices (small phones) */
+@media screen and (max-width: 390px) {
+  :root {
+    /* Reduce font sizes further for very small screens */
+    --font-xs: 0.5625rem;     /* 9px */
+    --font-sm: 0.6875rem;     /* 11px */
+    --font-md: 0.8125rem;     /* 13px */
+    --font-lg: 0.9375rem;     /* 15px */
+    --font-xl: 1.0625rem;     /* 17px */
+    --font-xxl: 1.125rem;     /* 18px */
+  }
+  
   #table-view-container {
+    padding: 2px;
+  }
+  
+  #apartment-table .dash-header,
+  #apartment-table .dash-header-cell,
+  #apartment-table [role="columnheader"],
+  #apartment-table th,
+  #apartment-table .dash-cell {
+    /* Minimal padding for very small screens */
+  padding-left: 2px !important;            /* Remove all padding */
+    font-size: var(--font-xs) !important; /* Force smallest font size */
+  }
+  
+  /* Make table completely fluid */
+  #apartment-table {
+    min-width: 100%;
+    width: 100%;
+  }
+  
+  /* Reduce spacing in general */
+  .card {
     padding: 8px;
   }
 }
 
-@media screen and (max-width: 480px) {
+/* Small devices (phones) */
+@media screen and (min-width: 391px) and (max-width: 480px) {
   #table-view-container {
-    padding: 6px;
+    padding: var(--space-xs);
+  }
+  
+  #apartment-table .dash-header,
+  #apartment-table .dash-header-cell,
+  #apartment-table [role="columnheader"],
+  #apartment-table th,
+  #apartment-table .dash-cell {
+    /* Further reduce padding on very small screens */
+  padding-left: 2px !important;            /* Remove all padding */
+    /* Font size is already handled by clamp() */
+  }
+  
+  /* Reduce minimum table width for very small screens */
+  #apartment-table {
+    min-width: 100%;
+  }
+}
+
+/* Medium devices (tablets) */
+@media screen and (min-width: 481px) and (max-width: 768px) {
+  #table-view-container {
+    padding: 1px 2px !important;
+  }
+}
+
+/* Large devices (desktops) */
+@media screen and (min-width: 769px) {
+  /* Optional: slightly increase padding for table cells on larger screens */
+  #apartment-table .dash-cell {
+    padding: 1px 2px !important;
   }
 }
 
@@ -119,7 +369,22 @@ td[data-dash-column="details"] {
 
 /* Optional: Remove padding and fully center the icon within the inner div */
 td[data-dash-column="details"] .dash-cell-value {
-  padding: 0 !important;
+  padding-left: 0 !important;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+/* Center content and remove padding inside the "details" column cell */
+td[data-dash-column="property_tags"] {
+  padding: 0 !important;            /* Remove all padding */
+  text-align: center !important;    /* Center text horizontally */
+}
+
+/* Optional: Remove padding and fully center the icon within the inner div */
+td[data-dash-column="property_tags"] .dash-cell-value {
+  padding-left: 0 !important;
   margin: 0 auto;
   display: flex;
   justify-content: center;
@@ -128,7 +393,11 @@ td[data-dash-column="details"] .dash-cell-value {
 }
 
 
-/* Globally reduce cell padding */
-.dash-cell {
-  padding: 1px 2px !important;
+/* Form elements with responsive typography */
+input, select, textarea {
+  font-size: var(--font-sm);
+  padding-left: 2px !important;            /* Remove all padding */
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  width: 100%;
 }

@@ -5,7 +5,8 @@ import dash
 from app.data_manager import load_apartment_details
 from app.apartment_card import create_apartment_details_card
 from dash import html
-
+import logging
+logger = logging.getLogger(__name__)
 
 def register_apartment_card_callbacks(app):
     """Register callbacks for apartment details panel."""

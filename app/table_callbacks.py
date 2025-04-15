@@ -27,7 +27,7 @@ def register_table_callbacks(app):
             df = DataManager.filter_and_sort_data(df, filters or {})
 
             # Define which columns to display
-            visible_columns = ["update_title", "address_title", "price_text", "property_tags", 'details']
+            visible_columns = ["update_title", "property_tags", "address_title", "price_text", 'details']
             numeric_columns = {
                 "distance",
                 "price_value_formatted",

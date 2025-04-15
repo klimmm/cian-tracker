@@ -28,22 +28,60 @@
 }
 
 
-/* Base pill styling */
+/* Fix spacing in all pills */
 .pill {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  white-space: nowrap;
+  line-height: 1 !important; /* Tighter line height */
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
   margin: 2px 2px;
-  box-shadow: var(--shadow-sm);
-  font-weight: 500;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-family: var(--font-family);
-  border: none;
+  display: inline-flex !important; /* Better control of content alignment */
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
 }
 
+/* Make sure all icons are properly aligned */
+.pill::before,
+.pill .icon,
+.pill .arrow {
+  display: inline-flex !important;
+  align-items: center !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+/* Specific adjustments for each pill type to maintain visual hierarchy */
+.pill--xs,
+.pill--sm,
+.pill--md {
+  line-height: 1 !important;
+}
+
+.pill--room,
+.pill--area,
+.pill--success,
+.pill--warning,
+.pill--error,
+.pill--neutral,
+.pill--primary,
+.pill--floor,
+.pill--price-change,
+.pill--distance,
+.pill--location,
+.pill--activity,
+.pill--default,
+.pill--good-deal,
+.pill--metro,
+.pill--price {
+  line-height: 1 !important;
+}
+
+/* Ensure proper emoji/icon alignment */
+.pill--location::before,
+.pill--distance:before {
+  margin-right: 2px !important;
+  line-height: 1 !important;
+}
 /* ===== RESPONSIVE PILL SIZES ===== */
 /* Very small screens (< 390px) - Extra small sizes */
 @media (max-width: 389.98px) {
@@ -75,14 +113,17 @@
   .pill--distance,
   .pill--location,
   .pill--activity,
-  .pill--location::before,
-  .pill--distance:before,
-  .pill--price-change .arrow,
-  .pill--activity .icon,
     
   .address-link {
     font-size: 7px !important;
   }
+  .pill--location::before,
+  .pill--distance:before,
+  .pill--price-change .arrow,
+  .pill--activity .icon {
+    font-size: 6px !important;
+  }
+    
 }
 
 /* Small screens (390px - 575px) - Smaller sizes */
@@ -103,14 +144,16 @@
   .pill--distance,
   .pill--location,
   .pill--activity,
-  .pill--location::before,
-  .pill--distance:before,
-  .pill--price-change .arrow,
-  .pill--activity .icon,
-
   .address-link {
     font-size: 10px !important;
   }
+  .pill--location::before,
+  .pill--distance:before,
+  .pill--price-change .arrow,
+  .pill--activity .icon {
+    font-size: 9px !important;
+  }
+    
 }
 
 /* Medium screens (576px - 767px) - Current sizes */
@@ -144,15 +187,19 @@
   .pill--distance,
   .pill--location,
   .pill--activity,
-  .pill--location::before,
-  .pill--distance:before,
-  .pill--price-change .arrow,
-  .pill--activity .icon,
     
   .address-link {
     font-size: 13px !important;
   }
-  
+  .pill--location::before,
+  .pill--distance:before,
+  .pill--price-change .arrow,
+  .pill--activity .icon {
+    font-size: 12px !important;
+  }
+
+
+    
 }
 /* Large screens (768px - 991px) - Larger sizes */
 @media (min-width: 768px) and (max-width: 991.98px) {
@@ -177,26 +224,23 @@
   .pill--success,
   .pill--warning,
   .pill--error,
-  .pill--neutral,
-  .pill--primary,    
-  .pill--floor,
-  .pill--price-change,
-  .pill--distance,
-  .pill--location,
   .pill--activity,
+  .pill--neutral,
+  .pill--primary, 
+  .pill--price-change,
+  .pill--floor,
   .address-link {
     font-size: 13px !important;
   }
   
+    
+  .pill--location::before,
+  .pill--distance:before,
   .pill--price-change .arrow,
   .pill--activity .icon {
-    font-size: 11px !important;
-  }
-  
-  .pill--location::before,
-  .pill--distance:before {
     font-size: 12px !important;
   }
+
 }
 
 /* Extra large screens (992px - 1199px) - Even larger sizes */
@@ -223,24 +267,18 @@
   .pill--warning,
   .pill--error,
   .pill--neutral,
-  .pill--primary,
-    
-  .pill--floor,
   .pill--price-change,
-  .pill--distance,
-  .pill--location,
+  .pill--primary,
   .pill--activity,
+  .pill--floor,
   .address-link {
     font-size: 15px !important;
   }
   
+  .pill--location::before,
+  .pill--distance:before,
   .pill--price-change .arrow,
   .pill--activity .icon {
-    font-size: 13px !important;
-  }
-  
-  .pill--location::before,
-  .pill--distance:before {
     font-size: 14px !important;
   }
 }
@@ -267,26 +305,20 @@
   .pill--area,
   .pill--floor,
   .pill--success,
+  .pill--price-change,
   .pill--warning,
   .pill--error,
   .pill--neutral,
   .pill--primary,
-    
-  .pill--price-change,
-  .pill--distance,
-  .pill--location,
   .pill--activity,
   .address-link {
     font-size: 17px !important;
   }
   
+  .pill--location::before,
+  .pill--distance:before,
   .pill--price-change .arrow,
   .pill--activity .icon {
-    font-size: 15px !important;
-  }
-  
-  .pill--location::before,
-  .pill--distance:before {
     font-size: 16px !important;
   }
 }
@@ -350,7 +382,7 @@
 
 .pill--price-change .arrow {
   position: relative;
-  top: -2px;
+  top: -1px;
 }
 
 /* Location pill with icon */
@@ -364,6 +396,10 @@
 }
 
 
+.pill--activity .icon {
+  position: relative;
+  top: -1px;
+}
 
 /* Price display formatting */
 td[data-dash-column="price_text"] .dash-cell-value.cell-markdown {
@@ -432,3 +468,75 @@ td[data-dash-column="price_text"] .dash-cell-value.cell-markdown > div {
     font-size: 22px !important;
   }
 }
+
+
+
+
+    /* Fix spacing in pills */
+.pill--activity,
+.pill--price-change {
+  line-height: 1 !important; /* Tighter line height */
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+  display: inline-flex !important; /* Better control of content alignment */
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Make sure the icon and arrow are properly aligned */
+.pill--activity .icon,
+.pill--price-change .arrow {
+  display: inline-flex !important;
+  align-items: center !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+
+/* Specific styles for activity and price-change pills */
+.pill--activity {
+  font-size: 11px !important;
+  padding: 1px 4px !important;
+  line-height: 1.2 !important;
+}
+
+/* Responsive adjustments for activity and price-change pills */
+/* Very small screens (< 390px) */
+@media (max-width: 389.98px) {
+  .pill--activity {
+    font-size: 7px !important;
+  }
+  
+  .pill--activity .icon,
+  .pill--price-change .arrow {
+    font-size: 7px !important;
+  }
+}
+
+/* Small screens (390px - 575px) */
+@media (min-width: 390px) and (max-width: 575.98px) {
+  .pill--activity {
+    font-size: 9px !important;
+  }
+  
+  .pill--activity .icon,
+  .pill--price-change .arrow {
+    font-size: 9px !important;
+  }
+}
+
+/* Medium screens (576px - 767px) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .pill--activity {
+    font-size: 11px !important;
+  }
+}
+
+/* Larger screens - keep smaller than other pills */
+@media (min-width: 768px) {
+  .pill--activity,
+  .pill--price-change {
+    font-size: 12px !important;
+  }
+}
+    

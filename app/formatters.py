@@ -45,15 +45,15 @@ class DateFormatter:
         last_two = minutes % 100
         # For numbers 11-14, always use the plural form "минут"
         if 11 <= last_two <= 14:
-            return "минут"
+            return "мин."
 
         last_digit = minutes % 10
         if last_digit == 1:
-            return "минута"
+            return "мин."
         elif last_digit in {2, 3, 4}:
-            return "минуты"
+            return "мин."
         else:
-            return "минут"
+            return "мин."
 
     def format_date(dt, threshold_hours=24):
         """Format date with timezone awareness."""
@@ -84,7 +84,11 @@ class DateFormatter:
         elif seconds_ago < 3600:
             minutes = int(seconds_ago // 60)
             minute_word = DateFormatter.get_minute_word(minutes)
+            
             return f"{minutes} {minute_word} назад"
+            print(f"{minutes} {minute_word} назад")
+
+            
         elif seconds_ago < 21600:  # 6 hours
             hours = int(seconds_ago // 3600)
             hour_word = "час" if hours == 1 else "часа" if 2 <= hours <= 4 else "часов"

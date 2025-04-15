@@ -33,13 +33,13 @@ SORT_BUTTONS = [
     },
     {
         "id": "btn-sort-activity",
-        "label": "Актуальность",
+        "label": "Акт.",
         "value": "activity_date_sort",
         "default_direction": "desc",
     },
     {
         "id": "btn-sort-distance",
-        "label": "Расстояние",
+        "label": "Расст.",
         "value": "distance_sort",
         "default": True,
         "default_direction": "asc",
@@ -149,10 +149,10 @@ class ButtonFactory:
 def create_filter_buttons(inline=True):
     """Create improved quick filter toggle buttons with modern styling."""
     filter_buttons = [
-        {"id": "btn-updated-today", "label": "Свежие", "variant": "default"},
+        {"id": "btn-updated-today", "label": "За сутки", "variant": "default"},
         {"id": "btn-nearest", "label": "Рядом", "variant": "default"},
         {"id": "btn-below-estimate", "label": "Ниже оценки", "variant": "default"},
-        {"id": "btn-inactive", "label": "Только активные", "variant": "default"},
+        {"id": "btn-inactive", "label": "Активные", "variant": "default", 'default': True},
     ]
 
     # Create button group using modernized components

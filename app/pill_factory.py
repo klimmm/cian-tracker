@@ -138,7 +138,7 @@ class PillFactory:
 
     # Styling for inactive pills
     INACTIVE_STYLE = {
-        "backgroundColor": "#e0e0e0",
+        "backgroundColor": "#f4f4f4",
         "color": "#757575",
         "borderColor": "#bdbdbd",
     }

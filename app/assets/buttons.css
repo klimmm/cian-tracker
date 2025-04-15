@@ -174,6 +174,7 @@
     margin-bottom: var(--space-xs);
     margin-right: 0;
     padding-left: var(--space-xs);
+    font-size: calc(var(--font-xs) * 0.9); /* Consistent scaling approach */
   }
   
   .button-group {
@@ -181,8 +182,19 @@
   }
   
   .btn {
+    padding: 2px 4px; /* Smaller padding */
+    font-size: calc(var(--font-xs) * 0.85); /* Smaller font size */
+  }
+
+  /* Make buttons take less vertical space */
+  .btn--sm {
+    padding: 2px 4px;
+    font-size: calc(var(--font-xs) * 0.85);
+  }
+
+  .btn--md {
     padding: 3px 5px;
-    font-size: var(--font-xs);
+    font-size: calc(var(--font-xs) * 0.9);
   }
 }
 
@@ -211,13 +223,31 @@
   }
   
   .dash-label {
-    width: 120px;
-    min-width: 120px;
-    font-size: 9px !important;
+    width: 100px; /* Reduced width */
+    min-width: 100px;
+    font-size: calc(var(--font-xs) * 0.9) !important; /* Consistent scaling approach */
+    margin-right: 4px; /* Reduced margin */
   }
   
   .btn {
-    padding: 4px 6px;
+    padding: 3px 5px; /* Smaller buttons */
+    font-size: calc(var(--font-xs) * 0.9);
+  }
+
+  /* Smaller button size in this breakpoint */
+  .btn--sm {
+    padding: 2px 4px;
+    font-size: calc(var(--font-xs) * 0.85);
+  }
+
+  .btn--md {
+    padding: 3px 5px;
+    font-size: calc(var(--font-xs) * 0.9);
+  }
+  
+  /* Adjust button group to allow for better spacing */
+  .button-group {
+    gap: 1px;
   }
 }
 
@@ -242,13 +272,25 @@
   .button-group-container {
     flex-direction: row;
     align-items: center;
+    padding: calc(var(--space-sm) * 0.8); /* Slightly reduced padding */
   }
   
   .dash-label {
-    width: 120px;
-    min-width: 120px;
-    font-size: 11px !important;
-      
+    width: 110px; /* Reduced width */
+    min-width: 110px;
+    font-size: calc(var(--font-xs) * 0.95) !important; /* Consistent scaling approach */
+    margin-right: 6px; /* Reduced margin */
+  }
+  
+  /* Adjusted button sizes for tablets */
+  .btn--sm {
+    padding: 3px 5px;
+    font-size: calc(var(--font-xs) * 0.9);
+  }
+
+  .btn--md {
+    padding: 4px 8px;
+    font-size: var(--font-xs);
   }
 }
 
@@ -264,8 +306,19 @@
   }
   
   .dash-label {
-    width: 140px;
-    min-width: 140px;
+    width: 130px; /* Slightly reduced from original */
+    min-width: 130px;
+  }
+  
+  /* Standard button sizes for laptops */
+  .btn--sm {
+    font-size: var(--font-xs);
+    padding: 4px 6px;
+  }
+
+  .btn--md {
+    font-size: var(--font-sm);
+    padding: 5px 9px; /* Slightly reduced */
   }
 }
 
@@ -280,4 +333,6 @@
   .button-group-pair {
     gap: var(--space-md);
   }
+  
+  /* Use original button sizes for desktop */
 }

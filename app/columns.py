@@ -1,7 +1,10 @@
 # app/columns.py
 import pandas as pd
 import logging
+import re
 from app.pill_factory import PillFactory
+from app.formatters import DateFormatter, NumberFormatter
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -176,3 +179,263 @@ class ColumnFormatter:
             return f"{address_html} {pills_html}"
         else:
             return address_html
+            
+    @staticmethod
+    def extract_title_data(df):
+        """Extract room count, area, and floor information from titles into new columns."""
+        if "title" not in df.columns:
+            return df
+
+        # Process each title row by row to avoid creating temporary columns
+        room_counts = []
+        areas = []
+        floors = []
+        total_floors_list = []
+
+        for title in df["title"]:
+            # Ensure title is a string
+            title = str(title) if title is not None else ""
+            if not title or title == "nan":
+                room_counts.append(None)
+                areas.append(None)
+                floors.append(None)
+                total_floors_list.append(None)
+                continue
+
+            # Extract room count
+            room_count = None
+            if "Студия" in title:
+                room_count = 0  # 0 represents studio
+            elif "Апартаменты-студия" in title:
+                room_count = 0  # 0 represents studio
+            else:
+                room_match = re.search(r"(\d+)-комн", title)
+                if room_match:
+                    try:
+                        room_count = int(room_match.group(1))
+                    except (ValueError, TypeError):
+                        room_count = None
+            room_counts.append(room_count)
+
+            # Extract area
+            area = None
+            area_match = re.search(r"(\d+[,.]?\d*)\s*м[г²²]?", title)
+            if area_match:
+                try:
+                    area_str = area_match.group(1).replace(",", ".")
+                    area = float(area_str)
+                except (ValueError, TypeError):
+                    area = None
+            areas.append(area)
+
+            # Extract floor info
+            floor = None
+            total_floors = None
+            floor_match = re.search(r"(\d+)/(\d+)\s*этаж", title)
+            if floor_match:
+                try:
+                    floor = int(floor_match.group(1))
+                    total_floors = int(floor_match.group(2))
+                except (ValueError, TypeError):
+                    floor = None
+                    total_floors = None
+            floors.append(floor)
+            total_floors_list.append(total_floors)
+
+        # Add extracted columns to dataframe
+        df["room_count"] = room_counts
+        df["area"] = areas
+        df["floor"] = floors
+        df["total_floors"] = total_floors_list
+
+        return df
+        
+    @staticmethod
+    def process_metrics(df):
+        """Process metrics data."""
+        df["distance_sort"] = pd.to_numeric(df["distance"], errors="coerce")
+        df["distance"] = df["distance_sort"].apply(
+            lambda x: f"{x:.2f} km" if pd.notnull(x) else ""
+        )
+        return df
+
+    @staticmethod
+    def process_dates(df, now):
+        """Process date columns."""
+        for col in ["updated_time", "unpublished_date", "activity_date"]:
+            if col in df.columns:
+                df[f"{col}_sort"] = pd.to_datetime(df[col], errors="coerce")
+                df[f"{col}_sort"] = df[f"{col}_sort"].apply(
+                    lambda x: (
+                        DateFormatter.ensure_timezone(x) if pd.notnull(x) else None
+                    )
+                )
+
+                df[col] = df[f"{col}_sort"].apply(
+                    lambda x: DateFormatter.format_date(x) if pd.notnull(x) else "--"
+                )
+        
+        return df
+
+    @staticmethod
+    def calculate_active_time(df, now):
+        """Calculate how long listings have been active."""
+        if all(col in df.columns for col in ["updated_time_sort", "status"]):
+            df["days_active_value"] = df.apply(
+                lambda r: (
+                    (now - DateFormatter.ensure_timezone(r["updated_time_sort"])).days
+                    if r["status"] == "active" and pd.notnull(r["updated_time_sort"])
+                    else (
+                        (
+                            DateFormatter.ensure_timezone(r["unpublished_date_sort"])
+                            - DateFormatter.ensure_timezone(r["updated_time_sort"])
+                        ).days
+                        if r["status"] == "non active"
+                        and pd.notnull(r["unpublished_date_sort"])
+                        and pd.notnull(r["updated_time_sort"])
+                        else None
+                    )
+                ),
+                axis=1,
+            )
+
+            # Hours for entries where days = 0
+            df["hours_active_value"] = df.apply(
+                lambda r: (
+                    int(
+                        (
+                            now - DateFormatter.ensure_timezone(r["updated_time_sort"])
+                        ).total_seconds()
+                        // 3600
+                    )
+                    if r["status"] == "active"
+                    and pd.notnull(r["updated_time_sort"])
+                    and (
+                        now - DateFormatter.ensure_timezone(r["updated_time_sort"])
+                    ).days
+                    == 0
+                    else (
+                        int(
+                            (
+                                DateFormatter.ensure_timezone(
+                                    r["unpublished_date_sort"]
+                                )
+                                - DateFormatter.ensure_timezone(r["updated_time_sort"])
+                            ).total_seconds()
+                            // 3600
+                        )
+                        if r["status"] == "non active"
+                        and pd.notnull(r["unpublished_date_sort"])
+                        and pd.notnull(r["updated_time_sort"])
+                        and (
+                            DateFormatter.ensure_timezone(r["unpublished_date_sort"])
+                            - DateFormatter.ensure_timezone(r["updated_time_sort"])
+                        ).days
+                        == 0
+                        else None
+                    )
+                ),
+                axis=1,
+            )
+
+            # Format days active
+            df["days_active"] = df.apply(
+                lambda r: (
+                    f"{int(r['hours_active_value'])} ч."
+                    if pd.notnull(r["days_active_value"])
+                    and r["days_active_value"] == 0
+                    and pd.notnull(r["hours_active_value"])
+                    else (
+                        f"{int(r['days_active_value'])} дн."
+                        if pd.notnull(r["days_active_value"])
+                        and r["days_active_value"] >= 0
+                        else "--"
+                    )
+                ),
+                axis=1,
+            )
+        
+        return df
+
+    @staticmethod
+    def process_financial_info(df):
+        """Process financial information."""
+        # Format price columns
+        for col in ["price_value", "cian_estimation_value"]:
+            if col in df.columns:
+                df[f"{col}_formatted"] = df[col].apply(
+                    lambda x: (
+                        NumberFormatter.format_number(x)
+                        if NumberFormatter.is_numeric(x)
+                        else "--"
+                    )
+                )
+
+        # Calculate price difference
+        if all(col in df.columns for col in ["price_value", "cian_estimation_value"]):
+            df["price_difference_value"] = df.apply(
+                lambda r: (
+                    int(r["cian_estimation_value"]) - int(r["price_value"])
+                    if (
+                        NumberFormatter.is_numeric(r["price_value"])
+                        and NumberFormatter.is_numeric(r["cian_estimation_value"])
+                        and not pd.isna(r["price_value"])
+                        and not pd.isna(r["cian_estimation_value"])
+                    )
+                    else 0
+                ),
+                axis=1,
+            )
+        
+        return df
+
+    @staticmethod
+    def create_display_columns(df):
+        """Create combined display columns."""
+        # Use standardized column formatters
+        if all(
+            col in df.columns for col in ["price_value_formatted", "price_change_value"]
+        ):
+            df["price_text"] = df.apply(ColumnFormatter.format_price_column, axis=1)
+
+        df["property_tags"] = df.apply(ColumnFormatter.format_property_tags, axis=1)
+
+        if "price_change_formatted" in df.columns:
+            df["price_change"] = df["price_change_formatted"]
+
+        df["update_title"] = df.apply(ColumnFormatter.format_update_title, axis=1)
+        
+        return df
+
+    @staticmethod
+    def apply_transformations(df, base_url, now):
+        """Apply all data transformations."""
+        # Extract structured data from title
+        if "title" in df.columns:
+            df = ColumnFormatter.extract_title_data(df)
+
+        # Process metrics
+        df = ColumnFormatter.process_metrics(df)
+
+        # Format address_title column
+        df["address_title"] = df.apply(
+            lambda r: ColumnFormatter.format_address_title(r, base_url), axis=1
+        )
+        
+        # Process dates
+        df = ColumnFormatter.process_dates(df, now)
+
+        # Calculate days active
+        df = ColumnFormatter.calculate_active_time(df, now)
+
+        # Combined date for sorting
+        if "updated_time_sort" in df.columns:
+            df["date_sort_combined"] = df["updated_time_sort"]
+
+        # Format financial info
+        df = ColumnFormatter.process_financial_info(df)
+
+        # Create display columns
+        df = ColumnFormatter.create_display_columns(df)
+        
+        return df

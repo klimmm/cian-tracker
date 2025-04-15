@@ -71,11 +71,12 @@ class TableFactory:
             
         # === Define fixed-width columns and their widths (in %) ===
         fixed_columns = {
-            "update_title": 18,
-            "details": 5,
-            "address_title": 34,
+            "update_title": 5,
+            "property_tags": 30,
+            
+            "details": 10,
+            "address_title": 20,
             "price_text": 15,
-            "property_tags": 28,
         }
 
         # Optional: alignment overrides
