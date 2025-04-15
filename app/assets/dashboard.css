@@ -7,17 +7,18 @@
   display: none !important;
 }
 
-/* ===== Design System Variables ===== */
+/* ===== Design System Variables with Responsive Typography ===== */
 :root {
-  /* Typography */
+  /* Typography - Fluid with clamp() */
   --font-family: 'Inter', Arial, sans-serif;
-  --font-xs: 10px;    /* Small UI elements, tags */
-  --font-sm: 12px;    /* Table content, buttons */
-  --font-md: 14px;    /* General text, form elements */
-  --font-lg: 16px;    /* Subheadings */
-  --font-xl: 18px;    /* Main headings */
+  --font-xs: clamp(0.625rem, 0.5rem + 0.5vw, 0.75rem);     /* 10px to 12px */
+  --font-sm: clamp(0.75rem, 0.65rem + 0.5vw, 0.875rem);    /* 12px to 14px */
+  --font-md: clamp(0.875rem, 0.75rem + 0.65vw, 1rem);      /* 14px to 16px */
+  --font-lg: clamp(1rem, 0.875rem + 0.65vw, 1.125rem);     /* 16px to 18px */
+  --font-xl: clamp(1.125rem, 1rem + 0.75vw, 1.375rem);     /* 18px to 22px */
+  --font-xxl: clamp(1.25rem, 1.125rem + 1vw, 1.75rem);     /* 20px to 28px for larger headers */
   
-  /* Colors */
+  /* Colors - Unchanged */
   --color-primary: #4682B4;
   --color-primary-light: #E6F0F9;
   --color-success: #2E7D32;
@@ -28,14 +29,14 @@
   --color-bg-light: #F8F9FA;
   --color-border: #E0E0E0;
   
-  /* Spacing - FIXED VALUES, not responsive */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 12px;
-  --space-lg: 16px;
-  --space-xl: 24px;
+  /* Spacing - Now responsive with clamp() */
+  --space-xs: clamp(4px, 0.5vw, 6px);
+  --space-sm: clamp(8px, 1vw, 12px);
+  --space-md: clamp(12px, 1.5vw, 16px);
+  --space-lg: clamp(16px, 2vw, 24px);
+  --space-xl: clamp(24px, 3vw, 32px);
   
-  /* UI Elements */
+  /* UI Elements - Now partially responsive */
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
@@ -43,71 +44,259 @@
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* ===== Body & Typography ===== */
+/* ===== Typography Base Classes ===== */
 body {
   font-family: var(--font-family);
-  color: var(--color-text-primary);
-  margin: 0;
-  padding: 0;
-  background-color: var(--color-bg-main);
   font-size: var(--font-md);
+  color: var(--color-text-primary);
+  line-height: 1.5;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1 {
+  font-size: var(--font-xxl);
+  margin-bottom: var(--space-lg);
+  font-weight: 700;
+}
+
+h2 {
+  font-size: var(--font-xl);
+  margin-bottom: var(--space-md);
   font-weight: 600;
-  margin-top: 0;
 }
 
-/* ===== Layout Containers ===== */
-.main-container {
-  padding: var(--space-md);
-  max-width: 100%;
-  width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
-  margin: 0 auto;
+h3 {
+  font-size: var(--font-lg);
+  margin-bottom: var(--space-md);
+  font-weight: 600;
 }
 
-.content-container {
-  width: 100%;
+p {
+  font-size: var(--font-md);
+  margin-bottom: var(--space-md);
+}
+
+/* ===== Table Container ===== */
+#table-view-container {
   max-width: 1200px;
   margin: 0 auto;
+  padding: var(--space-md);
+  width: 100%;
+  max-width: 1000px;
   box-sizing: border-box;
+  overflow-x: auto;
 }
 
-
-/* ===== Dashboard Header ===== */
-.dashboard-header {
-  font-size: var(--font-lg);
-  color: var(--color-primary);
-  margin-bottom: var(--space-md);
-  text-align: center;
-}
-
-.update-time {
-  font-style: italic;
-  font-size: var(--font-sm);
-  color: var(--color-text-secondary);
-  text-align: center;
-  margin-bottom: var(--space-md);
-  display: block;
-}
-
-
-
-/* ===== No Data Message ===== */
-.no-data-message {
-  text-align: center;
-  padding: var(--space-lg);
-  font-size: var(--font-md);
-  color: var(--color-text-secondary);
-  background-color: var(--color-bg-light);
+/* ===== Dash DataTable Styling ===== */
+#apartment-table .dash-spreadsheet-container {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-family);
+  box-shadow: var(--shadow-sm);
   border-radius: var(--radius-md);
-  margin: var(--space-md);
+  overflow: hidden;
+  max-width: 100%;
 }
 
+/* ===== Header Styling ===== */
+#apartment-table .dash-header {
+  background-color: var(--color-primary);
+  color: white;
+  font-size: var(--font-xs) !important; /* Reduced from --font-sm to --font-xs */
+  font-weight: 600;
+  text-align: left;
+  padding: var(--space-xs) var(--space-sm);
+  border: none;
+}
 
-/* ===== Utility Class ===== */
-body.no-scroll {
+/* Target all header-related elements to ensure they respond */
+#apartment-table .dash-header-cell,
+#apartment-table th,
+#apartment-table [role="columnheader"],
+#apartment-table .dash-spreadsheet-container .dash-spreadsheet-inner th {
+  font-size: var(--font-xs) !important; /* Reduced from --font-sm to --font-xs */
+}
+
+/* ===== Cell Styling ===== */
+#apartment-table .dash-cell {
+  padding: var(--space-xs) var(--space-sm) !important;
+  font-size: var(--font-sm);
+  border-bottom: 1px solid var(--color-border);
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  min-width: 0;
+  word-wrap: break-word;
+}
+
+.dash-cell.column-details .dash-cell-value {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ===== Zebra Striping ===== */
+#apartment-table .dash-spreadsheet-container tr:nth-child(even) .dash-cell {
+  background-color: var(--color-bg-light);
+}
+
+/* ===== Hover State ===== */
+#apartment-table .dash-spreadsheet-container tr:hover .dash-cell {
+  background-color: var(--color-primary-light);
+}
+
+/* ===== Responsive Typography for Breakpoints ===== */
+/* Extra small devices (small phones) */
+@media screen and (max-width: 390px) {
+  :root {
+    /* Reduce font sizes further for very small screens */
+    --font-xs: 0.5625rem;     /* 9px */
+    --font-sm: 0.6875rem;     /* 11px */
+    --font-md: 0.8125rem;     /* 13px */
+    --font-lg: 0.9375rem;     /* 15px */
+    --font-xl: 1.0625rem;     /* 17px */
+    --font-xxl: 1.125rem;     /* 18px */
+  }
+  
+  #table-view-container {
+    padding: 2px;
+  }
+  
+  #apartment-table .dash-header,
+  #apartment-table .dash-header-cell,
+  #apartment-table [role="columnheader"],
+  #apartment-table th,
+  #apartment-table .dash-cell {
+    /* Minimal padding for very small screens */
+    padding: 1px 2px !important;
+    font-size: var(--font-xs) !important; /* Force smallest font size */
+  }
+  
+  /* Make table completely fluid */
+  #apartment-table {
+    min-width: 100%;
+    width: 100%;
+  }
+  
+  /* Reduce spacing in general */
+  .card {
+    padding: 8px;
+  }
+}
+
+/* Small devices (phones) */
+@media screen and (min-width: 391px) and (max-width: 480px) {
+  #table-view-container {
+    padding: var(--space-xs);
+  }
+  
+  #apartment-table .dash-header,
+  #apartment-table .dash-header-cell,
+  #apartment-table [role="columnheader"],
+  #apartment-table th,
+  #apartment-table .dash-cell {
+    /* Further reduce padding on very small screens */
+    padding: 2px 4px !important;
+    /* Font size is already handled by clamp() */
+  }
+  
+  /* Reduce minimum table width for very small screens */
+  #apartment-table {
+    min-width: 100%;
+  }
+}
+
+/* Medium devices (tablets) */
+@media screen and (min-width: 481px) and (max-width: 768px) {
+  #table-view-container {
+    padding: var(--space-sm);
+  }
+}
+
+/* Large devices (desktops) */
+@media screen and (min-width: 769px) {
+  /* Optional: slightly increase padding for table cells on larger screens */
+  #apartment-table .dash-cell {
+    padding: var(--space-sm) !important;
+  }
+}
+
+/* Center content and remove padding inside the "details" column cell */
+td[data-dash-column="details"] {
+  padding: 0 !important;            /* Remove all padding */
+  text-align: center !important;    /* Center text horizontally */
+}
+
+/* Optional: Remove padding and fully center the icon within the inner div */
+td[data-dash-column="details"] .dash-cell-value {
+  padding: 0 !important;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+/* Custom button styling with responsive typography */
+.btn {
+  font-size: var(--font-sm);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #3a6d96; /* Slightly darker shade of primary */
+}
+
+/* Form elements with responsive typography */
+input, select, textarea {
+  font-size: var(--font-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  width: 100%;
+}
+
+/* Card components with responsive spacing and typography */
+.card {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.card-title {
+  font-size: var(--font-lg);
+  margin-bottom: var(--space-sm);
+  font-weight: 600;
+}
+
+.card-content {
+  font-size: var(--font-md);
+}
+
+/* Utility classes for responsive typography */
+.text-xs { font-size: var(--font-xs); }
+.text-sm { font-size: var(--font-sm); }
+.text-md { font-size: var(--font-md); }
+.text-lg { font-size: var(--font-lg); }
+.text-xl { font-size: var(--font-xl); }
+.text-xxl { font-size: var(--font-xxl); }
+
+/* Font weight utility classes */
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+/* Globally reduce cell padding for data-dense tables */
+.dash-cell {
+  padding: var(--space-xs) var(--space-sm) !important;
 }

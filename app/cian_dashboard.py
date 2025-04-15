@@ -4,7 +4,7 @@ import dash
 import logging
 from pathlib import Path
 from typing import Optional, Union
-
+from dash import Input, Output
 from app.layout import create_app_layout
 from app.dashboard_callbacks import register_all_callbacks
 from app.app_config import AppConfig
@@ -45,7 +45,7 @@ def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
         
         # Register callbacks
         register_all_callbacks(app)
-        
+        #inject_responsive_scripts(app)
         logger.info("Application initialized successfully")
         return app
         
@@ -58,6 +58,8 @@ def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
             dash.html.Pre(str(e), style={"backgroundColor": "#f8f8f8", "padding": "10px"})
         ])
         return app
+
+
 
 
 def _prepare_assets_directory() -> str:

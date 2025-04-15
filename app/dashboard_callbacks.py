@@ -6,7 +6,7 @@ import logging
 import pandas as pd
 from app.data_manager import DataManager, load_apartment_details
 from app.apartment_card import create_apartment_details_card
-from app.config import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS
+from app.button_factory import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS
 from dash import dash_table, html
 from app.config import CONFIG, COLUMN_STYLES, HEADER_STYLES
 from app.components import TableFactory

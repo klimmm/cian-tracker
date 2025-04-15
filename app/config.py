@@ -53,11 +53,11 @@ CONFIG = {
             "offer_link": "Ссылка",
             "status": "Статус",
             "unpublished_date": "Снято",
-            "address_title": "Квартира",
-            "update_title": "Обновл.",
+            "address_title": "Адрес",
+            "update_title": "Обновлено",
             "neighborhood": "Район",
             "price_text": "Цена",
-            "property_tags": "Пешком",
+            "property_tags": "Квартира",
             "activity_date": "Посл. активность",
             "days_active": "С обновления",
         },
@@ -153,45 +153,3 @@ COLUMN_STYLES = [
 # Using CSS for header styling instead
 HEADER_STYLES = []
 
-# Button definitions
-PRICE_BUTTONS = [
-    {"id": "btn-price-60k", "label": "65K", "value": 65000},
-    {"id": "btn-price-70k", "label": "75K", "value": 75000},
-    {"id": "btn-price-80k", "label": "85K", "value": 85000, "default": True},
-    {"id": "btn-price-90k-plus", "label": "любая", "value": float("inf")},
-]
-
-DISTANCE_BUTTONS = [
-    {"id": "btn-dist-2km", "label": "2", "value": 2.0},
-    {"id": "btn-dist-3km", "label": "3", "value": 3.0, "default": True},
-    {"id": "btn-dist-5km", "label": "5", "value": 5.0},
-    {"id": "btn-dist-5km-plus", "label": "любое", "value": float("inf")},
-]
-
-SORT_BUTTONS = [
-    {
-        "id": "btn-sort-price",
-        "label": "Цена",
-        "value": "price_value",
-        "default_direction": "asc",
-    },
-    {
-        "id": "btn-sort-time",
-        "label": "Дата",
-        "value": "updated_time_sort",
-        "default_direction": "desc",
-    },
-    {
-        "id": "btn-sort-activity",
-        "label": "Актуальность",
-        "value": "activity_date_sort",
-        "default_direction": "desc",
-    },
-    {
-        "id": "btn-sort-distance",
-        "label": "Расстояние",
-        "value": "distance_sort",
-        "default": True,
-        "default_direction": "asc",
-    },
-]

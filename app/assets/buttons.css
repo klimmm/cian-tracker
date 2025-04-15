@@ -11,16 +11,29 @@
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-sm);
+  transition: all 0.15s ease-in-out;
 }
 
 .btn--sm {
   font-size: var(--font-xs);
-  padding: 4px 8px;
+  padding: 4px 6px;
 }
 
 .btn--md {
   font-size: var(--font-sm);
-  padding: 6px 12px;
+  padding: 6px 10px;
+}
+
+.dash-label {
+  font-size: var(--font-sm);
+  width: 150px;
+  min-width: 150px;
+  margin-right: 8px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 
 .btn--default {
@@ -47,16 +60,19 @@
   border-color: var(--color-warning);
 }
 
+/* Enhanced active button state for better visibility */
 .btn--active {
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
   font-weight: 600;
+  background-color: rgba(0,0,0,0.05);
+  transform: translateY(1px);
+  border-width: 2px;
 }
 
 /* ===== Button Group ===== */
 .button-group {
   display: flex;
-  gap: 4px;
-  width: 100%;
+  gap: 2px;
   flex-wrap: wrap;
 }
 
@@ -72,7 +88,7 @@
 
 .button-group-container {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   margin: 0;
   padding: var(--space-sm);
   background-color: var(--color-bg-main);
@@ -80,29 +96,23 @@
   width: 100%;
   max-width: 100%;
   box-shadow: var(--shadow-sm);
-}
-
-.button-group-container .dash-label {
-  margin-bottom: var(--space-sm);
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  width: auto;
-  min-width: auto;
-  display: block;
-  white-space: normal;
+  align-items: center;
+  flex-wrap: nowrap;
 }
 
 /* ===== Controls Container ===== */
 .controls-container {
+  margin: 0 auto var(--space-sm); /* top: 0, auto horizontally, bottom spacing */
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-lg);
-  margin-bottom: var(--space-xl);
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
   padding: var(--space-md);
   background-color: var(--color-bg-light);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   width: 100%;
+  max-width: 1000px;
   box-sizing: border-box;
 }
 
@@ -113,14 +123,161 @@
   width: 100%;
 }
 
+/* New class for button group pairs */
+.button-group-pair {
+  display: flex;
+  gap: var(--space-md);
+  width: 100%;
+  justify-content: space-between;
+}
+
+.button-group-pair > .button-group-container {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 /* Responsive adjustment for controls */
-@media screen and (max-width: 768px) {
+/* Extra small devices (phones, 390px and down) */
+@media screen and (max-width: 390px) {
   .controls-container {
     flex-direction: column;
-    padding: var(--space-sm);
+    padding: var(--space-xs);
+    gap: var(--space-xs);
   }
   
   .controls-row {
     flex-direction: column;
+    gap: var(--space-xs);
+  }
+  
+  .button-group-pair {
+    flex-direction: column;
+    gap: var(--space-xs);
+    width: 100%;
+  }
+  
+  .button-group-pair > .button-group-container {
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .button-group-container {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    padding: var(--space-xs);
+  }
+  
+  .dash-label {
+    width: 100%;
+    min-width: 100%;
+    margin-bottom: var(--space-xs);
+    margin-right: 0;
+    padding-left: var(--space-xs);
+  }
+  
+  .button-group {
+    width: 100%;
+  }
+  
+  .btn {
+    padding: 3px 5px;
+    font-size: var(--font-xs);
+  }
+}
+
+/* Small devices (large phones, 391px to 576px) */
+@media screen and (min-width: 391px) and (max-width: 576px) {
+  .controls-container {
+    padding: var(--space-xs);
+    gap: var(--space-xs);
+  }
+  
+  .controls-row {
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+  
+  .button-group-pair {
+    flex-direction: column;
+    gap: var(--space-xs);
+    width: 100%;
+  }
+  
+  .button-group-container {
+    flex-direction: row;
+    align-items: center;
+    padding: var(--space-xs);
+  }
+  
+  .dash-label {
+    width: 120px;
+    min-width: 120px;
+    font-size: 9px !important;
+  }
+  
+  .btn {
+    padding: 4px 6px;
+  }
+}
+
+/* Medium devices (tablets, 577px to 768px) */
+@media screen and (min-width: 577px) and (max-width: 768px) {
+  .controls-container {
+    padding: var(--space-sm);
+    gap: var(--space-sm);
+  }
+  
+  .controls-row {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+  
+  .button-group-pair {
+    flex-direction: column;
+    gap: var(--space-sm);
+    width: 100%;
+  }
+  
+  .button-group-container {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .dash-label {
+    width: 120px;
+    min-width: 120px;
+    font-size: 9px !important;
+      
+  }
+}
+
+/* Large devices (laptops, 769px to 1200px) */
+@media screen and (min-width: 769px) and (max-width: 1200px) {
+  .controls-container {
+    padding: var(--space-md);
+    gap: var(--space-md);
+  }
+  
+  .button-group-pair {
+    gap: var(--space-sm);
+  }
+  
+  .dash-label {
+    width: 140px;
+    min-width: 140px;
+  }
+}
+
+/* Extra large devices (desktops, 1201px and up) */
+@media screen and (min-width: 1201px) {
+  .controls-container {
+    padding: var(--space-md);
+    max-width: 1200px;
+    margin: 0 auto var(--space-md);
+  }
+  
+  .button-group-pair {
+    gap: var(--space-md);
   }
 }

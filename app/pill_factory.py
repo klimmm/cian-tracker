@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class PillFactory:
-    """Factory for creating consistent pill components with unified sizing"""
+    """Factory for creating consistent pill components with centralized color logic"""
 
     # Configuration for special pill types
     PRICE_PILL_CONFIG = {"default": {"variant": "primary"}}
@@ -25,126 +25,76 @@ class PillFactory:
     DISTANCE_PILL_CONFIG = {"variant": "neutral"}
     GOOD_PRICE_PILL_CONFIG = {"variant": "success", "text": "хорошая цена"}
     CIAN_ESTIMATE_PILL_CONFIG = {"variant": "neutral", "text_format": "оценка: {}"}
-
-    PRICE_COMPARISON_CONFIG = {
-        "equal": {"variant": "neutral", "text": "Соответствует оценке ЦИАН"},
-        "lower": {"variant": "success", "text_format": "На {}% ниже оценки ЦИАН"},
-        "higher": {"variant": "error", "text_format": "На {}% выше оценки ЦИАН"},
+    
+    
+    ROOM_CONFIG = {
+        0: {"variant": "warning", "custom_class": "pill--room", "text": "студия"},
+        1: {"variant": "neutral", "custom_class": "pill--room", "text": "1-комн."},
+        2: {"variant": "success", "custom_class": "pill--room", "text": "2-комн."},
+        3: {"variant": "success", "custom_class": "pill--room", "text": "3-комн."},
+        "default": {"variant": "error", "custom_class": "pill--room", "text_format": "{}-комн."}
     }
-
+    
+    AREA_CONFIG = {
+        "extra_small": {"variant": "error", "custom_class": "pill--area", "max": 16},
+        "very_small": {"variant": "warning", "custom_class": "pill--area", "max": 21},
+        "small": {"variant": "neutral", "custom_class": "pill--area", "max": 34},
+        "medium_small": {"variant": "primary", "custom_class": "pill--area", "max": 50},
+        "medium": {"variant": "success", "custom_class": "pill--area", "max": 70},
+        "medium_large": {"variant": "warning", "custom_class": "pill--area", "max": 100},
+        "large": {"variant": "error", "custom_class": "pill--area"}
+    }
+    
+    FLOOR_CONFIG = {
+        "first": {"variant": "warning", "custom_class": "pill--floor"},
+        "low": {"variant": "primary", "custom_class": "pill--floor"},  # New tier for floors 2-5
+        "middle": {"variant": "neutral", "custom_class": "pill--floor"},
+        "top": {"variant": "warning", "custom_class": "pill--floor"}
+    }
+    
     WALKING_TIME_CONFIG = {
-        "close": {
-            "variant": "success",
-            "custom_class": "pill--walk",
-            "threshold_minutes": 12,
-        },
-        "medium": {
-            "variant": "warning",
-            "custom_class": "pill--walk",
-            "threshold_minutes": 20,
-        },
-        "far": {"variant": "error", "custom_class": "pill--walk"},
-    }
+        "very_close": {"variant": "success", "custom_class": "pill--distance", "max_minutes": 12},
+        "close": {"variant": "primary", "custom_class": "pill--distance", "max_minutes": 20},
+        "medium": {"variant": "neutral", "custom_class": "pill--distance", "max_minutes": 35},  # Changed to neutral
 
-    DAYS_ACTIVE_CONFIG = {
-        "new": {"variant": "success", "custom_class": "pill--new", "threshold_days": 0},
-        "recent": {
-            "variant": "primary",
-            "custom_class": "pill--recent",
-            "threshold_days": 3,
-        },
-        "medium": {
-            "variant": "warning",
-            "custom_class": "pill--medium",
-            "threshold_days": 14,
-        },
-        "old": {"variant": "error", "custom_class": "pill--old"},
-        "inactive": {"variant": "neutral", "custom_class": "pill--inactive"},
+        
+        "far": {"variant": "error", "custom_class": "pill--distance"}
     }
-
+    
     PRICE_CHANGE_CONFIG = {
         "up": {"variant": "error", "custom_class": "pill--price-change", "arrow": "↑"},
-        "down": {
-            "variant": "success",
-            "custom_class": "pill--price-change",
-            "arrow": "↓",
-        },
+        "down": {"variant": "success", "custom_class": "pill--price-change", "arrow": "↓"}
     }
-
+    
     NEIGHBORHOOD_CONFIG = {
-        "special_neighborhoods": {
-            "р-н Хамовники": {
-                "variant": "primary",
-                "custom_class": "pill--neighborhood",
-            },
-            "р-н Арбат": {"variant": "success", "custom_class": "pill--neighborhood"},
+        "special": {
+            "р-н Хамовники": {"variant": "success", "custom_class": "pill--location"},
+            "р-н Арбат": {"variant": "primary", "custom_class": "pill--location"}
         },
-        "other": {"variant": "neutral", "custom_class": "pill--neighborhood"},
+        "default": {"variant": "neutral", "custom_class": "pill--location"}
     }
-
+    
     ACTIVITY_CONFIG = {
-        "active": {
-            "variant": "primary",
-            "custom_class": "pill--activity",
-            "icon": "🔄",
-        },
-        "inactive": {
-            "variant": "neutral",
-            "custom_class": "pill--activity",
-            "icon": "📦",
+        "active": {"variant": "primary", "custom_class": "pill--activity", "icon": "🔄"},
+        "inactive": {"variant": "neutral", "custom_class": "pill--activity", "icon": "📦"}
+    }
+    
+    TIME_CONFIG = {"variant": "neutral", "custom_class": "pill--time"}
+
+    # Centralized configuration for pill styling
+    PRICE_CONFIG = {
+        "tiers": {
+            "low": {"variant": "success", "custom_class": "pill--price", "max_value": 60000},
+            "medium": {"variant": "primary", "custom_class": "pill--price", "max_value": 75000},
+            "high": {"variant": "neutral", "custom_class": "pill--price"}
         },
     }
-
-    TIME_PILL_CONFIG = {"variant": "neutral"}
-
-    @classmethod
-    def create_pill(cls, text, variant="default", custom_style=None, custom_class=None):
-        """Create a pill component with standardized sizing
-
-        Args:
-            text (str): The text to display in the pill
-            variant (str): Semantic variant (default, primary, success, warning, error, neutral)
-            custom_style (dict): Additional custom styles to apply
-            custom_class (str): Additional CSS class to apply
-
-        Returns:
-            dash.html.Div: A styled pill component
-        """
-        if not text:
-            return None
-
-        # Build class name based on variant only
-        class_name = f"pill pill--{variant}"
-
-        # Add custom class if provided
-        if custom_class:
-            class_name += f" {custom_class}"
-
-        # Keep only truly dynamic styles, if any
-        dynamic_style = custom_style or {}
-
-        return html.Div(text, style=dynamic_style, className=class_name)
-
-    @classmethod
-    def create_price_pill(cls, price_value):
-        """Create a specifically styled price pill"""
-        config = cls.PRICE_PILL_CONFIG["default"]
-        return cls.create_pill(price_value, variant=config["variant"])
-
-    @classmethod
-    def create_price_history_pill(cls, date, price):
-        """Create a price history pill"""
-        config = cls.PRICE_HISTORY_PILL_CONFIG
-        text = f"{date}: {price}"
-        return cls.create_pill(text, variant=config["variant"])
-
-    @classmethod
-    def create_floor_pill(cls, floor, total_floors=None):
-        """Create a floor information pill"""
-        config = cls.FLOOR_PILL_CONFIG
-        text = f"Этаж: {floor}" if not total_floors else f"Этаж: {floor}/{total_floors}"
-        return cls.create_pill(text, variant=config["variant"])
-
+    
+    CIAN_ESTIMATE_CONFIG = {
+        "variant": "neutral",
+        "custom_class": "pill--price",
+        "text_format": "оценка: {}"
+    }
     @classmethod
     def create_property_feature_pill(cls, label, value, feature_type="apartment"):
         """Create a property feature pill with the correct styling based on type"""
@@ -165,7 +115,165 @@ class PillFactory:
         """Create a rental term pill"""
         config = cls.RENTAL_TERM_PILL_CONFIG
         text = f"{label}: {value}"
-        return cls.create_pill(text, variant=config["variant"])
+        return cls.create_pill(text, variant=config["variant"])    
+    @classmethod
+    def create_price_pill(cls, price_value, is_good_price=False):
+        """Create a price pill with centralized styling logic based on price tiers."""
+        # Extract the numeric value for tier determination
+        numeric_value = cls._extract_numeric_value(price_value)
+        
+        # Determine price tier (low/medium/high)
+        config = cls.PRICE_CONFIG["tiers"]["high"]  # Default to high
+        if numeric_value is not None:
+            for tier_name, tier_config in cls.PRICE_CONFIG["tiers"].items():
+                if "max_value" in tier_config and numeric_value <= tier_config["max_value"]:
+                    config = tier_config
+                    break
+        
+        # Start with the base custom class
+        custom_class = config["custom_class"]
+        
+        # If it's a good deal, just add the good-deal class
+        if is_good_price:
+            custom_class += " pill--good-deal"
+        
+        # Use the same variant based on price tier
+        return cls.create_pill(
+            price_value, 
+            variant=config["variant"], 
+            custom_class=custom_class
+        )
+
+
+    @classmethod
+    def create_price_history_pill(cls, date, price):
+        """Create a price history pill"""
+        config = cls.PRICE_HISTORY_PILL_CONFIG
+        text = f"{date}: {price}"
+        return cls.create_pill(text, variant=config["variant"])        
+    @staticmethod
+    def _extract_numeric_value(price_string):
+        """Extract numeric value from a price string."""
+        if not price_string:
+            return None
+            
+        try:
+            # Remove non-numeric characters except decimal points
+            numeric_str = re.sub(r'[^\d.]', '', str(price_string))
+            if numeric_str:
+                return float(numeric_str)
+            return None
+        except (ValueError, TypeError):
+            return None
+
+    @classmethod
+    def create_cian_estimate_pill(cls, estimate):
+        """Create a CIAN estimate pill with centralized styling."""
+        config = cls.CIAN_ESTIMATE_CONFIG
+        text = config["text_format"].format(estimate)
+        return cls.create_pill(
+            text, 
+            variant=config["variant"], 
+            custom_class=config["custom_class"]
+        )
+
+    @classmethod
+    def create_room_pill(cls, room_count):
+        """Create a room pill with centralized styling logic."""
+        if room_count is None:
+            return None
+        
+        # Try to ensure room_count is an integer
+        try:
+            room_count = int(float(room_count))
+        except (ValueError, TypeError):
+            # If conversion fails, use default
+            room_count = 0
+            
+        # Get configuration based on room count
+        config = cls.ROOM_CONFIG.get(room_count, cls.ROOM_CONFIG["default"])
+        
+        # Determine text
+        if "text" in config:
+            text = config["text"]
+        else:
+            text = config["text_format"].format(room_count)
+            
+        return cls.create_pill(
+            text, 
+            variant=config["variant"], 
+            custom_class=config["custom_class"]
+        )
+
+    @classmethod
+    def create_area_pill(cls, area):
+        """Create an area pill with centralized styling logic."""
+        if area is None:
+            return None
+            
+        # Try to ensure area is a number
+        try:
+            area_value = float(area)
+        except (ValueError, TypeError):
+            # If conversion fails, use default
+            area_value = 0
+            
+        # Determine area category
+        config = cls.AREA_CONFIG["large"]  # Default to large
+        for category, category_config in cls.AREA_CONFIG.items():
+            if "max" in category_config and area_value < category_config["max"]:
+                config = category_config
+                break
+                
+        text = f"{area} м²"
+        return cls.create_pill(
+            text, 
+            variant=config["variant"], 
+            custom_class=config["custom_class"]
+        )
+
+    @classmethod
+    def create_floor_pill(cls, floor, total_floors=None):
+        """Create a floor pill with centralized styling logic including the new 2-5 tier."""
+        if floor is None:
+            return None
+            
+        # Try to convert values to integers
+        try:
+            floor_num = int(float(floor))
+            total_floors_num = int(float(total_floors)) if total_floors is not None else None
+        except (ValueError, TypeError):
+            # If conversion fails, still try to display something
+            floor_num = floor
+            total_floors_num = total_floors
+            
+        # Determine configuration
+        if total_floors_num is not None:
+            if floor_num == 1:
+                config = cls.FLOOR_CONFIG["first"]
+            elif floor_num == total_floors_num:
+                config = cls.FLOOR_CONFIG["top"]
+            elif 2 <= floor_num <= 5:
+                config = cls.FLOOR_CONFIG["low"]  # New tier for floors 2-5
+            else:
+                config = cls.FLOOR_CONFIG["middle"]
+        else:
+            # If total_floors is not available, use floor number to determine tier
+            if floor_num == 1:
+                config = cls.FLOOR_CONFIG["first"]
+            elif 2 <= floor_num <= 5:
+                config = cls.FLOOR_CONFIG["low"]
+            else:
+                config = cls.FLOOR_CONFIG["middle"]
+            
+        # Format text
+        text = f"{floor_num}" if total_floors is None else f"{floor_num}/{total_floors_num} эт."
+        
+        return cls.create_pill(
+            text, 
+            variant=config["variant"], 
+            custom_class=config["custom_class"]
+        )
 
     @classmethod
     def create_distance_pill(cls, distance_text):
@@ -174,128 +282,123 @@ class PillFactory:
         return cls.create_pill(distance_text, variant=config["variant"])
 
     @classmethod
-    def create_good_price_pill(cls):
-        """Create a 'good price' indicator pill"""
-        config = cls.GOOD_PRICE_PILL_CONFIG
-        return cls.create_pill(config["text"], variant=config["variant"])
+    def create_walking_time_pill(cls, distance_value):
+        """Create walking time pill with centralized styling logic."""
+        if distance_value is None or pd.isna(distance_value):
+            return None
+            
+        # Try to ensure distance is a number
+        try:
+            distance = float(distance_value)
+        except (ValueError, TypeError):
+            # If conversion fails, return nothing
+            return None
+
+        # Calculate walking time (5 km/h)
+        walking_minutes = (distance / 5) * 60
+
+        # Format time text
+        if walking_minutes < 60:
+            time_text = f"{int(walking_minutes)} мин."
+        else:
+            hours = int(walking_minutes // 60)
+            minutes = int(walking_minutes % 60)
+            time_text = f"{hours}ч{minutes}м" if minutes > 0 else f"{hours}ч"
+
+        # Determine configuration based on walking time
+        # Determine configuration based on walking time
+        if walking_minutes < cls.WALKING_TIME_CONFIG["very_close"]["max_minutes"]:
+            config = cls.WALKING_TIME_CONFIG["very_close"]
+        
+        elif walking_minutes < cls.WALKING_TIME_CONFIG["close"]["max_minutes"]:
+            config = cls.WALKING_TIME_CONFIG["close"]
+        elif walking_minutes < cls.WALKING_TIME_CONFIG["medium"]["max_minutes"]:
+            config = cls.WALKING_TIME_CONFIG["medium"]
+        else:
+            config = cls.WALKING_TIME_CONFIG["far"]
+
+        return cls.create_pill(
+            time_text, 
+            variant=config["variant"], 
+            custom_class=config["custom_class"]
+        )
 
     @classmethod
-    def create_cian_estimate_pill(cls, estimate):
-        """Create a CIAN estimate pill"""
-        config = cls.CIAN_ESTIMATE_PILL_CONFIG
-        text = config["text_format"].format(estimate)
-        return cls.create_pill(text, variant=config["variant"])
-
-    @classmethod
-    def create_time_pill(cls, time_value):
-        """Create a time display pill"""
-        config = cls.TIME_PILL_CONFIG
-        return cls.create_pill(time_value, variant=config["variant"])
-
-    @classmethod
-    def create_price_comparison(cls, price, estimate):
-        """Create a price comparison pill showing percentage difference"""
-        if not price or not estimate:
+    def create_price_change_pill(cls, value):
+        """Create price change pill with centralized styling logic."""
+        if not value or pd.isna(value) or value == 0 or value == "new":
             return None
 
         try:
-            price_val = int(price)
-            est_val = int(estimate)
-            diff = price_val - est_val
-            percent = round((diff / est_val) * 100)
+            value = float(value)
+            if abs(value) < 1:
+                return None
 
-            if diff == 0:
-                config = cls.PRICE_COMPARISON_CONFIG["equal"]
-                return cls.create_pill(config["text"], config["variant"])
-            elif diff < 0:
-                config = cls.PRICE_COMPARISON_CONFIG["lower"]
-                return cls.create_pill(
-                    config["text_format"].format(abs(percent)), config["variant"]
-                )
-            else:
-                config = cls.PRICE_COMPARISON_CONFIG["higher"]
-                return cls.create_pill(
-                    config["text_format"].format(percent), config["variant"]
-                )
-        except Exception as e:
-            logger.error(f"Price comparison error: {e}")
+            # Determine configuration based on direction
+            config = cls.PRICE_CHANGE_CONFIG["down"] if value < 0 else cls.PRICE_CHANGE_CONFIG["up"]
+            
+            arrow_span = html.Span(config["arrow"], className="arrow")
+            display = f"{NumberFormatter.format_number(abs(value))}"
+            
+            return cls.create_pill(
+                [arrow_span, f" {display}"],
+                variant=config["variant"],
+                custom_class=config["custom_class"]
+            )
+
+        except:
             return None
 
-    @staticmethod
-    def to_html_string(component):
-        """Convert a Dash HTML component to a raw HTML string recursively."""
-        if component is None:
-            return ""
+    @classmethod
+    def create_neighborhood_pill(cls, neighborhood):
+        """Create neighborhood pill with centralized styling logic."""
+        if not neighborhood or neighborhood == "nan" or neighborhood == "None":
+            return None
 
-        if not isinstance(component, Component):
-            return str(component)
+        # Check if it's a special neighborhood
+        for special_name, config in cls.NEIGHBORHOOD_CONFIG["special"].items():
+            if special_name in neighborhood:
+                return cls.create_pill(
+                    neighborhood,
+                    variant=config["variant"],
+                    custom_class=config["custom_class"]
+                )
 
-        tag = component.__class__.__name__.lower()
-        class_attr = getattr(component, "className", "")
-        style = getattr(component, "style", {})
-
-        style_str = (
-            "; ".join(
-                f"{re.sub(r'(?<!^)(?=[A-Z])', '-', k).lower()}: {v}"
-                for k, v in style.items()
-            )
-            if style
-            else ""
+        # Default to "other" config
+        config = cls.NEIGHBORHOOD_CONFIG["default"]
+        return cls.create_pill(
+            neighborhood, 
+            variant=config["variant"], 
+            custom_class=config["custom_class"]
         )
 
-        children = getattr(component, "children", "")
-        if isinstance(children, list):
-            inner = "".join(PillFactory.to_html_string(child) for child in children)
-        else:
-            inner = PillFactory.to_html_string(children)
+    @classmethod
+    def create_activity_date_pill(cls, activity_date, status="active"):
+        """Create activity date pill with centralized styling logic."""
+        if not activity_date or pd.isna(activity_date):
+            return None
 
-        return f'<{tag} class="{class_attr}" style="{style_str}">{inner}</{tag}>'
+        # Choose configuration based on status
+        config = cls.ACTIVITY_CONFIG["active"] if status == "active" else cls.ACTIVITY_CONFIG["inactive"]
+        
+        # Create pill with icon prefix
+        activity_text = f"{config['icon']} {activity_date}"
+        
+        return cls.create_pill(
+            activity_text,
+            variant=config["variant"],
+            custom_class=config["custom_class"]
+        )
 
     @classmethod
-    def create_pill_container(
-        cls, pills, wrap=False, align=None, custom_style=None, return_as_html=False
-    ):
-        """Create a container for multiple pills with flexible layout.
-
-        Args:
-            pills (list): List of pill components.
-            wrap (bool): Whether to allow wrapping of pills.
-            align (str): Optional align-items setting.
-            custom_style (dict): Additional styles to apply to the container.
-            return_as_html (bool): If True, returns HTML string instead of component.
-
-        Returns:
-            dash.html.Div or str: A Dash component or HTML string.
-        """
-        if not pills:
-            return "" if return_as_html else None
-
-        # Filter out None pills
-        pills = [pill for pill in pills if pill is not None]
-        if not pills:
-            return "" if return_as_html else None
-
-        # Build container style
-        style = {
-            "display": "flex",
-            "flexWrap": "wrap" if wrap else "nowrap",
-            "gap": "2px",
-        }
-
-        if align:
-            style["alignItems"] = align
-
-        if custom_style:
-            style.update(custom_style)
-
-        container = html.Div(pills, style=style)
-
-        if return_as_html:
-            return cls.to_html_string(container)
-
-        return container
-
-    # --- Specialized pill types ---
+    def create_time_pill(cls, time_value):
+        """Create a time display pill with centralized styling."""
+        config = cls.TIME_CONFIG
+        return cls.create_pill(
+            time_value, 
+            variant=config["variant"], 
+            custom_class=config["custom_class"]
+        )
 
     @classmethod
     def create_metro_pill(cls, metro_station):
@@ -333,135 +436,82 @@ class PillFactory:
         return cls.create_pill(clean_station, "metro", custom_styles)
 
     @classmethod
-    def create_walking_time_pill(cls, distance_value):
-        """Create walking time pill based on distance."""
-        if distance_value is None or pd.isna(distance_value):
+    def create_pill(cls, text, variant="default", custom_style=None, custom_class=None):
+        """Create a pill component with standardized styling."""
+        if not text:
             return None
 
-        # Calculate walking time (5 km/h)
-        walking_minutes = (distance_value / 5) * 60
+        # Build class name based on variant
+        class_name = f"pill pill--{variant}"
 
-        # Format time text
-        if walking_minutes < 60:
-            time_text = f"{int(walking_minutes)}м"
-        else:
-            hours = int(walking_minutes // 60)
-            minutes = int(walking_minutes % 60)
-            time_text = f"{hours}ч{minutes}м" if minutes > 0 else f"{hours}ч"
+        # Add custom class if provided
+        if custom_class:
+            class_name += f" {custom_class}"
 
-        # Choose configuration based on walking time
-        if walking_minutes < cls.WALKING_TIME_CONFIG["close"]["threshold_minutes"]:
-            config = cls.WALKING_TIME_CONFIG["close"]
-        elif walking_minutes < cls.WALKING_TIME_CONFIG["medium"]["threshold_minutes"]:
-            config = cls.WALKING_TIME_CONFIG["medium"]
-        else:
-            config = cls.WALKING_TIME_CONFIG["far"]
+        # Keep only truly dynamic styles, if any
+        dynamic_style = custom_style or {}
 
-        return cls.create_pill(
-            time_text, variant=config["variant"], custom_class=config["custom_class"]
-        )
+        return html.Div(text, style=dynamic_style, className=class_name)
 
     @classmethod
-    def create_neighborhood_pill(cls, neighborhood):
-        """Format neighborhood pill with appropriate styling."""
-        if not neighborhood or neighborhood == "nan" or neighborhood == "None":
-            return None
+    def create_pill_container(
+        cls, pills, wrap=False, align=None, custom_style=None, return_as_html=False
+    ):
+        """Create a container for multiple pills with flexible layout."""
+        if not pills:
+            return "" if return_as_html else None
 
-        # Check if it's a special neighborhood
-        for special_name, config in cls.NEIGHBORHOOD_CONFIG[
-            "special_neighborhoods"
-        ].items():
-            if special_name in neighborhood:
-                return cls.create_pill(
-                    neighborhood,
-                    variant=config["variant"],
-                    custom_class=config["custom_class"],
-                )
+        # Filter out None pills
+        pills = [pill for pill in pills if pill is not None]
+        if not pills:
+            return "" if return_as_html else None
 
-        # Default to "other" config
-        config = cls.NEIGHBORHOOD_CONFIG["other"]
-        return cls.create_pill(
-            neighborhood, variant=config["variant"], custom_class=config["custom_class"]
-        )
+        # Build container style
+        style = {
+            "display": "flex",
+            "flexWrap": "wrap" if wrap else "nowrap",
+            "gap": "0px",
+        }
 
-    @classmethod
-    def create_days_active_pill(cls, days_value, status="active"):
-        """Create days active pill with appropriate styling."""
-        if pd.isna(days_value) or days_value == "--":
-            return None
+        if align:
+            style["alignItems"] = align
 
-        # Convert days to integer if possible
-        try:
-            days = int(days_value) if not isinstance(days_value, str) else 0
-        except:
-            days = 0
+        if custom_style:
+            style.update(custom_style)
 
-        # Format display text
-        if isinstance(days_value, str):
-            display_text = days_value
-        else:
-            display_text = f"{days} дн."
+        container = html.Div(pills, style=style)
 
-        # Choose configuration based on age and status
-        if status == "non active":
-            config = cls.DAYS_ACTIVE_CONFIG["inactive"]
-        elif days == 0:
-            config = cls.DAYS_ACTIVE_CONFIG["new"]
-        elif days <= cls.DAYS_ACTIVE_CONFIG["recent"]["threshold_days"]:
-            config = cls.DAYS_ACTIVE_CONFIG["recent"]
-        elif days <= cls.DAYS_ACTIVE_CONFIG["medium"]["threshold_days"]:
-            config = cls.DAYS_ACTIVE_CONFIG["medium"]
-        else:
-            config = cls.DAYS_ACTIVE_CONFIG["old"]
+        if return_as_html:
+            return cls.to_html_string(container)
 
-        return cls.create_pill(
-            display_text, variant=config["variant"], custom_class=config["custom_class"]
-        )
+        return container
+        
+    @staticmethod
+    def to_html_string(component):
+        """Convert a Dash HTML component to a raw HTML string recursively."""
+        if component is None:
+            return ""
 
-    @classmethod
-    def create_price_change_pill(cls, value):
-        """Format price change with dynamic styling."""
-        if not value or pd.isna(value) or value == 0 or value == "new":
-            return None
+        if not isinstance(component, Component):
+            return str(component)
 
-        try:
-            value = float(value)
-            if abs(value) < 1:
-                return None
+        tag = component.__class__.__name__.lower()
+        class_attr = getattr(component, "className", "")
+        style = getattr(component, "style", {})
 
-            # Choose configuration based on price change direction
-            config = (
-                cls.PRICE_CHANGE_CONFIG["down"]
-                if value < 0
-                else cls.PRICE_CHANGE_CONFIG["up"]
+        style_str = (
+            "; ".join(
+                f"{re.sub(r'(?<!^)(?=[A-Z])', '-', k).lower()}: {v}"
+                for k, v in style.items()
             )
-
-            display = f"{NumberFormatter.format_number(abs(value))}"
-            return cls.create_pill(
-                f"{config['arrow']} {display}",
-                variant=config["variant"],
-                custom_class=config["custom_class"],
-            )
-        except:
-            return None
-
-    @classmethod
-    def create_activity_date_pill(cls, activity_date, status="active"):
-        """Create activity date pill with appropriate styling."""
-        if not activity_date or pd.isna(activity_date):
-            return None
-
-        # Choose configuration based on status
-        config = (
-            cls.ACTIVITY_CONFIG["active"]
-            if status == "active"
-            else cls.ACTIVITY_CONFIG["inactive"]
+            if style
+            else ""
         )
 
-        # Create pill with icon prefix
-        activity_text = f"{config['icon']} {activity_date}"
-        return cls.create_pill(
-            activity_text,
-            variant=config["variant"],
-            custom_class=config["custom_class"],
-        )
+        children = getattr(component, "children", "")
+        if isinstance(children, list):
+            inner = "".join(PillFactory.to_html_string(child) for child in children)
+        else:
+            inner = PillFactory.to_html_string(children)
+
+        return f'<{tag} class="{class_attr}" style="{style_str}">{inner}</{tag}>'

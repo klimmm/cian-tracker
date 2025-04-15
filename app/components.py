@@ -52,7 +52,7 @@ class ButtonFactory:
     
     @classmethod
     def create_button(cls, label, button_id, variant="default", size="md", 
-                     is_active=False, icon=None, custom_style=None, **kwargs):
+                      is_active=False, icon=None, custom_style=None, **kwargs):
         """Create a button with consistent styling"""
         # Build class name based on variant, size, and state
         class_name = f"btn btn--{variant} btn--{size}"
@@ -60,15 +60,13 @@ class ButtonFactory:
         if is_active:
             class_name += " btn--active"
         
-        # Keep only truly dynamic styles
-        dynamic_style = {}
-        if custom_style:
-            dynamic_style = custom_style
+        # Allow passing custom style
+        dynamic_style = custom_style if custom_style else {}
         
-        # Create the button content
+        # Create the button content with optional icon
         if icon:
             content = html.Div([
-                html.I(className=icon, style={"marginRight": StyleManager.SPACING["xs"]}),
+                html.I(className=icon, style={"marginRight": "0.5rem"}),
                 html.Span(label, id=f"{button_id}-text" if label else None)
             ], className="flex-container flex-container--align-center flex-container--gap-xs")
         else:
@@ -77,49 +75,65 @@ class ButtonFactory:
         return html.Button(content, id=button_id, style=dynamic_style, className=class_name, **kwargs)
     
     @classmethod
-    def create_button_group(cls, buttons, label_text=None, active_button_id=None, direction="horizontal"):
-        """Create a group of related buttons"""
+    def create_button_group(cls, buttons, label_text=None, active_button_id=None, direction="horizontal", inline=False):
+        """Create a group of related buttons with optional inline label and layout.
+        
+        When inline=True, the label and buttons are forced onto one line by setting
+        the container display to flex with row direction.
+        """
+        # Determine styles based on inline parameter
+        if inline:
+            container_style = {"display": "flex", "flexDirection": "row", "alignItems": "center"}
+            label_style = {"marginRight": "10px", "display": "flex", "alignItems": "center"}
+            button_container_style = {"display": "flex", "flexDirection": "row", "alignItems": "center"}
+        else:
+            container_style = {}
+            label_style = {}
+            button_container_style = {}
+        
         group_class_name = f"button-group button-group--{direction}"
         
-        # Button styles need modification for joined appearance
+        # Build each button element
         button_elements = []
-        
         for btn in buttons:
             # Determine whether this button is active
             is_active = btn.get("default", False) or btn["id"] == active_button_id
             
-            # Create the button with joined styling
+            # Create the button with consistent styling
             button = cls.create_button(
                 label=btn.get("label", ""),
                 button_id=btn["id"],
                 variant=btn.get("variant", "default"),
-                size=btn.get("size", "md"),
+                size=btn.get("size", "xs"),
                 is_active=is_active
             )
-            
             button_elements.append(button)
         
-        # Create button container
+        # Wrap the buttons in a container, applying inline styles if needed
         button_container = html.Div(
             button_elements,
-            className=group_class_name
+            className=group_class_name,
+            style=button_container_style
         )
         
-        # If no label, just return the button container
+        # If there is no label, return only the button container
         if not label_text:
             return button_container
         
-        # Create label if provided
+        # Create the label element
         label = html.Label(
             label_text,
-            className="dash-label"
+            className="dash-label",
+            style=label_style
         )
         
-        # Create container for everything
+        # Combine the label and button container in a flex row
         return html.Div(
             [label, button_container],
+            style=container_style,
             className="button-group-container"
         )
+
 
 
 class TableFactory:
@@ -129,45 +143,59 @@ class TableFactory:
     def create_data_table(cls, id, data, columns, sort_action=None, page_size=10, **kwargs):
         from dash import dash_table
 
-        # === Define fixed-width columns and their widths ===
+        # === Define fixed-width columns and their widths (in %) ===
         fixed_columns = {
-            'address_title': 48,
-            'property_tags': 20,
-            'price_text': 20,
+            'update_title': 22,
             'details': 5,
+            'address_title': 22,
+            'price_text': 15,
+            'property_tags': 36,
         }
 
-        # Extract all column IDs
+        # Optional: alignment overrides
+        column_alignments = {
+            'price_text': 'center',
+            'details': 'center',
+            # All others default to 'left'
+        }
+
+        # Extract column IDs from column definitions
         column_ids = [col['id'] for col in columns]
 
-        # Dynamically identify remaining columns
+        # Identify dynamic columns
         dynamic_columns = [cid for cid in column_ids if cid not in fixed_columns]
 
-        # Compute available width for dynamic columns
+        # Calculate remaining width for dynamic columns
         total_fixed_width = sum(fixed_columns.values())
         remaining_width = 100 - total_fixed_width
         dynamic_width = remaining_width / len(dynamic_columns) if dynamic_columns else 0
 
-        # Construct style_cell_conditional
+
+        
+        # Build style_cell_conditional
         style_cell_conditional = []
 
-        # Add fixed column styles
+        # Fixed-width columns
         for col_id, width in fixed_columns.items():
+            alignment = column_alignments.get(col_id, 'left')
             style_cell_conditional.append({
                 'if': {'column_id': col_id},
                 'width': f'{width}%',
-                'textAlign': 'left',
+                'textAlign': alignment,
             })
 
-        # Add dynamic column styles
+        # Dynamic columns
         for col_id in dynamic_columns:
+            alignment = column_alignments.get(col_id, 'left')
             style_cell_conditional.append({
                 'if': {'column_id': col_id},
                 'width': f'{dynamic_width:.2f}%',
-                'textAlign': 'left',
+                'textAlign': alignment,
             })
 
+        # Table config
         table_props = {
+            
             'id': id,
             'columns': columns,
             'data': data,
@@ -178,10 +206,13 @@ class TableFactory:
                 'overflowX': 'auto',
                 'width': '100%',
                 'maxWidth': '100%',
-            }
+            },
         }
 
-        # Add additional kwargs (preserve flexibility)
-        table_props.update({k: v for k, v in kwargs.items() if k != 'css' or 'css' not in table_props})
+        # Add any additional keyword arguments
+        table_props.update({
+            k: v for k, v in kwargs.items()
+            if k != 'css' or 'css' not in table_props
+        })
 
         return dash_table.DataTable(**table_props)

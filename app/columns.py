@@ -3,6 +3,7 @@ import pandas as pd
 import logging
 import re
 from app.pill_factory import PillFactory
+from dash import html
 
 logger = logging.getLogger(__name__)
 
@@ -14,24 +15,24 @@ class ColumnFormatter:
     def format_price_column(row):
         """Format price column with consistent pills."""
         pills = []
-
-        # Main price pill
+    
         price_formatted = row.get("price_value_formatted", "--")
-        if price_formatted and price_formatted != "--":
-            pills.append(PillFactory.create_price_pill(price_formatted))
-
-        # Price change pill
-        price_change = row.get("price_change_value", 0)
-        if price_change:
-            pills.append(PillFactory.create_price_change_pill(price_change))
-
-        # Good price pill
-        if (
+    
+        # Determine if it's a 'good price'
+        is_good_price = (
             row.get("price_difference_value", 0) > 0
             and row.get("status") != "non active"
-        ):
-            pills.append(PillFactory.create_good_price_pill())
-
+        )
+    
+        if price_formatted and price_formatted != "--":
+            # Use centralized PillFactory logic for styling
+            pills.append(
+                PillFactory.create_price_pill(
+                    price_formatted,
+                    is_good_price=is_good_price
+                )
+            )
+    
         # CIAN estimation pill
         cian_est = row.get("cian_estimation_formatted")
         if (
@@ -40,8 +41,9 @@ class ColumnFormatter:
             and cian_est != row.get("price_value_formatted")
         ):
             pills.append(PillFactory.create_cian_estimate_pill(cian_est))
-
+    
         return PillFactory.create_pill_container(pills, wrap=True, return_as_html=True)
+
 
     @staticmethod
     def format_update_title(row):
@@ -52,16 +54,11 @@ class ColumnFormatter:
         time_str = row.get("updated_time", "--")
         if time_str and time_str != "--":
             pills.append(PillFactory.create_time_pill(time_str))
-
-        # Days active pill
-        days_active = row.get("days_active")
-        days_value = row.get("days_active_value", 0)
-        if pd.notnull(days_active) and days_active != "--":
-            pills.append(
-                PillFactory.create_days_active_pill(
-                    days_value, row.get("status", "active")
-                )
-            )
+            
+        # Price change pill
+        price_change = row.get("price_change_value", 0)
+        if price_change:
+            pills.append(PillFactory.create_price_change_pill(price_change))
 
         # Activity date formatting
         should_add_activity_date = "activity_date" in row and pd.notnull(
@@ -82,9 +79,11 @@ class ColumnFormatter:
 
         if should_add_activity_date:
             activity_date = row["activity_date"]
+            status = row.get("status", "active")
             pills.append(
                 PillFactory.create_activity_date_pill(
-                    activity_date, row.get("status", "active")
+                    activity_date,
+                    status=status
                 )
             )
 
@@ -94,18 +93,58 @@ class ColumnFormatter:
     def format_property_tags(row):
         """Format property pills column consistently."""
         pills = []
+        
+        # Room count pill
+        room_count = row.get("room_count")
+        if pd.notnull(room_count):
+            pill = PillFactory.create_room_pill(room_count)
+            if pill:
+                pills.append(pill)
+        
+        # Area pill
+        area = row.get("area")
+        if pd.notnull(area):
+            pill = PillFactory.create_area_pill(area)
+            if pill:
+                pills.append(pill)
+        
+        # Floor pill
+        floor = row.get("floor")
+        total_floors = row.get("total_floors")
+        if pd.notnull(floor) and pd.notnull(total_floors):
+            pill = PillFactory.create_floor_pill(floor, total_floors)
+            if pill:
+                pills.append(pill)
 
+        return PillFactory.create_pill_container(pills, wrap=True, return_as_html=True)
+
+    
+    @staticmethod
+    def format_address_title(row, base_url):
+        """Format address with distance, neighborhood, and metro station information."""
+        # First create all pills EXCEPT address as normal pills
+        pills = []
+        
+        # Distance value pill
         distance_value = row.get("distance_sort")
         if distance_value is not None and pd.notnull(distance_value):
             pills.append(PillFactory.create_walking_time_pill(distance_value))
-
-        # Process neighborhood information
+        
+        # Neighborhood pill
         neighborhood = str(row.get("neighborhood", ""))
         if neighborhood and neighborhood != "nan" and neighborhood != "None":
             pills.append(PillFactory.create_neighborhood_pill(neighborhood))
-
-        # Add metro station pill
-        if metro_station := row.get("metro_station"):
-            pills.append(PillFactory.create_metro_pill(metro_station))
-
-        return PillFactory.create_pill_container(pills, wrap=True, return_as_html=True)
+        
+        # Create the pill container with proper spacing
+        pills_html = PillFactory.create_pill_container(pills, wrap=True, return_as_html=True) if pills else ""
+        
+        # Create the address link separately to maintain clickability
+        address = row.get('address', '')
+        offer_id = row.get('offer_id', '')
+        address_html = f'<div class="pill pill--default address-pill"><a href="{base_url}{offer_id}/" class="address-link">{address}</a></div>'
+        
+        # Combine all elements
+        if pills_html:
+            return f'{address_html} {pills_html}'
+        else:
+            return address_html

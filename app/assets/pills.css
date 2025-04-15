@@ -1,89 +1,404 @@
-
-:root {
-  --color-error-light: #FFEBEE;
-  --radius-sm: 4px;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --font-family: 'Inter', Arial, sans-serif;
-  --color-bg-light: #F8F9FA;
-  --color-text-secondary: #666666;
-  --color-border: #E0E0E0;
-  --color-primary-light: #E6F0F9;
-  --color-success: #2E7D32;
-  --color-success-light: #E8F5E9;
-  --color-warning: #F9A825;
-  --color-warning-light: #FFF8E1;
-  --color-neutral: #607D8B;
-  --color-neutral-light: #ECEFF1;
-}
-/* ===== Pill Styling - SIMPLIFIED AND CONSISTENT ===== */
+/* Base pill styling */
 .pill {
   display: inline-block;
+  padding: 2px 6px;
   border-radius: var(--radius-sm);
   white-space: nowrap;
-  margin: 2px 4px;
+  margin: 2px 2px;
   box-shadow: var(--shadow-sm);
   font-weight: 500;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: var(--font-family);
+  border: none;
 }
 
-/* Fixed pill sizes - NO RESPONSIVENESS that breaks consistency */
-.pill--xs {
-  font-size: 10px !important;
-  padding: 2px 4px !important;
+/* ===== RESPONSIVE PILL SIZES ===== */
+/* Very small screens (< 390px) - Extra small sizes */
+@media (max-width: 389.98px) {
+  .pill--xs {
+    font-size: 7px !important;
+    padding: 1px 2px !important;
+  }
+  
+  .pill--sm {
+    font-size: 8px !important;
+    padding: 1px 3px !important;
+  }
+  
+  .pill--md {
+    font-size: 10px !important;
+    padding: 2px 4px !important;
+  }
+  
+  .pill--room,
+  .pill--area,
+  .pill--success,
+  .pill--warning,
+  .pill--error,
+  .pill--neutral,
+  .pill--primary,
+    
+  .pill--floor,
+  .pill--price-change,
+  .pill--distance,
+  .pill--location,
+  .pill--activity,
+  .pill--location::before,
+  .pill--distance:before,
+  .pill--price-change .arrow,
+  .pill--activity .icon,
+    
+  .address-link {
+    font-size: 7px !important;
+  }
 }
 
-.pill--sm {
-  font-size: 12px !important;
-  padding: 3px 6px !important;
+/* Small screens (390px - 575px) - Smaller sizes */
+@media (min-width: 390px) and (max-width: 575.98px) {
+
+  
+  /* Category-specific adjustments */
+  .pill--room,
+  .pill--area,
+  .pill--success,
+  .pill--warning,
+  .pill--error,
+  .pill--neutral,
+  .pill--primary,
+    
+  .pill--floor,
+  .pill--price-change,
+  .pill--distance,
+  .pill--location,
+  .pill--activity,
+  .pill--location::before,
+  .pill--distance:before,
+  .pill--price-change .arrow,
+  .pill--activity .icon,
+
+  .address-link {
+    font-size: 10px !important;
+  }
 }
 
-.pill--md {
-  font-size: 14px !important;
-  padding: 4px 8px !important;
+/* Medium screens (576px - 767px) - Current sizes */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .pill--xs {
+    font-size: 10px !important;
+    padding: 2px 4px !important;
+  }
+  
+  .pill--sm {
+    font-size: 12px !important;
+    padding: 3px 6px !important;
+  }
+  
+  .pill--md {
+    font-size: 14px !important;
+    padding: 4px 8px !important;
+  }
+  
+  /* Category-specific sizes remain as currently defined */
+  .pill--room,
+  .pill--area,
+  .pill--success,
+  .pill--warning,
+  .pill--error,
+  .pill--neutral,
+  .pill--primary,
+    
+  .pill--floor,
+  .pill--price-change,
+  .pill--distance,
+  .pill--location,
+  .pill--activity,
+  .pill--location::before,
+  .pill--distance:before,
+  .pill--price-change .arrow,
+  .pill--activity .icon,
+    
+  .address-link {
+    font-size: 13px !important;
+  }
+  
+}
+/* Large screens (768px - 991px) - Larger sizes */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .pill--xs {
+    font-size: 12px !important;
+    padding: 3px 6px !important;
+  }
+  
+  .pill--sm {
+    font-size: 14px !important;
+    padding: 4px 8px !important;
+  }
+  
+  .pill--md {
+    font-size: 16px !important;
+    padding: 5px 10px !important;
+  }
+  
+  /* Category-specific adjustments */
+  .pill--room,
+  .pill--area,
+  .pill--success,
+  .pill--warning,
+  .pill--error,
+  .pill--neutral,
+  .pill--primary,    
+  .pill--floor,
+  .pill--price-change,
+  .pill--distance,
+  .pill--location,
+  .pill--activity,
+  .address-link {
+    font-size: 13px !important;
+  }
+  
+  .pill--price-change .arrow,
+  .pill--activity .icon {
+    font-size: 11px !important;
+  }
+  
+  .pill--location::before,
+  .pill--distance:before {
+    font-size: 12px !important;
+  }
 }
 
-/* Pill variants */
+/* Extra large screens (992px - 1199px) - Even larger sizes */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .pill--xs {
+    font-size: 14px !important;
+    padding: 3px 7px !important;
+  }
+  
+  .pill--sm {
+    font-size: 16px !important;
+    padding: 4px 9px !important;
+  }
+  
+  .pill--md {
+    font-size: 18px !important;
+    padding: 5px 11px !important;
+  }
+  
+  /* Category-specific adjustments */
+  .pill--room,
+  .pill--area,
+  .pill--success,
+  .pill--warning,
+  .pill--error,
+  .pill--neutral,
+  .pill--primary,
+    
+  .pill--floor,
+  .pill--price-change,
+  .pill--distance,
+  .pill--location,
+  .pill--activity,
+  .address-link {
+    font-size: 15px !important;
+  }
+  
+  .pill--price-change .arrow,
+  .pill--activity .icon {
+    font-size: 13px !important;
+  }
+  
+  .pill--location::before,
+  .pill--distance:before {
+    font-size: 14px !important;
+  }
+}
+
+/* XXL screens (≥ 1200px) - Largest sizes */
+@media (min-width: 1200px) {
+  .pill--xs {
+    font-size: 16px !important;
+    padding: 4px 8px !important;
+  }
+  
+  .pill--sm {
+    font-size: 18px !important;
+    padding: 5px 10px !important;
+  }
+  
+  .pill--md {
+    font-size: 20px !important;
+    padding: 6px 12px !important;
+  }
+  
+  /* Category-specific adjustments */
+  .pill--room,
+  .pill--area,
+  .pill--floor,
+  .pill--success,
+  .pill--warning,
+  .pill--error,
+  .pill--neutral,
+  .pill--primary,
+    
+  .pill--price-change,
+  .pill--distance,
+  .pill--location,
+  .pill--activity,
+  .address-link {
+    font-size: 17px !important;
+  }
+  
+  .pill--price-change .arrow,
+  .pill--activity .icon {
+    font-size: 15px !important;
+  }
+  
+  .pill--location::before,
+  .pill--distance:before {
+    font-size: 16px !important;
+  }
+}
+
+/* Base pill variants - kept for semantic meaning */
 .pill--default {
   background-color: var(--color-bg-light);
   color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
 }
 
 .pill--primary {
   background-color: var(--color-primary-light);
   color: var(--color-primary);
-  border: 1px solid var(--color-primary-light);
 }
 
 .pill--success {
   background-color: var(--color-success-light);
   color: var(--color-success);
-  border: 1px solid var(--color-success-light);
 }
 
 .pill--warning {
   background-color: var(--color-warning-light);
   color: var(--color-warning);
-  border: 1px solid var(--color-warning-light);
 }
 
 .pill--error {
   background-color: var(--color-error-light);
   color: var(--color-error);
-  border: 1px solid var(--color-error-light);
 }
 
 .pill--neutral {
   background-color: var(--color-neutral-light);
   color: var(--color-neutral);
-  border: 1px solid var(--color-neutral-light);
 }
 
+/* Category identifiers - inherited from original */
+.pill--room {
+  font-weight: 500;
+}
+
+.pill--floor {
+  font-variant-numeric: tabular-nums;
+}
+
+.pill--price {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Special pill stylings */
 .pill--metro {
   color: #ffffff;
   border: none;
   font-weight: 500;
+}
+
+/* Simplified good deal styling - just a border */
+.pill--good-deal {
+  border: 1px solid var(--color-good-deal-border);
+}
+
+.pill--price-change .arrow {
+  position: relative;
+  top: -2px;
+}
+
+/* Location pill with icon */
+.pill--location::before {
+  content: "📍";
+}
+
+/* Distance pill with icon */
+.pill--distance:before {
+  content: "🚶";
+}
+
+
+
+/* Price display formatting */
+td[data-dash-column="price_text"] .dash-cell-value.cell-markdown {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 0 !important;
+  text-align: center !important;
+  height: 100%;
+  width: 100%;
+}
+
+td[data-dash-column="price_text"] .dash-cell-value.cell-markdown > div {
+  display: inline-block !important;
+  margin: 0 auto !important;
+  width: auto !important;
+  flex: none !important;
+}
+
+/* ===== RESPONSIVE MAGNIFYING GLASS ICON ===== */
+.unfocused.selectable.dash-cell-value {
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Very small screens (< 390px) - Smallest size */
+@media (max-width: 389.98px) {
+  .unfocused.selectable.dash-cell-value {
+    font-size: 12px !important;
+  }
+}
+
+/* Small screens (390px - 575px) - Smaller size */
+@media (min-width: 390px) and (max-width: 575.98px) {
+  .unfocused.selectable.dash-cell-value {
+    font-size: 14px !important;
+  }
+}
+
+/* Medium screens (576px - 767px) - Current size */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .unfocused.selectable.dash-cell-value {
+    font-size: 16px !important;
+  }
+}
+
+/* Large screens (768px - 991px) - Larger size */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .unfocused.selectable.dash-cell-value {
+    font-size: 18px !important;
+  }
+}
+
+/* Extra large screens (992px - 1199px) - Even larger size */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .unfocused.selectable.dash-cell-value {
+    font-size: 20px !important;
+  }
+}
+
+/* XXL screens (≥ 1200px) - Largest size */
+@media (min-width: 1200px) {
+  .unfocused.selectable.dash-cell-value {
+    font-size: 22px !important;
+  }
 }
