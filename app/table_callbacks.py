@@ -88,13 +88,6 @@ def register_data_callbacks(app):
         return {"status": "preloading_started"}
 
 
-
-
-
-
-    
-
-
     @app.callback(
         [
             Output("apartment-data-store", "data"),
@@ -139,22 +132,31 @@ def register_table_callbacks(app):
             Output("apartment-table", "data"),
             Output("apartment-table", "columns"),
         ],
-        [Input("filter-store", "data"),
-         Input("apartment-data-store", "data")
-        ],
+        [
+            Input("filter-store", "data"),
+            Input("apartment-data-store", "data"),
+            Input("apartment-table", "sort_by")
+        ]
     )
-    def update_table_content(filters, data):
-        """Update table based on filters and data with added debugging."""
+    def update_table_content(filters, data, sort_by):
+        """Update table based on filters, data and sorting in a single callback."""
+        import dash
+        ctx = dash.callback_context
+        
         if not data:
             return [], []
-
+            
         try:
             # Convert to DataFrame for processing
             df = pd.DataFrame(data)
-
+            
+            # Log which input triggered the callback
+            trigger = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
+            logger.info(f"Table update triggered by: {trigger} with sort_by: {sort_by}")
+            
             # Apply filtering and sorting
-            df = DataFilterSorter.filter_and_sort_data(df, filters or {})
-
+            df = DataFilterSorter.filter_and_sort_data(df, filters or {}, sort_by)
+            
             # Define which columns to display
             visible_columns = ["update_title", "property_tags", "address_title", "price_text"]
             numeric_columns = {
@@ -177,6 +179,7 @@ def register_table_callbacks(app):
                 "days_active",
                 "activity_date",
             }
+            
             # Build the column definitions
             columns = [
                 {
@@ -188,25 +191,9 @@ def register_table_callbacks(app):
                 for c in visible_columns
                 if c in df.columns
             ]
-
+            
             return df.to_dict("records"), columns
-
+            
         except Exception as e:
-            print(f"Error updating table: {e}")
-            return [], [], []
-
-    # Update the sort callback to use allow_duplicate
-    @app.callback(
-        Output("apartment-table", "data", allow_duplicate=True),
-        [Input("apartment-table", "sort_by"), Input("filter-store", "data")],
-        [State("apartment-data-store", "data")],
-        prevent_initial_call=True,
-    )
-    def update_sort(sort_by, filters, data):
-        """Handle table sorting from column headers."""
-        if not data:
-            return []
-
-        df = pd.DataFrame(data)
-        df = DataFilterSorter.filter_and_sort_data(df, filters, sort_by)
-        return df.to_dict("records")
+            logger.error(f"Error updating table: {e}")
+            return [], []

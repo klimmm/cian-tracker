@@ -1,3 +1,11 @@
+/* Hide Dash menu */
+.dash-spreadsheet-menu,
+.column-header--sort,
+.dash-filter.column-0 {
+  display: none !important;
+}
+
+
 /* ===== Design System Variables ===== */
 :root {
   /* Typography - Fluid with clamp() */
