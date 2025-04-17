@@ -1,8 +1,8 @@
-# app/table_factory.py
+import dash_table
+import dash
 import logging
-from dash import dash_table
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
 
 class TableFactory:
     """Factory for creating consistent data tables that rely on external CSS for styling."""
@@ -11,11 +11,11 @@ class TableFactory:
     def create_data_table(
         cls,
         id='apartment-table',
-        data=[],
-        columns=[],
+        data=None,
+        columns=None,
         sort_action="custom",
         sort_mode="multi",
-        sort_by=[],
+        sort_by=None,
         page_size=100,
         page_action="native",
         conditional_styles=None,
@@ -27,6 +27,14 @@ class TableFactory:
         style_cell_conditional=None,
         **kwargs,
     ):
+        # Defaults
+        if data is None:
+            data = []
+        if columns is None:
+            columns = []
+        if sort_by is None:
+            sort_by = []
+
         if hidden_columns is None:
             hidden_columns = [
                 "price_value",
@@ -38,24 +46,28 @@ class TableFactory:
                 'offer_id'
             ]
 
+        # Header style
         if style_header is None:
             style_header = {
                 "backgroundColor": "var(--color-primary)",
                 "color": "white",
                 "fontWeight": "bold",
             }
-        
+
+        # Cell base style
         if style_cell is None:
             style_cell = {
                 "textAlign": "left",
                 "padding": "8px",
                 "fontFamily": "var(--font-family)",
                 "fontSize": "var(--font-sm)",
+                "minWidth": "0",          # allow shrinking
+                "whiteSpace": "normal",   # enable wrapping
                 "overflow": "hidden",
                 "textOverflow": "ellipsis",
             }
-            
-            
+
+        # Conditional styles default
         if conditional_styles is None:
             conditional_styles = [
                 {
@@ -63,94 +75,88 @@ class TableFactory:
                     "backgroundColor": "#f4f4f4",
                     "color": "#888",
                 },
-                # Only kept special conditions that can't be handled with CSS
                 {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
                 {"if": {"column_id": "updated_time"}, "fontWeight": "bold", "textAlign": "center"},
                 {"if": {"column_id": "price_value_formatted"}, "fontWeight": "bold", "textAlign": "center"},
             ]
-            
-        # === Define fixed-width columns and their widths (in %) ===
+
+        # Fixed-width columns (percentages)
         fixed_columns = {
-            "update_title": 5,
+            "update_title": 10,
             "property_tags": 30,
-            
-            "details": 10,
             "address_title": 20,
-            "price_text": 15,
+            "price_text": 25,
         }
-
-        # Optional: alignment overrides
-        column_alignments = {
-            "price_text": "center",
-            "details": "center",
-            # All others default to 'left'
-        }
-
-        # Extract column IDs from column definitions
-        column_ids = [col["id"] for col in columns]
-
-        dynamic_columns = [cid for cid in column_ids if cid not in fixed_columns]
-
-        # Calculate remaining width for dynamic columns
-        total_fixed_width = sum(width for col_id, width in fixed_columns.items() if col_id in column_ids)
-        remaining_width = 100 - total_fixed_width
-        dynamic_width = remaining_width / len(dynamic_columns) if dynamic_columns else 0
+        column_alignments = {"price_text": "center"}
 
         # Build style_cell_conditional
         if style_cell_conditional is None:
             style_cell_conditional = []
 
-        # Fixed-width columns
-        for col_id, width in fixed_columns.items():
-            if col_id in column_ids:  # Only add if column actually exists
-                alignment = column_alignments.get(col_id, "left")
-                style_cell_conditional.append(
-                    {
-                        "if": {"column_id": col_id},
-                        "width": f"{width}%",
-                        "textAlign": alignment,
-                    }
-                )
+        # Extract IDs
+        column_ids = [col['id'] for col in columns]
+        dynamic_columns = [cid for cid in column_ids if cid not in fixed_columns]
 
-        # Dynamic columns
-        for col_id in dynamic_columns:
-            alignment = column_alignments.get(col_id, "left")
-            style_cell_conditional.append(
-                {
-                    "if": {"column_id": col_id},
-                    "width": f"{dynamic_width:.2f}%",
-                    "textAlign": alignment,
-                }
-            )
-        
+        total_fixed = sum(width for cid,width in fixed_columns.items() if cid in column_ids)
+        remaining = max(0, 100 - total_fixed)
+        dyn_width = remaining / len(dynamic_columns) if dynamic_columns else 0
+
+        # Fixed widths
+        for cid, pct in fixed_columns.items():
+            if cid in column_ids:
+                align = column_alignments.get(cid, 'left')
+                style_cell_conditional.append({
+                    'if': {'column_id': cid},
+                    'width': f"{pct}%",
+                    'textAlign': align,
+                })
+
+        # Dynamic widths
+        for cid in dynamic_columns:
+            align = column_alignments.get(cid, 'left')
+            style_cell_conditional.append({
+                'if': {'column_id': cid},
+                'width': f"{dyn_width:.2f}%",
+                'textAlign': align,
+            })
+
+        # Compose table props
         table_props = {
-            "id": id,
-            "data": data,
-            "columns": columns,
-            "page_size": page_size,
-            "page_action": page_action,
-            "sort_action": sort_action,
-            "sort_mode": sort_mode,
-            "sort_by": sort_by,
-            "style_header": style_header,
-            "style_cell": style_cell,
-            "style_cell_conditional": style_cell_conditional,
-            "style_data": {"backgroundColor": "white"},
-            "style_table": {
-                "overflowX": "auto",
-                "width": "100%",
-                "maxWidth": "100%",
+            'id': id,
+            'data': data,
+            'columns': columns,
+            'page_size': page_size,
+            'page_action': page_action,
+            'sort_action': sort_action,
+            'sort_mode': sort_mode,
+            'sort_by': sort_by,
+            'style_header': style_header,
+            'style_cell': style_cell,
+            'style_cell_conditional': style_cell_conditional,
+            'style_data': {'backgroundColor': 'white'},
+            'style_table': {
+                'overflowX': 'auto',
+                'width': '100%',
+                'maxWidth': '100%',
+                'tableLayout': 'fixed',   # fixed layout
             },
-            "style_data_conditional": conditional_styles,
-            "cell_selectable": cell_selectable,
-            "markdown_options": markdown_options,
-            "hidden_columns": hidden_columns,
+            'style_data_conditional': conditional_styles,
+            'cell_selectable': cell_selectable,
+            'markdown_options': markdown_options,
+            'hidden_columns': hidden_columns,
         }
-        
-        # Add any additional keyword arguments
-        table_props.update(
-            {k: v for k, v in kwargs.items() if k not in table_props}
-        )
-        
+
+        # Merge extras
+        table_props.update({k: v for k,v in kwargs.items() if k not in table_props})
+
         logger.debug("Creating table with properties: %s", table_props)
-        return dash_table.DataTable(**table_props)
+
+        # Return DataTable
+        return dash_table.DataTable(
+            style_as_list_view=True,
+            css=[{
+                'selector': '.dash-header',
+                'rule': 'display: none;'
+            }],
+            **table_props
+        )

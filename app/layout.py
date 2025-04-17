@@ -95,7 +95,7 @@ def create_app_layout(app):
         data={
             "nearest": False,
             "below_estimate": False,
-            "inactive": False,
+            "inactive": True,
             "updated_today": False,
             "price_value": DEFAULT_PRICE,
             "distance_value": DEFAULT_DISTANCE,
@@ -126,43 +126,18 @@ def create_app_layout(app):
     # Reorganize controls to have two button groups per row with responsive behavior
     controls_container = html.Div(
         [
-            # First row with price and distance button groups
-            html.Div(
-                [
-                    html.Div(
-                        [
-                            html.Div(
-                                price_buttons, style={"flex": "1", "minWidth": "0"}
-                            ),
-                            html.Div(
-                                distance_buttons, style={"flex": "1", "minWidth": "0"}
-                            ),
-                        ],
-                        className="button-group-pair",
-                    ),
-                ],
-                className="controls-row",
-            ),
-            # Second row with filter and sort button groups
-            html.Div(
-                [
-                    html.Div(
-                        [
-                            html.Div(
-                                filter_buttons, style={"flex": "1", "minWidth": "0"}
-                            ),
-                            html.Div(
-                                sort_buttons, style={"flex": "1", "minWidth": "0"}
-                            ),
-                        ],
-                        className="button-group-pair",
-                    ),
-                ],
-                className="controls-row",
-            ),
+            # 1st line: price
+            html.Div(price_buttons, className="controls-row"),
+            # 2nd line: distance
+            html.Div(distance_buttons, className="controls-row"),
+            # 3rd line: filters
+            html.Div(filter_buttons,   className="controls-row"),
+            # 4th line: sorting
+            html.Div(sort_buttons,     className="controls-row"),
         ],
         className="controls-container",
     )
+
 
     # Detail panel for apartment information with improved design
     apartment_details_panel = create_apartment_details_panel()

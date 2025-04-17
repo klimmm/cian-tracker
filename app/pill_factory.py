@@ -71,14 +71,21 @@ class PillFactory:
         "close": {
             "variant": "primary",
             "custom_class": "pill--distance",
-            "max_minutes": 20,
+            "max_minutes": 22,
         },
         "medium": {
             "variant": "neutral",
             "custom_class": "pill--distance",
             "max_minutes": 35,
         },  # Changed to neutral
-        "far": {"variant": "error", "custom_class": "pill--distance"},
+        "far": {
+            "variant": "warning",
+            "custom_class": "pill--distance",
+            "max_minutes": 50,
+        },  # Changed to neutral
+
+        
+        "very_far": {"variant": "error", "custom_class": "pill--distance"},
     }
 
     PRICE_CHANGE_CONFIG = {
@@ -378,8 +385,11 @@ class PillFactory:
             config = cls.WALKING_TIME_CONFIG["close"]
         elif walking_minutes < cls.WALKING_TIME_CONFIG["medium"]["max_minutes"]:
             config = cls.WALKING_TIME_CONFIG["medium"]
-        else:
+        elif walking_minutes < cls.WALKING_TIME_CONFIG["far"]["max_minutes"]:
             config = cls.WALKING_TIME_CONFIG["far"]
+            
+        else:
+            config = cls.WALKING_TIME_CONFIG["very_far"]
 
         return cls.create_pill(
             time_text,

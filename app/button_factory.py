@@ -5,41 +5,41 @@ from dash import html
 logger = logging.getLogger(__name__)
 # Button definitions
 PRICE_BUTTONS = [
-    {"id": "btn-price-60k", "label": "65K", "value": 65000},
-    {"id": "btn-price-70k", "label": "75K", "value": 75000},
-    {"id": "btn-price-80k", "label": "85K", "value": 85000, "default": True},
-    {"id": "btn-price-90k-plus", "label": "любая", "value": float("inf")},
+    {"id": "btn-price-60k", "label": "до 65K", "value": 65000},
+    {"id": "btn-price-70k", "label": "до 75K", "value": 75000},
+    {"id": "btn-price-80k", "label": "до 85K", "value": 85000, "default": True},
+    {"id": "btn-price-90k-plus", "label": "до 100К", "value": float("inf")},
 ]
 
 DISTANCE_BUTTONS = [
-    {"id": "btn-dist-2km", "label": "2", "value": 2.0},
-    {"id": "btn-dist-3km", "label": "3", "value": 3.0, "default": True},
-    {"id": "btn-dist-5km", "label": "5", "value": 5.0},
-    {"id": "btn-dist-5km-plus", "label": "любое", "value": float("inf")},
+    {"id": "btn-dist-2km", "label": "до 2 км", "value": 2.0},
+    {"id": "btn-dist-3km", "label": "до 3 км", "value": 3.0, "default": True},
+    {"id": "btn-dist-5km", "label": "до 4 км", "value": 5.0},
+    {"id": "btn-dist-5km-plus", "label": "до 6 км", "value": float("inf")},
 ]
 
 SORT_BUTTONS = [
     {
         "id": "btn-sort-price",
-        "label": "Цена",
+        "label": "цена",
         "value": "price_value",
         "default_direction": "asc",
     },
     {
         "id": "btn-sort-time",
-        "label": "Дата",
+        "label": "дата",
         "value": "updated_time_sort",
         "default_direction": "desc",
     },
     {
         "id": "btn-sort-activity",
-        "label": "Акт.",
+        "label": "актуальность",
         "value": "activity_date_sort",
         "default_direction": "desc",
     },
     {
         "id": "btn-sort-distance",
-        "label": "Расст.",
+        "label": "расстояние",
         "value": "distance_sort",
         "default": True,
         "default_direction": "asc",
@@ -149,10 +149,10 @@ class ButtonFactory:
 def create_filter_buttons(inline=True):
     """Create improved quick filter toggle buttons with modern styling."""
     filter_buttons = [
-        {"id": "btn-updated-today", "label": "За сутки", "variant": "default"},
-        {"id": "btn-nearest", "label": "Рядом", "variant": "default"},
-        {"id": "btn-below-estimate", "label": "Ниже оценки", "variant": "default"},
-        {"id": "btn-inactive", "label": "Активные", "variant": "default", 'default': True},
+        {"id": "btn-updated-today", "label": "за сутки", "variant": "default"},
+        {"id": "btn-nearest", "label": "рядом", "variant": "default"},
+        {"id": "btn-below-estimate", "label": "ниже рынка", "variant": "default"},
+        {"id": "btn-inactive", "label": "активные", "variant": "default", 'default': True},
     ]
 
     # Create button group using modernized components

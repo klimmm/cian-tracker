@@ -4,7 +4,7 @@ from dash.dependencies import Input, Output, State
 import dash
 import logging
 import pandas as pd
-from app.data_manager import DataManager
+from app.data_manager import DataProcessor, DataFilterSorter, DataLoader
 from app.button_factory import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS
 from app.config import CONFIG
 from app.apartment_card_callbacks import register_apartment_card_callbacks
@@ -39,7 +39,7 @@ def register_button_callbacks(app):
         df = pd.DataFrame(data)
 
         # Apply filtering and sorting
-        df = DataManager.filter_and_sort_data(df, filters or {})
+        df = DataFilterSorter.filter_and_sort_data(df, filters or {})
 
         # Return the filtered data
         return df.to_dict("records")
@@ -192,10 +192,10 @@ def register_button_callbacks(app):
 
         # Filter toggle buttons
         filter_button_mapping = [
-            ("btn-nearest", "primary", "nearest"),
-            ("btn-below-estimate", "warning", "below_estimate"),
+            ("btn-nearest", "default", "nearest"),
+            ("btn-below-estimate", "default", "below_estimate"),
             ("btn-inactive", "default", "inactive"),
-            ("btn-updated-today", "success", "updated_today"),
+            ("btn-updated-today", "default", "updated_today"),
         ]
 
         for button_id, variant, filter_name in filter_button_mapping:
@@ -233,12 +233,12 @@ def register_data_callbacks(app):
         """Load and process apartment data for display."""
         try:
             # Load data from source
-            df, update_time = DataManager.load_data()
+            df, update_time = DataLoader.load_data()
             if df.empty:
                 return [], "Error: No data loaded"
 
             # Process the data
-            df = DataManager.process_data(df)
+            df = DataProcessor.process_data(df)
 
             # Add details indicator
             if "details" not in df.columns:

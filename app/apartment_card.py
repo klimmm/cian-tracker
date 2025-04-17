@@ -28,6 +28,14 @@ def create_apartment_details_card(
         table_row_data
     )
 
+    # DEBUG: Print the cian estimation value
+    print(f"Debug - Cian Estimation from extract_row_data: '{cian_est}'")
+    
+    # If cian_est is empty but exists in apartment_data, use that instead
+    if not cian_est and apartment_data.get("cian_estimation_value_formatted"):
+        cian_est = apartment_data.get("cian_estimation_value_formatted")
+        print(f"Debug - Using cian_est from apartment_data: '{cian_est}'")
+    
     # Create detailed components with improved responsive styling
     components = [
         # ID Header
@@ -90,13 +98,16 @@ def extract_row_data(table_row_data):
             title = address_title.split("<br>")[1]
         else:
             title = table_row_data.get("title", "")
+        cian_est = table_row_data.get("cian_estimation_value_formatted", "")
 
+
+        
         return (
             address,
             table_row_data.get("distance", ""),
             table_row_data.get("metro_station", ""),
             title,
-            table_row_data.get("cian_estimation_formatted", ""),
+            table_row_data.get("cian_estimation_value_formatted", ""),
             table_row_data.get("price_value_formatted", ""),
             table_row_data.get("description", ""),
         )

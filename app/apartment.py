@@ -5,7 +5,7 @@ import re
 from app.pill_factory import PillFactory
 from app.formatters import NumberFormatter
 from app.components import ContainerFactory
-
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +29,16 @@ class ApartmentCard:
         price_elements.append(PillFactory.create_price_pill(price))
 
         # Price comparison if available
-        if price_value and cian_est_value:
+        '''if price_value and cian_est_value:
             price_elements.append(
                 PillFactory.create_price_comparison(price_value, cian_est_value)
-            )
+            )'''
 
+
+        #if cian_est and cian_est != "--":
+        price_elements.append(PillFactory.create_cian_estimate_pill(cian_est))
+
+        
         # Process price history with styling
         price_history_elements = []
         if price_history:

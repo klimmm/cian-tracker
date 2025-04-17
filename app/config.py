@@ -104,12 +104,12 @@ CONFIG = {
 FONT = "Arial,sans-serif"
 # Button styles with classes
 BUTTON_STYLES = {
-    "nearest": {"className": "dashboard-button button-nearest"},
-    "below_estimate": {"className": "dashboard-button button-below-estimate"},
-    "updated_today": {"className": "dashboard-button button-updated-today"},
-    "inactive": {"className": "dashboard-button button-inactive"},
-    "price": {"className": "dashboard-button button-price"},
-    "distance": {"className": "dashboard-button button-distance"},
+    "nearest": {"className": "dashboard-button"},
+    "below_estimate": {"className": "dashboard-button"},
+    "updated_today": {"className": "dashboard-button"},
+    "inactive": {"className": "dashboard-button"},
+    "price": {"className": "dashboard-button"},
+    "distance": {"className": "dashboard-button"},
     "sort": {"className": "dashboard-button button-sort"},
 }
 

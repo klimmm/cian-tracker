@@ -1,7 +1,7 @@
 from dash.dependencies import Input, Output, State
 import logging
 import pandas as pd
-from app.data_manager import DataManager
+from app.data_manager import DataFilterSorter
 from app.config import CONFIG
 logger = logging.getLogger(__name__)
 
@@ -24,10 +24,10 @@ def register_table_callbacks(app):
             df = pd.DataFrame(data)
 
             # Apply filtering and sorting
-            df = DataManager.filter_and_sort_data(df, filters or {})
+            df = DataFilterSorter.filter_and_sort_data(df, filters or {})
 
             # Define which columns to display
-            visible_columns = ["update_title", "property_tags", "address_title", "price_text", 'details']
+            visible_columns = ["update_title", "property_tags", "address_title", "price_text"]
             numeric_columns = {
                 "distance",
                 "price_value_formatted",
@@ -48,17 +48,10 @@ def register_table_callbacks(app):
                 "days_active",
                 "activity_date",
             }
-
-            # Add a details column with a button if it doesn't exist
-            if "details" not in df.columns:
-                df["details"] = "🔍"
-
             # Build the column definitions
             columns = [
                 {
-                    "name": CONFIG["columns"]["headers"].get(
-                        c, "Детали" if c == "details" else c
-                    ),
+                    "name": CONFIG["columns"]["headers"].get(c, c),
                     "id": c,
                     "type": "numeric" if c in numeric_columns else "text",
                     "presentation": "markdown" if c in markdown_columns else None,
@@ -86,5 +79,5 @@ def register_table_callbacks(app):
             return []
 
         df = pd.DataFrame(data)
-        df = DataManager.filter_and_sort_data(df, filters, sort_by)
+        df = DataFilterSorter.filter_and_sort_data(df, filters, sort_by)
         return df.to_dict("records")

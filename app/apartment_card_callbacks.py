@@ -2,7 +2,7 @@
 from dash import callback_context as ctx
 from dash.dependencies import Input, Output, State, MATCH
 import dash
-from app.data_manager import load_apartment_details
+from app.data_manager import DataLoader, DataManager
 from app.apartment_card import create_apartment_details_card
 from dash import html
 import logging
@@ -64,9 +64,6 @@ def register_apartment_card_callbacks(app):
 
         # Handle table cell click
         if trigger_id == "apartment-table" and active_cell:
-            # Only accept clicks on the details column
-            if active_cell.get("column_id") != "details":
-                return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
             row_idx = active_cell["row"]
             if not table_data or row_idx >= len(table_data):
@@ -83,8 +80,13 @@ def register_apartment_card_callbacks(app):
                     visible_overlay_class,
                 )
 
+            processed_df, update_time = DataManager.load_and_process_data()
+            #table_data = processed_df.to_dict('records')
+
             row_data = table_data[row_idx]
             offer_id = row_data.get("offer_id")
+
+            
             if not offer_id:
                 logger.error(f"No offer_id found in row data")
                 return (
@@ -97,7 +99,7 @@ def register_apartment_card_callbacks(app):
                 )
 
             try:
-                apartment_data = load_apartment_details(offer_id)
+                apartment_data = DataLoader.load_apartment_details(offer_id)
                 details_card = create_apartment_details_card(
                     apartment_data, row_data, row_idx, len(table_data)
                 )
@@ -154,7 +156,7 @@ def register_apartment_card_callbacks(app):
             offer_id = new_row.get("offer_id")
 
             try:
-                apartment_data = load_apartment_details(offer_id)
+                apartment_data = DataLoader.load_apartment_details(offer_id)
                 details_card = create_apartment_details_card(
                     apartment_data, new_row, new_idx, total_rows
                 )
