@@ -42,7 +42,7 @@ class PillFactory:
         "extra_small": {"variant": "error", "custom_class": "pill--area", "max": 16},
         "very_small": {"variant": "warning", "custom_class": "pill--area", "max": 21},
         "small": {"variant": "neutral", "custom_class": "pill--area", "max": 34},
-        "medium_small": {"variant": "primary", "custom_class": "pill--area", "max": 50},
+        "medium_small": {"variant": "neutral", "custom_class": "pill--area", "max": 50},
         "medium": {"variant": "success", "custom_class": "pill--area", "max": 70},
         "medium_large": {
             "variant": "warning",
@@ -55,7 +55,7 @@ class PillFactory:
     FLOOR_CONFIG = {
         "first": {"variant": "warning", "custom_class": "pill--floor"},
         "low": {
-            "variant": "primary",
+            "variant": "neutral",
             "custom_class": "pill--floor",
         },  # New tier for floors 2-5
         "middle": {"variant": "neutral", "custom_class": "pill--floor"},
@@ -69,7 +69,7 @@ class PillFactory:
             "max_minutes": 12,
         },
         "close": {
-            "variant": "primary",
+            "variant": "neutral",
             "custom_class": "pill--distance",
             "max_minutes": 22,
         },
@@ -107,7 +107,7 @@ class PillFactory:
 
     ACTIVITY_CONFIG = {
         "active": {
-            "variant": "primary",
+            "variant": "neutral",
             "custom_class": "pill--activity",
             "icon": "🔄",
         },

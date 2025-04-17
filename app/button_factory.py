@@ -19,12 +19,7 @@ DISTANCE_BUTTONS = [
 ]
 
 SORT_BUTTONS = [
-    {
-        "id": "btn-sort-price",
-        "label": "цена",
-        "value": "price_value",
-        "default_direction": "asc",
-    },
+
     {
         "id": "btn-sort-time",
         "label": "дата",
@@ -44,6 +39,12 @@ SORT_BUTTONS = [
         "default": True,
         "default_direction": "asc",
     },
+    {
+        "id": "btn-sort-price",
+        "label": "цена",
+        "value": "price_value",
+        "default_direction": "asc",
+    }    
 ]
 
 # Default configuration values
@@ -150,9 +151,9 @@ def create_filter_buttons(inline=True):
     """Create improved quick filter toggle buttons with modern styling."""
     filter_buttons = [
         {"id": "btn-updated-today", "label": "за сутки", "variant": "default"},
+        {"id": "btn-inactive", "label": "активные", "variant": "default", 'default': True},
         {"id": "btn-nearest", "label": "рядом", "variant": "default"},
         {"id": "btn-below-estimate", "label": "ниже рынка", "variant": "default"},
-        {"id": "btn-inactive", "label": "активные", "variant": "default", 'default': True},
     ]
 
     # Create button group using modernized components
