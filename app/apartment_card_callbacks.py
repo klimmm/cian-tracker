@@ -1,4 +1,3 @@
-
 from dash import callback_context as ctx
 from dash.dependencies import Input, Output, State, MATCH
 import dash
@@ -65,7 +64,6 @@ def register_apartment_card_callbacks(app):
 
         # Handle table cell click
         if trigger_id == "apartment-table" and active_cell:
-
             
             row_idx = active_cell["row"]
             if not table_data or row_idx >= len(table_data):
@@ -82,12 +80,8 @@ def register_apartment_card_callbacks(app):
                     visible_overlay_class,
                 )
 
-            #processed_df, update_time = DataManager.load_and_process_data()
-            #table_data = processed_df.to_dict('records')
-
             row_data = table_data[row_idx]
             offer_id = row_data.get("offer_id")
-
             
             if not offer_id:
                 logger.error(f"No offer_id found in row data")
@@ -100,9 +94,19 @@ def register_apartment_card_callbacks(app):
                     visible_overlay_class,
                 )
 
-
             try:
                 apartment_data = DataManager.get_apartment_details(offer_id)
+                
+                # IMPORTANT: Copy important main table fields to apartment_data
+                important_fields = ["cian_estimation_value_formatted", "price_value_formatted"]
+                for field in important_fields:
+                    if field in row_data:
+                        apartment_data[field] = row_data[field]
+                
+                # Log for debugging
+                logger.info(f"Row data keys: {list(row_data.keys())}")
+                if "cian_estimation_value_formatted" in row_data:
+                    logger.info(f"cian_estimation_value_formatted value: {row_data['cian_estimation_value_formatted']}")
                 
                 # Preload images for neighboring apartments
                 if table_data and row_idx is not None:
@@ -122,8 +126,6 @@ def register_apartment_card_callbacks(app):
                         # Preload these in background
                         from app.data_manager import ImageLoader
                         ImageLoader.preload_images_for_apartments(neighbor_ids)
-
-
 
                 details_card = create_apartment_details_card(
                     apartment_data, row_data, row_idx, len(table_data)
@@ -182,6 +184,13 @@ def register_apartment_card_callbacks(app):
 
             try:
                 apartment_data = DataManager.get_apartment_details(offer_id)
+                
+                # IMPORTANT: Copy important fields for navigation case too
+                important_fields = ["cian_estimation_value_formatted", "price_value_formatted"]
+                for field in important_fields:
+                    if field in new_row:
+                        apartment_data[field] = new_row[field]
+                
                 details_card = create_apartment_details_card(
                     apartment_data, new_row, new_idx, total_rows
                 )
@@ -210,9 +219,7 @@ def register_apartment_card_callbacks(app):
         # For any other case, don't update
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
-    # Replace the existing clientside callback with this code in register_apartment_card_callbacks
-    # Keep this inside the function, after your other callbacks
-        
+    # Client-side callback remains unchanged
     app.clientside_callback(
         """
         function(prev_clicks, next_clicks, slideshow_data) {

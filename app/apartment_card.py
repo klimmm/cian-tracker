@@ -67,9 +67,6 @@ def create_slideshow(offer_id):
     )
 
 
-
-
-
 def create_apartment_details_card(
     apartment_data, table_row_data=None, row_idx=None, total_rows=None
 ):
@@ -91,13 +88,28 @@ def create_apartment_details_card(
         table_row_data
     )
 
-    # DEBUG: Print the cian estimation value
-    print(f"Debug - Cian Estimation from extract_row_data: '{cian_est}'")
+    # DEBUG: Log data sources for debugging
+    logger.info(f"Debug - Cian Estimation from extract_row_data: '{cian_est}'")
+    logger.info(f"Debug - Apartment data keys: {list(apartment_data.keys())}")
     
-    # If cian_est is empty but exists in apartment_data, use that instead
-    if not cian_est and apartment_data.get("cian_estimation_value_formatted"):
-        cian_est = apartment_data.get("cian_estimation_value_formatted")
-        print(f"Debug - Using cian_est from apartment_data: '{cian_est}'")
+    # Enhanced fallback mechanism - check multiple places for the field
+    if not cian_est:
+        # 1. Check if directly in apartment_data (added by callback)
+        if apartment_data.get("cian_estimation_value_formatted"):
+            cian_est = apartment_data.get("cian_estimation_value_formatted")
+            logger.info(f"Debug - Using cian_est from apartment_data root: '{cian_est}'")
+        # 2. Check apartment subdict if it exists
+        elif apartment_data.get("apartment", {}).get("cian_estimation_value_formatted"):
+            cian_est = apartment_data["apartment"]["cian_estimation_value_formatted"]
+            logger.info(f"Debug - Using cian_est from apartment_data.apartment: '{cian_est}'")
+        # 3. Check stats subdict if it exists
+        elif apartment_data.get("stats", {}).get("cian_estimation_value_formatted"):
+            cian_est = apartment_data["stats"]["cian_estimation_value_formatted"]
+            logger.info(f"Debug - Using cian_est from apartment_data.stats: '{cian_est}'")
+        # 4. Try alternative field names
+        elif apartment_data.get("cian_estimation"):
+            cian_est = apartment_data.get("cian_estimation")
+            logger.info(f"Debug - Using alternative field cian_estimation: '{cian_est}'")
     
     # Create detailed components with improved responsive styling
     components = [
@@ -122,11 +134,6 @@ def create_apartment_details_card(
     # Filter out None values
     components = [component for component in components if component is not None]
 
-    # Update position info in the navigation bar
-    if row_idx is not None and total_rows is not None:
-        # Position info is handled elsewhere via navigation bar
-        pass
-
     # Create the main card container with responsive styling
     return html.Div(
         components,
@@ -142,6 +149,9 @@ def extract_row_data(table_row_data):
         return "", "", "", "", "", "", ""
 
     try:
+        # Log all keys available for debugging
+        logger.info(f"Extract row data - table_row_data keys: {list(table_row_data.keys())}")
+        
         # Extract address from address_title
         address_title = table_row_data.get("address_title", "")
         address = ""
@@ -161,16 +171,25 @@ def extract_row_data(table_row_data):
             title = address_title.split("<br>")[1]
         else:
             title = table_row_data.get("title", "")
+            
+        # Try multiple possible field names for Cian estimation
         cian_est = table_row_data.get("cian_estimation_value_formatted", "")
-
-
+        logger.info(f"Extract row data - cian_est initial value: {cian_est}")
+        
+        # Try alternative field names if needed
+        if not cian_est:
+            cian_est = table_row_data.get("cian_estimate", "")
+            if not cian_est:
+                cian_est = table_row_data.get("estimation_value", "")
+                if not cian_est:
+                    cian_est = table_row_data.get("cian_estimation", "")
         
         return (
             address,
             table_row_data.get("distance", ""),
             table_row_data.get("metro_station", ""),
             title,
-            table_row_data.get("cian_estimation_value_formatted", ""),
+            cian_est,
             table_row_data.get("price_value_formatted", ""),
             table_row_data.get("description", ""),
         )
