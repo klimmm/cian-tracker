@@ -74,7 +74,7 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
 }
 
 .card-title {
-  font-size: var(--font-lg);
+  font-size: var(--font-sm);
   margin-bottom: var(--space-sm);
   font-weight: 600;
 }
@@ -96,10 +96,17 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
 
 /* Update time */
 .update-time { 
-  font-size: var(--font-xs);
+  font-size: var(--font-sm);
   color: var(--color-text-secondary);
+  margin-bottom: 5px !important;
 }
 
+.header-container { 
+  margin-bottom: 15px !important;
+}
+.main-container { 
+  max-width: 900px;
+}
 /* наводим указатель „рука“ */
 #apartment-table .dash-cell {
   cursor: pointer;
@@ -108,7 +115,22 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
 #apartment-table .dash-spreadsheet-container tr:hover .dash-cell {
   background-color: var(--color-primary-light) !important;
 }
+.preload-indicator--hidden {
+    display: none !important;
+}
 
+.preload-indicator--visible {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 4px;
+    font-size: 14px;
+    z-index: 9999;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
 
 /* Tooltip styles for abbreviations */
 [data-tooltip] {
@@ -394,7 +416,7 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03); /* Lighter shadow */
   border: 1px solid var(--color-border);
   width: 100%;
-  max-width: 1000px;
+  max-width: 900px;
   box-sizing: border-box;
 }
 
@@ -463,6 +485,10 @@ input, select, textarea {
   font-size: 0.75rem !important;     /* мелкий шрифт */
 }
 
+.pill--time{
+  background-color: transparent;
+  color: black;
+}
 
 
 
@@ -552,7 +578,11 @@ input, select, textarea {
   }
 }
 
-
+.dash-label {
+  font-size: 0.65rem !important;
+  margin-right: 6px !important;
+  white-space: nowrap;
+}
 
 
 @media screen and (max-width: 576px) {
@@ -577,6 +607,7 @@ input, select, textarea {
   }
 
   .dash-label {
+    font-size: 0.6rem !important;
     width: auto !important;
     margin-bottom: var(--space-xs) !important;
   }
@@ -678,11 +709,7 @@ input, select, textarea {
 }
 
 /* 5) Tuck the label in a bit */
-.dash-label {
-  font-size: 0.75rem !important;
-  margin-right: 6px !important;
-  white-space: nowrap;
-}
+
 /* ──────────────────────────────────────────────────
    1) Stack each button group as its own row
 ──────────────────────────────────────────────────*/
@@ -740,11 +767,7 @@ input, select, textarea {
 /* ──────────────────────────────────────────────────
    5) Tweak the label
 ──────────────────────────────────────────────────*/
-.dash-label {
-  font-size: 0.75rem !important;
-  margin-right: 8px !important;
-  white-space: nowrap;
-}
+
 .button-group-pair {
   display: flex !important;
   flex-direction: column !important;  /* force stacking */
@@ -812,14 +835,8 @@ input, select, textarea {
 /* (you can adjust the breakpoint to taste) */
 .button-group-container {
   flex: 1 1 100% !important;
-  max-width: 100% !important;
+  max-width: 600px !important;
+  border-width: 0px;
 }
-
-@media (min-width: 768px) {
-  /* from 768px up: two groups per row */
-  .button-group-container {
-    flex: 1 1 calc(50% - 8px) !important;
-    max-width: calc(50% - 8px) !important;
-  }
 }
 

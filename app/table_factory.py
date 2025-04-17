@@ -82,9 +82,9 @@ class TableFactory:
 
         # Fixed-width columns (percentages)
         fixed_columns = {
-            "update_title": 10,
-            "property_tags": 30,
-            "address_title": 20,
+            "update_title": 5,
+            "property_tags": 25,
+            "address_title": 45,
             "price_text": 25,
         }
         column_alignments = {"price_text": "center"}
@@ -137,7 +137,7 @@ class TableFactory:
             'style_table': {
                 'overflowX': 'auto',
                 'width': '100%',
-                'maxWidth': '100%',
+                'maxWidth': '900px',
                 'tableLayout': 'fixed',   # fixed layout
             },
             'style_data_conditional': conditional_styles,

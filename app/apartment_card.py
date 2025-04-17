@@ -2,9 +2,72 @@
 from dash import html
 import logging
 from app.apartment import ApartmentCard
-from app.image_handler import ImageHandler
-
+from app.data_manager import DataManager
+from app.components import ContainerFactory
+from dash import dcc
 logger = logging.getLogger(__name__)
+
+
+def create_slideshow(offer_id):
+    """Create responsive slideshow component for images with improved styling."""
+    image_paths = DataManager.get_apartment_images(offer_id)
+    if not image_paths:
+        return html.Div(
+            [
+                html.Div("No images available", className="no-photo-placeholder"),
+                html.P("Фотографии недоступны"),
+            ],
+            className="slideshow-container no-photos",
+        )
+
+    # Create slideshow with improved responsive design
+    return ContainerFactory.create_section(
+        [
+            # Image container with nav arrows and touch support
+            html.Div(
+                [
+                    html.Img(
+                        id={"type": "slideshow-img", "offer_id": offer_id},
+                        src=image_paths[0],
+                        className="slideshow-img",
+                        # Specifically avoid using loading="lazy" which can cause issues
+                    ),
+                    html.Button(
+                        "❮",
+                        id={"type": "prev-btn", "offer_id": offer_id},
+                        className="slideshow-nav-btn slideshow-nav-btn--prev",
+                        # Add aria-label for accessibility
+                        **{"aria-label": "Previous image"},
+                    ),
+                    html.Button(
+                        "❯",
+                        id={"type": "next-btn", "offer_id": offer_id},
+                        className="slideshow-nav-btn slideshow-nav-btn--next",
+                        **{"aria-label": "Next image"},
+                    ),
+                    html.Div(
+                        f"1/{len(image_paths)}",
+                        id={"type": "counter", "offer_id": offer_id},
+                        className="slideshow-counter",
+                    ),
+                ],
+                className="slideshow-container",
+                # Add data attribute for identifying total images
+                **{"data-total": str(len(image_paths))},
+            ),
+            dcc.Store(
+                id={"type": "slideshow-data", "offer_id": offer_id},
+                data={"current_index": 0, "image_paths": image_paths},
+            ),
+            html.Div(
+                f"Фотографии ({len(image_paths)})", className="slideshow-title"
+            ),
+        ],
+        divider=True,
+    )
+
+
+
 
 
 def create_apartment_details_card(
@@ -41,7 +104,7 @@ def create_apartment_details_card(
         # ID Header
         ApartmentCard.create_id_header(offer_id),
         # Slideshow - now with responsive capabilities
-        ImageHandler.create_slideshow(offer_id),
+        create_slideshow(offer_id),
         # Address section
         ApartmentCard.create_address_section((address, metro, title, distance)),
         ApartmentCard.create_price_section(

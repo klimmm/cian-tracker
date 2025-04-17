@@ -5,7 +5,6 @@ import re
 from app.pill_factory import PillFactory
 from app.formatters import NumberFormatter
 from app.components import ContainerFactory
-import pandas as pd
 
 logger = logging.getLogger(__name__)
 

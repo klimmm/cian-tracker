@@ -110,7 +110,7 @@ def create_app_layout(app):
     # Create header components with improved styling
     header = html.Div(
         [
-            html.H2("Cian Apartment Dashboard", className="dashboard-header"),
+            html.H2("", className="dashboard-header"),
             html.Div(
                 html.Span(id="last-update-time", className="update-time"),
                 className="update-info",
@@ -119,9 +119,7 @@ def create_app_layout(app):
         className="header-container",
     )
 
-    refresh_interval = dcc.Interval(
-        id="interval-component", interval=2 * 60 * 1000, n_intervals=0
-    )
+    dummy_input = html.Div(id="dummy-load", children="init", style={"display": "none"})
 
     # Reorganize controls to have two button groups per row with responsive behavior
     controls_container = html.Div(
@@ -141,17 +139,28 @@ def create_app_layout(app):
 
     # Detail panel for apartment information with improved design
     apartment_details_panel = create_apartment_details_panel()
+    preload_status_store = dcc.Store(id="preload-status-store", data={"status": "not_started"})
 
+    
     # Initialize empty data table to ensure it exists in the layout
     empty_data_table = TableFactory.create_data_table()
+    
 
     # Main layout structure
     return html.Div(
         [
             # Header section
             header,
-            refresh_interval,
             filter_store,
+            dummy_input,
+            preload_status_store,
+            html.Div(
+                "Loading apartment data...", 
+                id="preload-indicator", 
+                className="preload-indicator--hidden"
+            ),
+            dcc.Store(id="image-preload-trigger", data={}),
+            
             # Controls section with improved styling
             controls_container,
             # Table view container

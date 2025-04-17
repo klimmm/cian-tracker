@@ -4,11 +4,14 @@ from dash.dependencies import Input, Output, State
 import dash
 import logging
 import pandas as pd
-from app.data_manager import DataProcessor, DataFilterSorter, DataLoader
+from app.data_manager import DataManager
+from app.data_filter import DataFilterSorter
+
+
 from app.button_factory import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS
 from app.config import CONFIG
 from app.apartment_card_callbacks import register_apartment_card_callbacks
-from app.table_callbacks import register_table_callbacks
+from app.table_callbacks import register_table_callbacks, register_data_callbacks
 
 logger = logging.getLogger(__name__)
 
@@ -25,24 +28,6 @@ def register_all_callbacks(app):
 def register_button_callbacks(app):
     """Register optional button-based callbacks (only used if table clicks don't work)."""
 
-    @app.callback(
-        Output("apartment-table", "data", allow_duplicate=True),
-        [Input("filter-store", "data"), Input("apartment-data-store", "data")],
-        prevent_initial_call=True,
-    )
-    def add_button_to_table(filters, data):
-        """Update table data when filters change."""
-        if not data:
-            return dash.no_update
-
-        # Convert to DataFrame for processing
-        df = pd.DataFrame(data)
-
-        # Apply filtering and sorting
-        df = DataFilterSorter.filter_and_sort_data(df, filters or {})
-
-        # Return the filtered data
-        return df.to_dict("records")
 
     @app.callback(
         [*[Output(f"{btn['id']}-text", "children") for btn in SORT_BUTTONS]],
@@ -217,46 +202,3 @@ def register_button_callbacks(app):
 
         return classes
 
-
-def register_data_callbacks(app):
-    """Register data loading and processing callbacks."""
-
-    @app.callback(
-        [
-            Output("apartment-data-store", "data"),
-            Output("last-update-time", "children"),
-        ],
-        [Input("interval-component", "n_intervals")],
-        prevent_initial_call=False,
-    )
-    def load_apartment_data(_):
-        """Load and process apartment data for display."""
-        try:
-            # Load data from source
-            df, update_time = DataLoader.load_data()
-            if df.empty:
-                return [], "Error: No data loaded"
-
-            # Process the data
-            df = DataProcessor.process_data(df)
-
-            # Add details indicator
-            if "details" not in df.columns:
-                df["details"] = "🔍"
-
-            # Get required columns
-            required_cols = CONFIG["columns"]["display"] + [
-                "details",
-                "offer_id",
-                "date_sort_combined",
-            ]
-            available_cols = [col for col in required_cols if col in df.columns]
-
-            # Convert to dictionary for storage
-            df_dict = df[available_cols].to_dict("records") if not df.empty else []
-
-            return df_dict, f"Актуально на: {update_time}"
-
-        except Exception as e:
-            logger.error(f"Error loading data: {e}")
-            return [], f"Ошибка загрузки данных: {str(e)}"

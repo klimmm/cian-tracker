@@ -2,11 +2,12 @@
 from dash import callback_context as ctx
 from dash.dependencies import Input, Output, State, MATCH
 import dash
-from app.data_manager import DataLoader, DataManager
+from app.data_manager import DataManager
 from app.apartment_card import create_apartment_details_card
 from dash import html
 import logging
 logger = logging.getLogger(__name__)
+
 
 def register_apartment_card_callbacks(app):
     """Register callbacks for apartment details panel."""
@@ -65,6 +66,7 @@ def register_apartment_card_callbacks(app):
         # Handle table cell click
         if trigger_id == "apartment-table" and active_cell:
 
+            
             row_idx = active_cell["row"]
             if not table_data or row_idx >= len(table_data):
                 logger.error(
@@ -80,7 +82,7 @@ def register_apartment_card_callbacks(app):
                     visible_overlay_class,
                 )
 
-            processed_df, update_time = DataManager.load_and_process_data()
+            #processed_df, update_time = DataManager.load_and_process_data()
             #table_data = processed_df.to_dict('records')
 
             row_data = table_data[row_idx]
@@ -98,8 +100,31 @@ def register_apartment_card_callbacks(app):
                     visible_overlay_class,
                 )
 
+
             try:
-                apartment_data = DataLoader.load_apartment_details(offer_id)
+                apartment_data = DataManager.get_apartment_details(offer_id)
+                
+                # Preload images for neighboring apartments
+                if table_data and row_idx is not None:
+                    # Get 5 IDs before and after current one
+                    neighbor_indices = list(range(
+                        max(0, row_idx - 5),
+                        min(len(table_data), row_idx + 6)
+                    ))
+                    neighbor_indices = [i for i in neighbor_indices if i != row_idx]
+                    
+                    neighbor_ids = [table_data[i].get("offer_id") for i in neighbor_indices 
+                                  if i < len(table_data)]
+                    neighbor_ids = [id for id in neighbor_ids if id]  # Filter out None
+                    
+                    if neighbor_ids:
+                        logger.info(f"👉 USER SELECTION: Preloading neighbors for apartment {offer_id}: {neighbor_ids}")
+                        # Preload these in background
+                        from app.data_manager import ImageLoader
+                        ImageLoader.preload_images_for_apartments(neighbor_ids)
+
+
+
                 details_card = create_apartment_details_card(
                     apartment_data, row_data, row_idx, len(table_data)
                 )
@@ -156,7 +181,7 @@ def register_apartment_card_callbacks(app):
             offer_id = new_row.get("offer_id")
 
             try:
-                apartment_data = DataLoader.load_apartment_details(offer_id)
+                apartment_data = DataManager.get_apartment_details(offer_id)
                 details_card = create_apartment_details_card(
                     apartment_data, new_row, new_idx, total_rows
                 )
@@ -185,11 +210,25 @@ def register_apartment_card_callbacks(app):
         # For any other case, don't update
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
+    # Replace the existing clientside callback with this code in register_apartment_card_callbacks
+    # Keep this inside the function, after your other callbacks
+        
     app.clientside_callback(
         """
         function(prev_clicks, next_clicks, slideshow_data) {
+            // Debug logging to see what's being triggered
+            console.log('Slideshow callback triggered with:', {
+                prev_clicks,
+                next_clicks,
+                slideshow_data: slideshow_data ? {
+                    current_index: slideshow_data.current_index,
+                    image_count: slideshow_data.image_paths ? slideshow_data.image_paths.length : 0
+                } : null
+            });
+            
             // Make sure data exists
             if (!slideshow_data || !slideshow_data.image_paths || slideshow_data.image_paths.length === 0) {
+                console.log('No slideshow data, returning without changes');
                 return [slideshow_data, "", ""];
             }
             
@@ -198,32 +237,74 @@ def register_apartment_card_callbacks(app):
             const imagePaths = slideshow_data.image_paths;
             const totalImages = imagePaths.length;
             
-            // Get offer ID for tracking
+            // Get trigger info with better logging
             const ctx = dash_clientside.callback_context;
-            const triggerId = ctx.triggered[0].prop_id;
-            const matches = triggerId.match(/{[^}]*"offer_id"[^}]*:([^}]*)}/);
-            const offerId = matches ? matches[1].trim() : 'unknown';
+            if (!ctx.triggered || !ctx.triggered.length) {
+                console.log('No trigger detected, returning current state');
+                return [slideshow_data, imagePaths[currentIndex], `${currentIndex + 1}/${totalImages}`];
+            }
             
-            // Create button click trackers specific to this slideshow
+            const triggerId = ctx.triggered[0].prop_id;
+            console.log('Trigger ID:', triggerId);
+            
+            // Extract the offer ID with a fixed regex that works with the actual format
+            let offerId = 'unknown';
+            try {
+                // Parse the JSON part of the trigger ID
+                const jsonMatch = triggerId.match(/\{.*?\}/);
+                if (jsonMatch) {
+                    const jsonPart = JSON.parse(jsonMatch[0]);
+                    if (jsonPart && jsonPart.offer_id) {
+                        offerId = jsonPart.offer_id;
+                    }
+                }
+            } catch (e) {
+                console.error('Error parsing offer ID:', e);
+            }
+            
+            console.log('Extracted offer ID:', offerId);
+            
+            // Create state key that's specific to this slideshow
             const stateKey = `slideshow_${offerId}`;
+            
+            // Initialize state if it doesn't exist - FIXED to start with 0
             if (typeof window[stateKey] === 'undefined') {
+                console.log('Initializing state for', stateKey);
                 window[stateKey] = {
-                    prevClicks: prev_clicks || 0,
-                    nextClicks: next_clicks || 0
+                    prevClicks: 0,  // Initialize with 0, not the current value
+                    nextClicks: 0   // Initialize with 0, not the current value
                 };
             }
             
+            let didChange = false;
+            
+            // Log the current state for debugging
+            console.log('Current state:', {
+                stateKey,
+                storedPrevClicks: window[stateKey].prevClicks,
+                receivedPrevClicks: prev_clicks,
+                storedNextClicks: window[stateKey].nextClicks,
+                receivedNextClicks: next_clicks,
+                currentIndex
+            });
+            
             // Determine which button was clicked by comparing with stored values
-            if (prev_clicks > window[stateKey].prevClicks) {
+            if (prev_clicks && prev_clicks > window[stateKey].prevClicks) {
+                console.log('Previous button clicked, changing index from', currentIndex);
                 // Move to previous image with wrap-around
                 currentIndex = (currentIndex - 1 + totalImages) % totalImages;
                 window[stateKey].prevClicks = prev_clicks;
+                didChange = true;
             } 
-            else if (next_clicks > window[stateKey].nextClicks) {
+            else if (next_clicks && next_clicks > window[stateKey].nextClicks) {
+                console.log('Next button clicked, changing index from', currentIndex);
                 // Move to next image with wrap-around
                 currentIndex = (currentIndex + 1) % totalImages;
                 window[stateKey].nextClicks = next_clicks;
+                didChange = true;
             }
+            
+            console.log('New index:', currentIndex, 'Changed:', didChange);
             
             // Return updated values
             return [
