@@ -48,21 +48,21 @@ def register_apartment_card_callbacks(app):
         visible_panel_class = "details-panel details-panel--visible"
         hidden_overlay_class = "details-overlay details-panel--hidden"
         visible_overlay_class = "details-overlay details-panel--visible"
-
+    
         # Get the triggered component
         ctx_triggered = ctx.triggered if ctx.triggered else []
         trigger_id = (
             ctx_triggered[0]["prop_id"].split(".")[0] if ctx_triggered else None
         )
-
+    
         # For initial load, ensure the panel is hidden
         if not ctx_triggered or trigger_id is None:
             return hidden_panel_class, [], None, hidden_overlay_class
-
+    
         # Handle close action
         if trigger_id == "close-details-button" and close_clicks and close_clicks > 0:
             return hidden_panel_class, dash.no_update, None, hidden_overlay_class
-
+    
         # Handle table cell click
         if trigger_id == "apartment-table" and active_cell:
             
@@ -80,42 +80,7 @@ def register_apartment_card_callbacks(app):
                     None,
                     visible_overlay_class,
                 )
-
-            # CRITICAL DEBUGGING: Check exactly what data is available in table_data
-            if row_idx < len(table_data):
-                row_data = table_data[row_idx]
-                logger.info(f"DEBUG: Row data keys: {list(row_data.keys())}")
-                
-                # Check if our field exists in any form
-                cian_keys = [k for k in row_data.keys() if 'cian' in k.lower()]
-                if cian_keys:
-                    logger.info(f"DEBUG: Found Cian-related keys: {cian_keys}")
-                    for k in cian_keys:
-                        logger.info(f"DEBUG: Value for {k}: {row_data.get(k)}")
-                else:
-                    logger.info("DEBUG: No Cian-related keys found in row data")
-                    
-                # WORKAROUND: If field is missing entirely, add it from the original data source
-                # Get processed dataframe to verify the field exists there
-                from app.data_manager import DataManager
-                processed_df, _ = DataManager.load_and_process_data()
-                
-                # Check if field exists in original processed data
-                if 'cian_estimation_value_formatted' in processed_df.columns:
-                    offer_id = row_data.get("offer_id")
-                    if offer_id:
-                        # Get the field value directly from processed dataframe
-                        matching_rows = processed_df[processed_df['offer_id'] == offer_id]
-                        if not matching_rows.empty:
-                            estimation_value = matching_rows['cian_estimation_value_formatted'].iloc[0]
-                            logger.info(f"DEBUG: Retrieved value from processed data: {estimation_value}")
-                            # Add to row_data
-                            row_data['cian_estimation_value_formatted'] = estimation_value
-                        else:
-                            logger.warning(f"DEBUG: No matching row found for offer_id {offer_id}")
-                else:
-                    logger.warning("DEBUG: Field missing from processed dataframe too!")
-            
+    
             row_data = table_data[row_idx]
             offer_id = row_data.get("offer_id")
             
@@ -129,14 +94,15 @@ def register_apartment_card_callbacks(app):
                     None,
                     visible_overlay_class,
                 )
-
+    
             try:
+                # Get apartment data - this now includes all the main fields automatically
                 apartment_data = DataManager.get_apartment_details(offer_id)
                 
-                # IMPORTANT: Copy ALL fields from row_data to apartment_data
-                # This ensures any fields present in the table data are available
-                for key, value in row_data.items():
-                    apartment_data[key] = value
+                # Optional debug log to verify fields exist
+                logger.debug(f"Apartment data keys: {list(apartment_data.keys())}")
+                if "cian_estimation_value_formatted" in apartment_data:
+                    logger.debug(f"cian_estimation_value_formatted is present: {apartment_data['cian_estimation_value_formatted']}")
                 
                 # Preload images for neighboring apartments
                 if table_data and row_idx is not None:
@@ -156,11 +122,11 @@ def register_apartment_card_callbacks(app):
                         # Preload these in background
                         from app.data_manager import ImageLoader
                         ImageLoader.preload_images_for_apartments(neighbor_ids)
-
+    
                 details_card = create_apartment_details_card(
                     apartment_data, row_data, row_idx, len(table_data)
                 )
-
+    
                 selected = {
                     "apartment_data": apartment_data,
                     "row_data": row_data,
@@ -169,7 +135,7 @@ def register_apartment_card_callbacks(app):
                     "offer_id": offer_id,
                     "table_data": table_data,
                 }
-
+    
                 logger.info(f"Loaded details for offer_id {offer_id}, showing panel")
                 return (
                     visible_panel_class,
@@ -179,7 +145,6 @@ def register_apartment_card_callbacks(app):
                 )
             except Exception as e:
                 logger.error(f"Error loading details: {e}")
-                logger.exception("Stack trace:")  # Log full stack trace
                 return (
                     visible_panel_class,
                     html.Div(
@@ -188,8 +153,8 @@ def register_apartment_card_callbacks(app):
                     None,
                     visible_overlay_class,
                 )
-
-        # Handle navigation logic similarly
+    
+        # Handle navigation
         if (
             trigger_id in ["prev-apartment-button", "next-apartment-button"]
             and selected_data
@@ -198,42 +163,29 @@ def register_apartment_card_callbacks(app):
             current_idx = selected_data["row_idx"]
             table_data = selected_data.get("table_data", table_data)
             total_rows = len(table_data)
-
+    
             # Calculate new index
             new_idx = current_idx
             if trigger_id == "prev-apartment-button" and current_idx > 0:
                 new_idx -= 1
             elif trigger_id == "next-apartment-button" and current_idx < total_rows - 1:
                 new_idx += 1
-
+    
             if new_idx == current_idx:
                 return dash.no_update, dash.no_update, dash.no_update, dash.no_update
-
+    
             # Load new data
             new_row = table_data[new_idx]
             offer_id = new_row.get("offer_id")
-
+    
             try:
-                # Same fix for navigation
-                from app.data_manager import DataManager
-                processed_df, _ = DataManager.load_and_process_data()
-                
-                if 'cian_estimation_value_formatted' in processed_df.columns:
-                    matching_rows = processed_df[processed_df['offer_id'] == offer_id]
-                    if not matching_rows.empty:
-                        estimation_value = matching_rows['cian_estimation_value_formatted'].iloc[0]
-                        new_row['cian_estimation_value_formatted'] = estimation_value
-                
+                # Get apartment data - all main fields are included already
                 apartment_data = DataManager.get_apartment_details(offer_id)
-                
-                # Copy all fields from new_row to apartment_data
-                for key, value in new_row.items():
-                    apartment_data[key] = value
                 
                 details_card = create_apartment_details_card(
                     apartment_data, new_row, new_idx, total_rows
                 )
-
+    
                 selected = {
                     "apartment_data": apartment_data,
                     "row_data": new_row,
@@ -242,11 +194,10 @@ def register_apartment_card_callbacks(app):
                     "offer_id": offer_id,
                     "table_data": table_data,
                 }
-
+    
                 return dash.no_update, details_card, selected, dash.no_update
             except Exception as e:
                 logger.error(f"Error loading details: {e}")
-                logger.exception("Stack trace:")  # Log full stack trace
                 return (
                     dash.no_update,
                     html.Div(
@@ -255,7 +206,7 @@ def register_apartment_card_callbacks(app):
                     selected_data,
                     dash.no_update,
                 )
-
+    
         # For any other case, don't update
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update
 

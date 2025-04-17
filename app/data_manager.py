@@ -435,6 +435,7 @@ class DataManager:
     # Add class variables to store preloaded data and status
     _detail_dataframes = {}
     _preload_status = {"status": "not_started", "files_loaded": 0, "total_files": 6}
+    _main_data_fields = {}  # Add this to store fields from the main dataframe
     
     @classmethod
     def preload_detail_files(cls):
@@ -476,8 +477,42 @@ class DataManager:
             # Update status
             cls._preload_status["files_loaded"] += 1
         
+        # NEW: Also preload important fields from the main processed dataframe
+        try:
+            logger.info("Preloading main data fields...")
+            # Load the processed data
+            processed_df, _ = cls.load_and_process_data()
+            
+            if not processed_df.empty and "offer_id" in processed_df.columns:
+                # Convert offer_id to string for consistent matching
+                processed_df["offer_id"] = processed_df["offer_id"].astype(str)
+                
+                # Important fields to preload (add more as needed)
+                important_fields = [
+                    "offer_id", 
+                    "cian_estimation_value_formatted", 
+                    "price_value_formatted",
+                    "title", 
+                    "description", 
+                    "address_title",
+                    "metro_station",
+                    "distance"
+                ]
+                
+                # Keep only the important fields
+                fields_df = processed_df[important_fields].copy()
+                
+                # Create a dictionary keyed by offer_id for fast lookup
+                cls._main_data_fields = fields_df.set_index("offer_id").to_dict("index")
+                
+                logger.info(f"Preloaded main data fields for {len(cls._main_data_fields)} apartments")
+            else:
+                logger.warning("Main data empty or missing offer_id column")
+        except Exception as e:
+            logger.error(f"Error preloading main data fields: {e}")
+        
         cls._preload_status["status"] = "completed"
-        logger.info(f"Preloading complete. Loaded {len(cls._detail_dataframes)} files")
+        logger.info(f"Preloading complete. Loaded {len(cls._detail_dataframes)} files and main data fields")
         return cls._preload_status
     
     @classmethod
@@ -498,17 +533,23 @@ class DataManager:
         processed_df = DataProcessor.process_data(df)
         
         return processed_df, update_time
-        
+    
     @staticmethod
     def get_apartment_images(offer_id):
         """Get details for a specific apartment."""
-        return ImageLoader.get_apartment_images(offer_id)    
-        
-
+        return ImageLoader.get_apartment_images(offer_id)
+    
     @classmethod
     def get_apartment_details(cls, offer_id):
         """Get details for a specific apartment using preloaded data if available."""
         apartment_data = {"offer_id": offer_id}
+        
+        # NEW: Add main data fields first if available
+        str_offer_id = str(offer_id)
+        if str_offer_id in cls._main_data_fields:
+            # Add all preloaded main data fields
+            apartment_data.update(cls._main_data_fields[str_offer_id])
+            logger.debug(f"Added main data fields for apartment {offer_id}")
         
         # Map filenames to their group names in the result
         file_groups = {
@@ -526,7 +567,7 @@ class DataManager:
                 if filename in cls._detail_dataframes:
                     # Use preloaded data
                     df = cls._detail_dataframes[filename]
-                    filtered_df = df[df["offer_id"] == str(offer_id)]
+                    filtered_df = df[df["offer_id"] == str_offer_id]
                     
                     if not filtered_df.empty:
                         apartment_data[group_name] = (
@@ -543,7 +584,7 @@ class DataManager:
                     
                     if not df.empty and "offer_id" in df.columns:
                         df["offer_id"] = df["offer_id"].astype(str)
-                        filtered_df = df[df["offer_id"] == str(offer_id)]
+                        filtered_df = df[df["offer_id"] == str_offer_id]
                         
                         if not filtered_df.empty:
                             apartment_data[group_name] = (
@@ -557,4 +598,4 @@ class DataManager:
             except Exception as e:
                 logger.error(f"Error processing {filename} for offer {offer_id}: {e}")
         
-        return apartment_data      
+        return apartment_data
