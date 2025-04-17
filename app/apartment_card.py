@@ -164,7 +164,7 @@ def extract_row_data(table_row_data):
                     address = address_text.split("[")[1].split("](")[0]
                 else:
                     address = address_text
-
+        address = table_row_data.get("address", "")
         # Extract other fields
         title = ""
         if "<br>" in address_title and len(address_title.split("<br>")) > 1:

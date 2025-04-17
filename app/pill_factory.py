@@ -140,7 +140,7 @@ class PillFactory:
     CIAN_ESTIMATE_CONFIG = {
         "variant": "neutral",
         "custom_class": "pill--price",
-        "text_format": "оценка: {}",
+        "text_format": "оценка ЦИАН: {}",
     }
 
     # Styling for inactive pills

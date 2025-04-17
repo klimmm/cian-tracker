@@ -5,6 +5,7 @@ from app.data_manager import DataManager
 from app.apartment_card import create_apartment_details_card
 from dash import html
 import logging
+import json
 logger = logging.getLogger(__name__)
 
 
@@ -80,6 +81,41 @@ def register_apartment_card_callbacks(app):
                     visible_overlay_class,
                 )
 
+            # CRITICAL DEBUGGING: Check exactly what data is available in table_data
+            if row_idx < len(table_data):
+                row_data = table_data[row_idx]
+                logger.info(f"DEBUG: Row data keys: {list(row_data.keys())}")
+                
+                # Check if our field exists in any form
+                cian_keys = [k for k in row_data.keys() if 'cian' in k.lower()]
+                if cian_keys:
+                    logger.info(f"DEBUG: Found Cian-related keys: {cian_keys}")
+                    for k in cian_keys:
+                        logger.info(f"DEBUG: Value for {k}: {row_data.get(k)}")
+                else:
+                    logger.info("DEBUG: No Cian-related keys found in row data")
+                    
+                # WORKAROUND: If field is missing entirely, add it from the original data source
+                # Get processed dataframe to verify the field exists there
+                from app.data_manager import DataManager
+                processed_df, _ = DataManager.load_and_process_data()
+                
+                # Check if field exists in original processed data
+                if 'cian_estimation_value_formatted' in processed_df.columns:
+                    offer_id = row_data.get("offer_id")
+                    if offer_id:
+                        # Get the field value directly from processed dataframe
+                        matching_rows = processed_df[processed_df['offer_id'] == offer_id]
+                        if not matching_rows.empty:
+                            estimation_value = matching_rows['cian_estimation_value_formatted'].iloc[0]
+                            logger.info(f"DEBUG: Retrieved value from processed data: {estimation_value}")
+                            # Add to row_data
+                            row_data['cian_estimation_value_formatted'] = estimation_value
+                        else:
+                            logger.warning(f"DEBUG: No matching row found for offer_id {offer_id}")
+                else:
+                    logger.warning("DEBUG: Field missing from processed dataframe too!")
+            
             row_data = table_data[row_idx]
             offer_id = row_data.get("offer_id")
             
@@ -97,16 +133,10 @@ def register_apartment_card_callbacks(app):
             try:
                 apartment_data = DataManager.get_apartment_details(offer_id)
                 
-                # IMPORTANT: Copy important main table fields to apartment_data
-                important_fields = ["cian_estimation_value_formatted", "price_value_formatted"]
-                for field in important_fields:
-                    if field in row_data:
-                        apartment_data[field] = row_data[field]
-                
-                # Log for debugging
-                logger.info(f"Row data keys: {list(row_data.keys())}")
-                if "cian_estimation_value_formatted" in row_data:
-                    logger.info(f"cian_estimation_value_formatted value: {row_data['cian_estimation_value_formatted']}")
+                # IMPORTANT: Copy ALL fields from row_data to apartment_data
+                # This ensures any fields present in the table data are available
+                for key, value in row_data.items():
+                    apartment_data[key] = value
                 
                 # Preload images for neighboring apartments
                 if table_data and row_idx is not None:
@@ -122,7 +152,7 @@ def register_apartment_card_callbacks(app):
                     neighbor_ids = [id for id in neighbor_ids if id]  # Filter out None
                     
                     if neighbor_ids:
-                        logger.info(f"👉 USER SELECTION: Preloading neighbors for apartment {offer_id}: {neighbor_ids}")
+                        logger.info(f"USER SELECTION: Preloading neighbors for apartment {offer_id}")
                         # Preload these in background
                         from app.data_manager import ImageLoader
                         ImageLoader.preload_images_for_apartments(neighbor_ids)
@@ -149,6 +179,7 @@ def register_apartment_card_callbacks(app):
                 )
             except Exception as e:
                 logger.error(f"Error loading details: {e}")
+                logger.exception("Stack trace:")  # Log full stack trace
                 return (
                     visible_panel_class,
                     html.Div(
@@ -158,7 +189,7 @@ def register_apartment_card_callbacks(app):
                     visible_overlay_class,
                 )
 
-        # Handle navigation
+        # Handle navigation logic similarly
         if (
             trigger_id in ["prev-apartment-button", "next-apartment-button"]
             and selected_data
@@ -183,13 +214,21 @@ def register_apartment_card_callbacks(app):
             offer_id = new_row.get("offer_id")
 
             try:
+                # Same fix for navigation
+                from app.data_manager import DataManager
+                processed_df, _ = DataManager.load_and_process_data()
+                
+                if 'cian_estimation_value_formatted' in processed_df.columns:
+                    matching_rows = processed_df[processed_df['offer_id'] == offer_id]
+                    if not matching_rows.empty:
+                        estimation_value = matching_rows['cian_estimation_value_formatted'].iloc[0]
+                        new_row['cian_estimation_value_formatted'] = estimation_value
+                
                 apartment_data = DataManager.get_apartment_details(offer_id)
                 
-                # IMPORTANT: Copy important fields for navigation case too
-                important_fields = ["cian_estimation_value_formatted", "price_value_formatted"]
-                for field in important_fields:
-                    if field in new_row:
-                        apartment_data[field] = new_row[field]
+                # Copy all fields from new_row to apartment_data
+                for key, value in new_row.items():
+                    apartment_data[key] = value
                 
                 details_card = create_apartment_details_card(
                     apartment_data, new_row, new_idx, total_rows
@@ -207,6 +246,7 @@ def register_apartment_card_callbacks(app):
                 return dash.no_update, details_card, selected, dash.no_update
             except Exception as e:
                 logger.error(f"Error loading details: {e}")
+                logger.exception("Stack trace:")  # Log full stack trace
                 return (
                     dash.no_update,
                     html.Div(

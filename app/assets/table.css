@@ -109,6 +109,10 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   margin-bottom: 5px !important;
 }
 
+
+.apartment-title { 
+  font-size: var(--font-sm);
+}
 .header-container { 
   margin-bottom: 15px !important;
 }
