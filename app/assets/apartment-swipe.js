@@ -1,8 +1,8 @@
-// Compatible Apartment Card Swipe Navigation
+// High Sensitivity Apartment Card Swipe Navigation
 // Add this to your assets folder (e.g., assets/js/apartment-swipe.js)
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Initializing compatible apartment card swipe navigation');
+    console.log('Initializing high-sensitivity apartment card swipe navigation');
     
     // Create swipe indicators outside the initialization function to avoid recreating them
     let leftIndicator, rightIndicator;
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 border-radius: 8px;
                 z-index: 100;
                 opacity: 0;
-                transition: opacity 0.3s ease, transform 0.3s ease;
+                transition: opacity 0.2s ease, transform 0.2s ease;
                 pointer-events: none;
                 display: flex;
                 flex-direction: column;
@@ -31,15 +31,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             .swipe-indicator--left {
-                left: -10px;
-                transform: translateY(-50%) translateX(-100%);
-                padding-right: 15px;
+                left: 10px;
+                transform: translateY(-50%) translateX(-20px);
             }
             
             .swipe-indicator--right {
-                right: -10px;
-                transform: translateY(-50%) translateX(100%);
-                padding-left: 15px;
+                right: 10px;
+                transform: translateY(-50%) translateX(20px);
             }
             
             .swipe-indicator.active {
@@ -48,12 +46,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             .swipe-arrow {
-                font-size: 24px;
+                font-size: 28px;
                 margin-bottom: 5px;
             }
             
             .swipe-text {
                 font-size: 14px;
+                font-weight: bold;
             }
             
             /* First-time hint */
@@ -82,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             /* This class is added temporarily during swipe and removed afterward */
             .apartment-card-swiping {
-                transition: transform 0.3s ease;
+                transition: transform 0.2s ease;
             }
         `;
         document.head.appendChild(styleEl);
@@ -116,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Make sure we don't interfere with Dash's rendering
         resetSwipeEffects();
         
-        console.log('Setting up compatible apartment card swipe navigation');
+        console.log('Setting up high-sensitivity apartment card swipe navigation');
         
         // Get navigation buttons
         const prevButton = document.getElementById('prev-apartment-button');
@@ -176,10 +175,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         let startX, startY, startTime, currentTranslateX = 0;
-        const minSwipeDistance = 80;  // Reduced for more sensitivity
-        const maxSwipeTime = 600;     // Slightly increased for more forgiveness
-        const maxVerticalDeviation = 100;
+        const minSwipeDistance = 50;  // MUCH lower for higher sensitivity
+        const maxSwipeTime = 800;     // MUCH more forgiving timing
+        const maxVerticalDeviation = 150; // More forgiving for vertical movement
         let isCurrentlySwiping = false;
+        let swipeIntention = null; // Track which direction user is intending to swipe
         
         // Touch events for mobile devices
         detailsPanel.addEventListener('touchstart', function(e) {
@@ -194,6 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
             startY = e.touches[0].clientY;
             startTime = new Date().getTime();
             currentTranslateX = 0;
+            swipeIntention = null;
             isCurrentlySwiping = true;
             
             // Add the swiping class to enable transitions
@@ -212,26 +213,30 @@ document.addEventListener('DOMContentLoaded', function() {
             const distanceX = currentX - startX;
             const distanceY = Math.abs(currentY - startY);
             
-            // Only process horizontal movement
+            // Only process horizontal movement if not too vertical
             if (distanceY < maxVerticalDeviation) {
-                // Move the card with the finger (with resistance)
-                const resistance = 0.3; // More resistance to avoid interfering too much
+                // Move the card with the finger (with LOWER resistance for easier movement)
+                const resistance = 0.5; // HIGHER value = LESS resistance
                 currentTranslateX = distanceX * resistance;
                 contentCard.style.transform = `translateX(${currentTranslateX}px)`;
                 
                 // Show appropriate indicator based on swipe direction
-                if (distanceX > 20) {
+                // Much more sensitive indicators
+                if (distanceX > 10) { // Only 10px needed now
                     // Going right (previous)
                     leftIndicator.classList.add('active');
                     rightIndicator.classList.remove('active');
-                } else if (distanceX < -20) {
+                    swipeIntention = 'prev';
+                } else if (distanceX < -10) { // Only 10px needed now
                     // Going left (next)
                     rightIndicator.classList.add('active');
                     leftIndicator.classList.remove('active');
+                    swipeIntention = 'next';
                 } else {
                     // Not enough movement yet
                     leftIndicator.classList.remove('active');
                     rightIndicator.classList.remove('active');
+                    swipeIntention = null;
                 }
             }
         }, { passive: true });
@@ -254,6 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 distanceX,
                 distanceY,
                 elapsedTime,
+                swipeIntention,
                 isQuickSwipe: elapsedTime < maxSwipeTime,
                 isLongEnough: Math.abs(distanceX) > minSwipeDistance,
                 isHorizontal: distanceY < maxVerticalDeviation
@@ -263,12 +269,18 @@ document.addEventListener('DOMContentLoaded', function() {
             leftIndicator.classList.remove('active');
             rightIndicator.classList.remove('active');
             
-            // Validate swipe - must be long enough and primarily horizontal
-            if (Math.abs(distanceX) > minSwipeDistance && 
-                distanceY < maxVerticalDeviation &&
-                elapsedTime < maxSwipeTime) {
-                
-                if (distanceX > 0) {
+            // Use a combination of methods to determine swipe:
+            // 1. Traditional distance/time check
+            // 2. OR check for clear swipe intention combined with some movement
+            const traditionalSwipe = Math.abs(distanceX) > minSwipeDistance && 
+                                     distanceY < maxVerticalDeviation &&
+                                     elapsedTime < maxSwipeTime;
+                                     
+            const intentionalSwipe = swipeIntention !== null && 
+                                    Math.abs(distanceX) > 25; // Even lower threshold if we detected intention
+            
+            if (traditionalSwipe || intentionalSwipe) {
+                if ((distanceX > 0 && !swipeIntention) || swipeIntention === 'next') {
                     // Left swipe - next apartment
                     console.log('LEFT swipe detected - going to next apartment');
                     
@@ -277,9 +289,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(() => {
                         resetSwipeEffects();
                         nextButton.click();
-                    }, 150);
+                    }, 100);
                     
-                } else {
+                } else if ((distanceX <= 0 && !swipeIntention) || swipeIntention === 'prev') {
                     // Right swipe - previous apartment
                     console.log('RIGHT swipe detected - going to previous apartment');
                     
@@ -288,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(() => {
                         resetSwipeEffects();
                         prevButton.click();
-                    }, 150);
+                    }, 100);
                 }
             } else {
                 // Not a valid swipe, animate back to center
@@ -304,6 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
             startX = null;
             startY = null;
             startTime = null;
+            swipeIntention = null;
             isCurrentlySwiping = false;
         }, { passive: true });
         
@@ -321,6 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 startY = e.clientY;
                 startTime = new Date().getTime();
                 currentTranslateX = 0;
+                swipeIntention = null;
                 isCurrentlySwiping = true;
                 e.preventDefault();
                 
@@ -341,26 +355,29 @@ document.addEventListener('DOMContentLoaded', function() {
             const distanceX = currentX - startX;
             const distanceY = Math.abs(currentY - startY);
             
-            // Only process horizontal movement
+            // Only process horizontal movement if not too vertical
             if (distanceY < maxVerticalDeviation) {
-                // Move the card with the mouse (with resistance)
-                const resistance = 0.3; // More resistance
+                // Move the card with the mouse (with LOWER resistance)
+                const resistance = 0.5; // HIGHER value = LESS resistance
                 currentTranslateX = distanceX * resistance;
                 contentCard.style.transform = `translateX(${currentTranslateX}px)`;
                 
                 // Show appropriate indicator based on swipe direction
-                if (distanceX > 20) {
+                if (distanceX > 10) {
                     // Going right (previous)
                     leftIndicator.classList.add('active');
                     rightIndicator.classList.remove('active');
-                } else if (distanceX < -20) {
+                    swipeIntention = 'prev';
+                } else if (distanceX < -10) {
                     // Going left (next)
                     rightIndicator.classList.add('active');
                     leftIndicator.classList.remove('active');
+                    swipeIntention = 'next';
                 } else {
                     // Not enough movement yet
                     leftIndicator.classList.remove('active');
                     rightIndicator.classList.remove('active');
+                    swipeIntention = null;
                 }
             }
             
@@ -383,6 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 distanceX,
                 distanceY,
                 elapsedTime,
+                swipeIntention,
                 isQuickSwipe: elapsedTime < maxSwipeTime,
                 isLongEnough: Math.abs(distanceX) > minSwipeDistance,
                 isHorizontal: distanceY < maxVerticalDeviation
@@ -392,32 +410,38 @@ document.addEventListener('DOMContentLoaded', function() {
             leftIndicator.classList.remove('active');
             rightIndicator.classList.remove('active');
             
-            // Validate swipe
-            if (Math.abs(distanceX) > minSwipeDistance && 
-                distanceY < maxVerticalDeviation &&
-                elapsedTime < maxSwipeTime) {
-                
-                if (distanceX > 0) {
+            // Use a combination of methods to determine swipe:
+            // 1. Traditional distance/time check
+            // 2. OR check for clear swipe intention combined with some movement
+            const traditionalSwipe = Math.abs(distanceX) > minSwipeDistance && 
+                                     distanceY < maxVerticalDeviation &&
+                                     elapsedTime < maxSwipeTime;
+                                     
+            const intentionalSwipe = swipeIntention !== null && 
+                                    Math.abs(distanceX) > 25; // Even lower threshold if we detected intention
+            
+            if (traditionalSwipe || intentionalSwipe) {
+                if ((distanceX > 0 && !swipeIntention) || swipeIntention === 'next') {
                     // Left swipe - next apartment
                     console.log('LEFT swipe detected - going to next apartment');
                     
-                    // Animate slide out to left (more subtle)
+                    // Animate slide out to left
                     contentCard.style.transform = 'translateX(-50px)';
                     setTimeout(() => {
                         resetSwipeEffects();
                         nextButton.click();
-                    }, 150);
+                    }, 100);
                     
-                } else {
+                } else if ((distanceX <= 0 && !swipeIntention) || swipeIntention === 'prev') {
                     // Right swipe - previous apartment
                     console.log('RIGHT swipe detected - going to previous apartment');
                     
-                    // Animate slide out to right (more subtle)
+                    // Animate slide out to right
                     contentCard.style.transform = 'translateX(50px)';
                     setTimeout(() => {
                         resetSwipeEffects();
                         prevButton.click();
-                    }, 150);
+                    }, 100);
                 }
             } else {
                 // Not a valid swipe, animate back to center
@@ -431,10 +455,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             isDragging = false;
             isCurrentlySwiping = false;
+            swipeIntention = null;
             e.preventDefault();
         });
         
-        console.log('Compatible apartment card swipe navigation initialized');
+        console.log('High-sensitivity apartment card swipe navigation initialized');
         
         // Listen for Dash updates that might reset our card
         const closeButton = document.getElementById('close-details-button');
