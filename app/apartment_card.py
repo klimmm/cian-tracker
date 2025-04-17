@@ -59,9 +59,6 @@ def create_slideshow(offer_id):
                 id={"type": "slideshow-data", "offer_id": offer_id},
                 data={"current_index": 0, "image_paths": image_paths},
             ),
-            html.Div(
-                f"Фотографии ({len(image_paths)})", className="slideshow-title"
-            ),
         ],
         divider=True,
     )
