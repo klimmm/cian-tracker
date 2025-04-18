@@ -34,7 +34,7 @@ def create_app_layout(
     data_check_interval = dcc.Interval(
         id="data-check-interval",
         interval=1000,  # Check every second
-        max_intervals=20,  # Reduced to 20 seconds maximum
+        
         n_intervals=0,
         disabled=False
     )
@@ -95,12 +95,7 @@ def create_app_layout(
 
     # ─── Table + Details Panel with better loading ─────────────────────
     # Create empty table shell with just headers for fast initial render
-    table = TableFactory.create_data_table(data=[], columns=[
-        {"name": "Обновлено", "id": "update_title"},
-        {"name": "Характеристики", "id": "property_tags"},
-        {"name": "Адрес", "id": "address_title"},
-        {"name": "Цена", "id": "price_text"}
-    ])
+    table = TableFactory.create_data_table()
     
     # Create details panel
     details = create_apartment_details_panel()

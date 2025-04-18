@@ -94,8 +94,8 @@ def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
         # Start background thread for asynchronous cache priming
         threading.Thread(target=prime_cache_in_background, daemon=True).start()
         logger.info("Started background cache priming thread")
-        
-        # 8) Add callback for updating data store when cache is ready
+
+
         @app.callback(
             [
                 dash.Output("apartment-data-store", "data"),
@@ -106,36 +106,28 @@ def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
             prevent_initial_call=False,
         )
         def update_data_when_ready(n_intervals):
-            """Check if data is available in cache without using globals."""
-            if n_intervals is None:
-                # First load, no data yet
-                return [], "Загрузка данных...", False
-            
+            logger.debug(f"[data-check] tick #{n_intervals}")
             try:
-                # Try to get data from cache - this will be fast if cache is primed
-                # and slow only on first attempt
                 df, update_time = _get_main_df_and_time()
-                
+        
+                # still loading?
                 if df.empty:
-                    # Still loading
-                    if n_intervals > 15:
-                        return [], "Загрузка данных... (это может занять ещё немного времени)", False
                     return [], "Загрузка данных...", False
-                
-                # Data is available, prepare and return it
+        
+                # success: we have rows
                 if "details" not in df.columns:
                     df["details"] = "🔍"
-                
                 records = df.to_dict("records")
                 logger.info(f"Data loaded to UI: {len(records)} records")
-                
-                # Stop checking interval once data is loaded
+        
+                # only disable after successful load
                 return records, f"Обновлено: {update_time}", True
-                
+        
             except Exception as e:
-                logger.error(f"Error loading data: {e}")
-                # On error, stop checking and show error message
-                return [], f"Ошибка загрузки данных: {e}", True
+                logger.error(f"Error loading data: {e}", exc_info=True)
+                # keep polling on transient errors
+                return [], f"Ошибка загрузки данных: {e}", False
+
 
         logger.info("Application initialized successfully")
         return app
@@ -189,4 +181,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))
     app = initialize_app()
     logger.info(f"Starting server on port {port}")
-    app.run_server(debug=True, use_reloader=False, host="0.0.0.0", port=port)
+    app.run_server(debug=True, host="0.0.0.0", port=port)

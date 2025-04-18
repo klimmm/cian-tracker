@@ -130,26 +130,32 @@ def register_table_callbacks(app):
     def update_table_content(filters, data, sort_by):
         """Update table based on filters, data and sorting in a single callback."""
         ctx = dash.callback_context
-
+    
         # Always process if we have data
         if not data:
+            logger.warning("No data available for table update")
             return [], []
-
+    
         try:
             t0 = perf_counter()
-
+    
             # Convert to DataFrame for processing
             df = pd.DataFrame(data)
-
+            
+            # Add debug logging
+            logger.info(f"DataFrame has {len(df)} rows and {len(df.columns)} columns")
+            logger.info(f"First 10 column names: {list(df.columns)[:10]}")
+    
             # Log which input triggered the callback
             trigger = (
                 ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else None
             )
             logger.info(f"Table update triggered by: {trigger} with sort_by: {sort_by}")
-
+    
             # Apply filtering and sorting
             df = DataFilterSorter.filter_and_sort_data(df, filters or {}, sort_by)
-
+            logger.info(f"After filtering: {len(df)} rows")
+    
             # Define which columns to display
             visible_columns = [
                 "update_title",
@@ -157,6 +163,11 @@ def register_table_callbacks(app):
                 "address_title",
                 "price_text",
             ]
+            
+            # Check if these columns exist in the DataFrame
+            for col in visible_columns:
+                logger.info(f"Column '{col}' exists in DataFrame: {col in df.columns}")
+            
             numeric_columns = {
                 "distance",
                 "price_value_formatted",
@@ -177,7 +188,7 @@ def register_table_callbacks(app):
                 "days_active",
                 "activity_date",
             }
-
+    
             # Build the column definitions
             columns = [
                 {
@@ -189,12 +200,16 @@ def register_table_callbacks(app):
                 for c in visible_columns
                 if c in df.columns
             ]
-
+            
+            # Log final column configuration
+            logger.info(f"Final column configuration: {columns}")
+            logger.info(f"Column count after filtering: {len(columns)}")
+    
             elapsed = perf_counter() - t0
             logger.info(f"[TIMER] update_table_content → {elapsed:.3f}s")
-
+    
             return df.to_dict("records"), columns
-
+    
         except Exception as e:
-            logger.error(f"Error updating table: {e}")
+            logger.error(f"Error updating table: {e}", exc_info=True)
             return [], []

@@ -220,7 +220,7 @@ class DataProcessor:
         """Format metrics for display."""
         # Format distance
         if "distance_sort" in df.columns:
-            df["distance"] = df["distance_sort"].apply(
+            df["distance_display"] = df["distance_sort"].apply(
                 lambda x: f"{x:.2f} km" if pd.notnull(x) else ""
             )
             
@@ -228,15 +228,17 @@ class DataProcessor:
         
     @staticmethod
     def format_dates_for_display(df):
-        """Format dates for display."""
+        df2 = df.copy()
         for col_base in ["updated_time", "unpublished_date", "activity_date"]:
-            col_sort = f"{col_base}_sort"
-            if col_base in df.columns and col_sort in df.columns:
-                df[col_base] = df[col_sort].apply(
+            display_col = f"{col_base}_display"
+            sort_col    = f"{col_base}_sort"
+            if display_col not in df.columns and sort_col in df.columns:
+                df[display_col] = df[sort_col].apply(
                     lambda x: DateFormatter.format_date(x) if pd.notnull(x) else "--"
                 )
-        
-        return df
+
+        return df2
+
         
     @staticmethod
     def calculate_days_active(df, now):

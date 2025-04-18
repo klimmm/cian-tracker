@@ -55,14 +55,14 @@ class ColumnFormatter:
         status = row.get("status", "active")
 
         # Time string as a pill
-        time_str = row.get("updated_time", "--")
+        time_str = row.get("updated_time_display", "--")
         if time_str and time_str != "--":
             pills.append(PillFactory.create_time_pill(time_str, status=status))
 
 
         # Activity date formatting
-        should_add_activity_date = "activity_date" in row and pd.notnull(
-            row["activity_date"]
+        should_add_activity_date = "activity_date_display" in row and pd.notnull(
+            row["activity_date_display"]
         )
 
         # Skip if same as updated time
@@ -78,7 +78,7 @@ class ColumnFormatter:
                 should_add_activity_date = False
 
         if should_add_activity_date:
-            activity_date = row["activity_date"]
+            activity_date = row["activity_date_display"]
             pills.append(
                 PillFactory.create_activity_date_pill(activity_date, status=status)
             )
