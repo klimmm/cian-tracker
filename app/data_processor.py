@@ -228,16 +228,15 @@ class DataProcessor:
         
     @staticmethod
     def format_dates_for_display(df):
-        df2 = df.copy()
         for col_base in ["updated_time", "unpublished_date", "activity_date"]:
             display_col = f"{col_base}_display"
-            sort_col    = f"{col_base}_sort"
+            sort_col = f"{col_base}_sort"
             if display_col not in df.columns and sort_col in df.columns:
                 df[display_col] = df[sort_col].apply(
                     lambda x: DateFormatter.format_date(x) if pd.notnull(x) else "--"
                 )
 
-        return df2
+        return df
 
         
     @staticmethod

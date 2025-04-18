@@ -131,7 +131,7 @@ def create_app_layout(
                 [
                     # Data store with its interval grouped together
                     apartment_data_store,
-                    data_check_interval,
+                    #  data_check_interval,
                     # Other stores
                     selected_apartment_store,
                     expanded_row_store,
