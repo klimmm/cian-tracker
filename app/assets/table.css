@@ -5,7 +5,6 @@
   display: none !important;
 }
 
-
 /* ===== Design System Variables ===== */
 :root {
   /* Typography - Fluid with clamp() */
@@ -18,18 +17,18 @@
   --font-xxl: clamp(1.25rem, 1.125rem + 1vw, 1.75rem);
   
   /* Colors - Refined palette with semantic meanings */
-  --color-primary: #1976D2;           /* Blue - primary actions, emphasis */
+  --color-primary: #1976D2;
   --color-primary-light: #E3F2FD;
   --color-primary-dark: #0D47A1;
   
   /* Status colors with better contrast */
-  --color-success: #2E7D32;           /* Green - positive status, good deals */
+  --color-success: #2E7D32;
   --color-success-light: #E8F5E9;
-  --color-warning: #ED6C02;           /* Orange - caution, attention needed */
+  --color-warning: #ED6C02;
   --color-warning-light: #FFF4E5;
-  --color-error: #D32F2F;             /* Red - negative, price increases */
+  --color-error: #D32F2F;
   --color-error-light: #FFEBEE;
-  --color-neutral: #455A64;           /* Blue-grey - default status */
+  --color-neutral: #455A64;
   --color-neutral-light: #ECEFF1;
   
   /* Text and backgrounds */
@@ -73,7 +72,35 @@ h2 { font-size: var(--font-xl); margin-bottom: var(--space-md); font-weight: 600
 h3 { font-size: var(--font-lg); margin-bottom: var(--space-md); font-weight: 600; }
 p { font-size: var(--font-md); margin-bottom: var(--space-md); }
 
-/* Card components */
+/* Typography utility classes */
+.text-xs { font-size: var(--font-xs); }
+.text-sm { font-size: var(--font-sm); }
+.text-md { font-size: var(--font-md); }
+.text-lg { font-size: var(--font-lg); }
+.text-xl { font-size: var(--font-xl); }
+.text-xxl { font-size: var(--font-xxl); }
+
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+/* ===== Layout Classes ===== */
+.apartment-title { font-size: var(--font-sm); }
+.header-container { margin-bottom: 15px !important; }
+.main-container { max-width: 900px; }
+.update-time { 
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: 5px !important;
+}
+
+.table-container,
+.table-view-container {
+  max-width: 1000px !important;
+}
+
+/* ===== Card Components ===== */
 .card {
   padding: var(--space-md);
   border-radius: var(--radius-md);
@@ -89,62 +116,34 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
 
 .card-content { font-size: var(--font-md); }
 
-/* Utility classes */
-.text-xs { font-size: var(--font-xs); }
-.text-sm { font-size: var(--font-sm); }
-.text-md { font-size: var(--font-md); }
-.text-lg { font-size: var(--font-lg); }
-.text-xl { font-size: var(--font-xl); }
-.text-xxl { font-size: var(--font-xxl); }
-
-.font-normal { font-weight: 400; }
-.font-medium { font-weight: 500; }
-.font-semibold { font-weight: 600; }
-.font-bold { font-weight: 700; }
-
-/* Update time */
-.update-time { 
-  font-size: var(--font-sm);
-  color: var(--color-text-secondary);
-  margin-bottom: 5px !important;
-}
-
-
-.apartment-title { 
-  font-size: var(--font-sm);
-}
-.header-container { 
-  margin-bottom: 15px !important;
-}
-.main-container { 
-  max-width: 900px;
-}
-/* наводим указатель „рука“ */
+/* ===== Apartment Table Styling ===== */
 #apartment-table .dash-cell {
   cursor: pointer;
 }
-/* при ховере — лёгкий фон */
+
 #apartment-table .dash-spreadsheet-container tr:hover .dash-cell {
   background-color: var(--color-primary-light) !important;
 }
+
+/* ===== Loading Indicator ===== */
 .preload-indicator--hidden {
-    display: none !important;
+  display: none !important;
 }
 
 .preload-indicator--visible {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #333;
-    color: white;
-    padding: 10px 15px;
-    border-radius: 4px;
-    font-size: 14px;
-    z-index: 9999;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #333;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 4px;
+  font-size: 14px;
+  z-index: 9999;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
 }
 
-/* Tooltip styles for abbreviations */
+/* ===== Tooltip Styles ===== */
 [data-tooltip] {
   position: relative;
   cursor: help;
@@ -188,14 +187,21 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   transition: all 0.2s;
 }
 
-/* Fix vertical alignment for icons and content */
 .pill::before {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Base pill variants */
+/* Pill container */
+.pill-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+/* Pill variants */
 .pill--default {
   background-color: var(--color-bg-light);
   color: var(--color-text-secondary);
@@ -226,21 +232,20 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   color: var(--color-neutral);
 }
 
-/* Metro pill - custom styling with line colors */
+/* Special pill types */
 .pill--metro {
   color: white;
   font-weight: 500;
   text-shadow: 0 0 1px rgba(0, 0, 0, 0.3);
 }
 
-/* ===== Walking Distance Indicator ===== */
 .pill--distance {
   position: relative;
   padding-left: calc(var(--space-sm) + 12px);
 }
 
 .pill--distance::before {
-  content: "🚶"; /* Walking person emoji as requested */
+  content: "🚶";
   position: absolute;
   left: 4px;
   font-size: 10px;
@@ -249,54 +254,65 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   transform: translateY(-50%);
 }
 
-/* ===== Price Change Indicators ===== */
 .pill--price-change {
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   position: relative;
-  padding-left: calc(var(--space-xs) + 12px); /* Reduced padding */
+  padding-left: calc(var(--space-xs) + 12px);
+  background-color: transparent;
+  border: none;
+  font-size: 0.55rem !important;
 }
 
-/* Hide any inline arrow spans */
 .pill--price-change .arrow,
 .pill--price-change span.arrow {
   display: none !important;
 }
 
-/* Base styling for price change indicators */
 .pill--price-change::before {
-  content: "↓"; /* Default down arrow (for price decrease) */
+  content: "↓";
   position: absolute;
-  left: 4px; /* Reduced distance from text */
+  left: 4px;
   top: 50%;
   transform: translateY(-50%);
   font-size: inherit;
   line-height: 1;
 }
 
-/* Price increase - up arrow */
-.pill--price-change.pill--error::before {
-  content: "↑"; /* Up arrow for price increase */
+.pill--price-change.pill--error::before,
+.pill--price-change.price-increase::before {
+  content: "↑";
 }
 
-/* ===== Fix Good Deal Pill ===== */
+.pill--price-change.price-increase {
+  background-color: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.pill--price-change.price-decrease {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
 .pill--good-deal {
   border: none !important;
   background-color: var(--color-success-light) !important;
   color: var(--color-success) !important;
 }
 
-/* Completely remove the ::before pseudo-element */
 .pill--good-deal::before {
   content: none !important;
   display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  background: none !important;
-  position: static !important;
+}
+
+.pill--price {
+  font-size: 0.75rem !important;
+  border: 1px solid var(--color-border);
+}
+
+.pill--time {
+  background-color: transparent;
+  color: black;
 }
 
 /* ===== Button Styling ===== */
@@ -305,7 +321,7 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-weight: 400; /* Lighter weight for elegance */
+  font-weight: 400;
   box-sizing: border-box;
   outline: none;
   display: inline-flex;
@@ -313,12 +329,11 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   justify-content: center;
   box-shadow: none;
   transition: all 0.15s ease-in-out;
-  font-size: 0.7rem; /* Explicitly smaller text */
-  padding: 2px 6px; /* Smaller padding */
-  min-height: 22px; /* Control minimum height */
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  min-height: 22px;
 }
 
-/* Button variants - consistent styling */
 .btn--default, 
 .btn--primary, 
 .btn--success, 
@@ -328,7 +343,6 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   border-color: #e8e8e8;
 }
 
-/* Ultra-subtle distinction for different button types */
 .btn--primary {
   color: var(--color-primary);
 }
@@ -341,13 +355,11 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   color: var(--color-warning);
 }
 
-/* Hover effects - very subtle */
 .btn:hover:not(.btn--active) {
   transform: none;
   background-color: #fafafa;
 }
 
-/* Simpler active button with just a border */
 .btn--active {
   background-color: white;
   color: var(--color-primary);
@@ -357,7 +369,6 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   box-shadow: none;
 }
 
-/* Remove the after pseudo-element completely */
 .btn--active::after {
   content: none;
   display: none;
@@ -380,40 +391,47 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   min-width: fit-content;
 }
 
-/* ===== Even Smaller Filter Controls ===== */
 .button-group-container {
   display: flex;
   flex-direction: row;
   margin: 0;
-  padding: 4px 6px; /* Even smaller padding */
+  padding: 4px 6px;
   background-color: white;
   border-radius: var(--radius-sm);
   width: 100%;
   max-width: 100%;
   box-shadow: none;
-  border: 1px solid #f5f5f5; /* Very subtle border */
+  border: 1px solid #f5f5f5;
   align-items: center;
   flex-wrap: nowrap;
 }
-.table-container {
-    max-width: 1000px !important;
-    
-}
-.table-view-container {
-    max-width: 1000px !important;
-    
+
+.button-group-pair {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  justify-content: space-between;
 }
 
+/* ===== Form Elements ===== */
 .dash-label {
-  font-size: 0.7rem; /* Explicitly smaller */
-  width: 120px; /* Smaller width */
+  font-size: 0.65rem !important;
+  width: 120px;
   min-width: 120px;
-  margin-right: 4px;
-  font-weight: 400; /* Normal weight */
+  margin-right: 6px !important;
+  font-weight: 400;
   color: var(--color-text-secondary);
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
+}
+
+input, select, textarea {
+  font-size: var(--font-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  width: 100%;
 }
 
 /* ===== Controls Container ===== */
@@ -421,11 +439,11 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   margin: 0 auto 6px;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px; /* Even smaller gap */
+  gap: 4px;
   padding: 6px;
   background-color: white;
-  border-radius: 4px; /* Smaller radius */
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03); /* Lighter shadow */
+  border-radius: 4px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03);
   border: 1px solid var(--color-border);
   width: 100%;
   max-width: 900px;
@@ -435,126 +453,88 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
 .controls-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px; /* Even smaller gap */
+  gap: 4px;
   width: 100%;
 }
 
-.button-group-pair {
-  display: flex;
-  gap: 4px; /* Even smaller gap */
-  width: 100%;
-  justify-content: space-between;
+/* ===== Table Cell Styling ===== */
+.dash-cell-value.details-cell {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  height: 100% !important;
 }
 
-/* Form elements */
-input, select, textarea {
-  font-size: var(--font-sm);
-  padding: var(--space-xs) var(--space-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  width: 100%;
-}
-
-/* ===== Magnifying Glass Icon ===== */
 .unfocused.selectable.dash-cell-value {
   text-align: center;
   display: flex;
   align-items: center;
-  justify-content: cente9.5
+  justify-content: center;
 }
-
-
-/* 1) Ensure regular price pills stay neutral */
-.pill.pill--price {
-  border: 1px solid var(--color-border);
-}
-
-/* 2) Base for price‑change pills (reset any inherited bg/color) */
-.pill.pill--price-change {
-  background-color: transparent;
-  border: none;
-}
-
-/* 3) Price increase (red) */
-.pill.pill--price-change.price-increase {
-  background-color: var(--color-error-light);
-  color: var(--color-error);
-}
-
-/* 4) Price decrease (green) */
-.pill.pill--price-change.price-decrease {
-  background-color: var(--color-success-light);
-  color: var(--color-success);
-}
-
-
-
-.pill--price-change {
-  font-size: 0.55rem !important;     /* мелкий шрифт */
-}
-
-.pill--price {
-  font-size: 0.75rem !important;     /* мелкий шрифт */
-}
-
-.pill--time{
-  background-color: transparent;
-  color: black;
-}
-
-
 
 /* ===== Responsive Media Queries ===== */
-/* Extra small devices (small phones) */
-@media screen and (max-width: 390px) {
-  :root {
-    --font-xs: 0.5625rem;
-    --font-sm: 0.6875rem;
-    --font-md: 0.8125rem;
-    --font-lg: 0.9375rem;
-    --font-xl: 1.0625rem;
-    --font-xxl: 1.125rem;
+@media screen and (max-width: 576px) {
+  .dash-spreadsheet-container,
+  #table-view-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    box-sizing: border-box !important;
   }
-
   
+  .dash-spreadsheet-container .dash-cell {
+    min-width: 0 !important;
+    white-space: normal !important;
+  }
+  
+  .cell-table thead {
+    display: none !important;
+  }
+  
+  .dash-label {
+    font-size: 0.6rem !important;
+    width: auto !important;
+    margin-bottom: var(--space-xs) !important;
+  }
+  
+  /* Controls layout for mobile */
   .controls-container {
-    padding: var(--space-xs);
-  }
-
-  .pill {
-      font-size: 0.5rem !important;     /* мелкий шрифт */
-  }
-  .pill {
-    padding: 2px 6px;
-  }
-
-    
-  .pill--activity {
-      font-size: 0.45rem !important;     /* мелкий шрифт */
-      padding: 2px 4px !important;       /* меньшие внутренние отступы */
-      margin: 0 !important;              /* если нужно убрать лишние внешние */
-  }
-  .pill--price {
-      font-size: 0.6rem !important;     /* мелкий шрифт */
-  }
-  .address-link {
-      font-size: 0.55rem !important;     /* мелкий шрифт */
-  }
-  .pill--price-change {
-      font-size: 0.5 !important;     /* мелкий шрифт */
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    padding: 4px !important;
   }
   
-  .btn {
-    font-size: calc(var(--font-xs) * 0.9);
-    padding: 3px 6px;
+  .button-group-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex: 1 1 100% !important;
+    max-width: 600px !important;
+    border-width: 0px;
+  }
+  
+  .button-group {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 1px !important;
+    width: auto !important;
+  }
+  
+  .button-group-pair {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+  
+  .button-group-pair > * {
+    width: 100% !important;
   }
 }
 
-
-
-
-/* ===== Responsive Media Queries ===== */
-/* Extra small devices (small phones) */
 @media screen and (max-width: 520px) {
   :root {
     --font-xs: 0.5725rem;
@@ -564,322 +544,89 @@ input, select, textarea {
     --font-xl: 1.0625rem;
     --font-xxl: 1.125rem;
   }
-
   
-  .controls-container {
-    padding: var(--space-xs);
-  }
-
-  .pill {
-      font-size: 0.5rem !important;     /* мелкий шрифт */
-  }
-  
-  .pill--activity {
-      font-size: 0.45rem !important;     /* мелкий шрифт */
-      padding: 2px 4px !important;       /* меньшие внутренние отступы */
-      margin: 0 !important;              /* если нужно убрать лишние внешние */
-  }
-  .pill--price {
-      font-size: 0.6rem !important;     /* мелкий шрифт */
-  }
-  .address-link {
-      font-size: 0.55rem !important;     /* мелкий шрифт */
-  }
-  .pill--price-change {
-      font-size: 0.5 !important;     /* мелкий шрифт */
-  }    
-  .btn {
-    font-size: calc(var(--font-xs) * 0.9);
-    padding: 3px 6px;
-  }
-}
-
-.dash-label {
-  font-size: 0.65rem !important;
-  margin-right: 6px !important;
-  white-space: nowrap;
-}
-
-
-@media screen and (max-width: 576px) {
-  /* Табличный контейнер растягиваем на 100% и включаем скролл */
-  .dash-spreadsheet-container,
-  #table-view-container {
-    width:      100%    !important;
-    max-width:  100%    !important;
-    overflow-x: auto    !important;
-    box-sizing: border-box !important;
-  }
-
-  /* Позволяем ячейкам ужиматься и переносить текст */
-  .dash-spreadsheet-container .dash-cell {
-    min-width:    0       !important;
-    white-space:  normal  !important;
-  }
-
-  /* Скрываем нативную шапку, если нужно */
-  .cell-table thead {
-    display: none !important;
-  }
-
-  .dash-label {
-    font-size: 0.6rem !important;
-    width: auto !important;
-    margin-bottom: var(--space-xs) !important;
-  }
-
-}
-
-
-@media screen and (max-width: 520px) {
-  /* 1) Переключаемся с фиксированного layout на auto */
   #apartment-table .dash-spreadsheet-container {
     table-layout: auto !important;
   }
-
-  /* 2) Разрешаем перенос строк внутри ячеек */
+  
   #apartment-table .dash-spreadsheet-container th,
   #apartment-table .dash-spreadsheet-container td {
     white-space: normal !important;
     word-break: break-word !important;
-  }
-
-  /* 3) Убираем излишние паддинги и шрифты уменьшаем */
-  #apartment-table .dash-spreadsheet-container th,
-  #apartment-table .dash-spreadsheet-container td {
     padding: 2px 4px !important;
     font-size: 0.65rem !important;
   }
-
-  /* 4) Сбрасываем минимальные ширины, чтобы pills не растягивали ячейки */
+  
   #apartment-table .dash-cell,
   .pill {
     min-width: 0 !important;
   }
-
-
-
-  /* 6) Убираем ненужные бордеры, чтобы визуально пуш‑to‑fit */
+  
   #apartment-table .dash-spreadsheet-container {
     border-spacing: 0 !important;
   }
-
-  /* немного уменьшить паддинги и шрифт */
+  
   .dash-spreadsheet-container td .dash-cell-value {
     padding: 4px 2px !important;
     font-size: 0.65rem !important;
     white-space: normal !important;
     word-break: break-word !important;
   }
-  /* убрать внешние отступы у группы кнопок */
+  
   .button-group-container {
     padding: 2px !important;
     gap: 2px !important;
   }
+  
   .dash-label {
-    display: none; /* или уменьшить width/margin */
+    display: none;
   }
-  /* позволяем ячейкам садиться по содержимому, а не по процентах */
-  #apartment-table .dash-spreadsheet-container {
-    table-layout: auto !important;
+  
+  /* Buttons specific for mobile */
+  .button-group .btn,
+  .btn--md {
+    padding: 1px 3px !important;
+    font-size: 0.6rem !important;
+    line-height: 1 !important;
+    min-height: 18px !important;
+    border-radius: 2px !important;
   }
-  /* уменьшаем отступы, чтобы влезало больше текста */
-  #apartment-table .dash-cell {
+  
+  .button-group .btn i {
+    margin-right: 0.25rem !important;
+  }
+  
+  /* Pill specific styles for small screens */
+  .pill {
+    font-size: 0.5rem !important;
+  }
+  
+  .pill--activity {
+    font-size: 0.45rem !important;
     padding: 2px 4px !important;
-    font-size: 0.75rem !important;
+    margin: 0 !important;
+  }
+  
+  .pill--price {
+    font-size: 0.6rem !important;
+  }
+  
+  .address-link {
+    font-size: 0.55rem !important;
   }
 }
 
-/* 1) Vertical stack of every group */
-.controls-container {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 4px !important;        /* space between each group */
-  padding: 4px !important;
-}
-
-/* 2) One group per line: label + buttons */
-.button-group-container {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  width: 100% !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-/* 3) Keep the buttons in one row, no wrapping */
-.button-group {
-  display: flex !important;
-  flex-wrap: nowrap !important;
-  gap: 4px !important;        /* gutter between buttons */
-  width: auto !important;
-}
-
-/* 4) Make all buttons as small as you can while still readable */
-.button-group .btn {
-  flex: 1 1 0 !important;     /* equal width */
-  min-width: 0 !important;    /* allow text truncation */
-  padding: 2px 4px !important;
-  font-size: 0.65rem !important;
-}
-
-/* 5) Tuck the label in a bit */
-
-/* ──────────────────────────────────────────────────
-   1) Stack each button group as its own row
-──────────────────────────────────────────────────*/
-.controls-container {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 4px !important;       /* space between rows */
-  padding: 4px !important;
-}
-
-/* ──────────────────────────────────────────────────
-   2) Label on the left, buttons on the right, single line
-──────────────────────────────────────────────────*/
-.button-group-container {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  width: 100% !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-/* ──────────────────────────────────────────────────
-   3) Keep all buttons in one row without wrapping
-──────────────────────────────────────────────────*/
-.button-group {
-  display: flex !important;
-  flex-wrap: nowrap !important;
-  gap: 4px !important;       /* gutter between buttons */
-  width: auto !important;
-}
-
-/* ──────────────────────────────────────────────────
-   4) Make buttons as compact as possible
-──────────────────────────────────────────────────*/
-.button-group .btn {
-  flex: 1 1 0 !important;    /* equal widths */
-  min-width: 0 !important;   /* allow text truncation */
-  padding: 2px 4px !important;
-  font-size: 0.65rem !important;
-}
-
-
-/* neutralize the text‑color on all default buttons */
-.btn--default {
-  /* instead of var(--color-text-secondary) use the inherited (black) color */
-  color: inherit !important;
-}
-
-/* if you only want to affect the FILTER group, give it its own class */
-.filter‑buttons .btn {
-  color: inherit !important;
-}
-
-/* ──────────────────────────────────────────────────
-   5) Tweak the label
-──────────────────────────────────────────────────*/
-
-.button-group-pair {
-  display: flex !important;
-  flex-direction: column !important;  /* force stacking */
-  gap: 4px !important;
-}
-
-.button-group-pair > * {
-  width: 100% !important;             /* each child full‑width */
-}
-/* ——— make all of your filter/sort/etc buttons more compact ——— */
-.button-group .btn {
-  /* pull in the padding */
-  padding: 2px 4px !important;
-  /* shrink the font a little */
-  font-size: 0.65rem !important;
-  /* lower the line‑height so the height comes down */
-  line-height: 1 !important;
-  /* cap the min height */
-  min-height: 20px !important;
-}
-
-/* tighten the gap between buttons */
-.button-group {
-  gap: 2px !important;
-}
-
-.btn--md {
-  padding: 2px 4px !important;
-  font-size: 0.65rem !important;
-  line-height: 1 !important;
-  min-height: 20px !important;
-}
-/* super‑compact buttons */
-.button-group .btn,
-.btn--md {
-  /* really tight padding */
-  padding: 1px 3px !important;
-  /* tiny text */
-  font-size: 0.6rem !important;
-  /* single line */
-  line-height: 1 !important;
-  /* lower the min‑height */
-  min-height: 18px !important;
-  /* optional: smaller corners */
-  border-radius: 2px !important;
-}
-
-/* shrink gap between buttons */
-.button-group {
-  gap: 1px !important;
-}
-
-/* if you have icons in your buttons, reduce their margin */
-.button-group .btn i {
-  margin-right: 0.25rem !important;
-}
-/* container for all of your groups */
-.controls-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-/* mobile: each group takes 100% */
-/* (you can adjust the breakpoint to taste) */
-.button-group-container {
-  flex: 1 1 100% !important;
-  max-width: 600px !important;
-  border-width: 0px;
-}
-}
-
-/* Custom button in details cell */
-.dash-cell-value.details-cell {
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  height: 100% !important;
-}
-
-/* ===== Pills ===== */
-.pill-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-sm);
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: 16px;
-  font-size: var(--font-xs);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+@media screen and (max-width: 390px) {
+  :root {
+    --font-xs: 0.5625rem;
+    --font-sm: 0.6875rem;
+    --font-md: 0.8125rem;
+    --font-lg: 0.9375rem;
+    --font-xl: 1.0625rem;
+    --font-xxl: 1.125rem;
+  }
+  
+  .controls-container {
+    padding: var(--space-xs);
+  }
 }

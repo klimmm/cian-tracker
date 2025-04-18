@@ -161,18 +161,28 @@ def _prepare_assets_directory() -> str:
 
 
 def _setup_image_directory(assets_path: str) -> None:
+    """Setup image directory with better error handling for cloud environments."""
     from app.app_config import AppConfig
 
     images_dir = AppConfig.get_images_path()
     target = os.path.join(assets_path, "images")
+    
+    # Skip if target already exists
     if os.path.exists(target):
+        logger.info(f"Images directory already exists: {target}")
         return
+        
     try:
-        os.symlink(images_dir, target)
-        logger.info(f"Symlinked images: {images_dir} → {target}")
-    except Exception:
+        # First try to create the directory without symlink
         os.makedirs(target, exist_ok=True)
         logger.info(f"Created images directory: {target}")
+        
+        # If we need to copy/link files from images_dir to target,
+        # we could do that here in a future enhancement
+    except Exception as e:
+        # Log but don't fail the app initialization
+        logger.error(f"Warning: Could not setup images directory: {e}")
+        logger.info("Continuing without images directory setup")
 
 
 if __name__ == "__main__":
