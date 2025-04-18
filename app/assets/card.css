@@ -202,26 +202,6 @@
   z-index: 5;
 }
 
-/* ===== Pills ===== */
-.pill-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-sm);
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: 16px;
-  font-size: var(--font-xs);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
 /* ===== Hidden/Visible States ===== */
 .details-panel--hidden,
 .details-overlay--hidden {

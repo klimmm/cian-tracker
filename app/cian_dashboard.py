@@ -41,11 +41,13 @@ def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
             meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
             assets_folder=assets_path,
         )
+        os.makedirs("/tmp/flask_cache", exist_ok=True)
 
         # 4) Simple in‑process cache with 5-minute TTL
         cache = Cache(app.server, config={
-            "CACHE_TYPE": "simple",
-            "CACHE_DEFAULT_TIMEOUT": 300,
+            "CACHE_TYPE": "filesystem",
+            "CACHE_DIR": "/tmp/flask_cache",
+            "CACHE_DEFAULT_TIMEOUT": 300,    # 5 minutes
         })
 
         @cache.memoize()
