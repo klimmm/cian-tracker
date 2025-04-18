@@ -1,97 +1,54 @@
-# app/layout.py
+# app/layout.py - Improved version
+
 from dash import dcc, html
 from app.button_factory import (
     DEFAULT_PRICE,
     DEFAULT_PRICE_BTN,
     DEFAULT_DISTANCE,
     DEFAULT_DISTANCE_BTN,
-)
-from app.button_factory import (
     price_buttons,
     distance_buttons,
     sort_buttons,
     filter_buttons,
 )
 from app.table_factory import TableFactory
+from app.apartment_card_callbacks import create_apartment_details_panel
 
 
-# Update this function in layout.py to move navigation panel to the top
-def create_apartment_details_panel():
-    """Create the improved overlay details panel with navigation at the top."""
-    return html.Div(
-        [
-            # Background overlay - ensure it starts hidden
-            html.Div(
-                id="details-overlay",
-                className="details-overlay details-panel--hidden",
-            ),
-            # Main panel - ensure it starts hidden
-            html.Div(
-                id="apartment-details-panel",
-                className="details-panel details-panel--hidden",
-                children=[
-                    # Header with title, navigation, and close button
-                    html.Div(
-                        className="details-panel-header",
-                        children=[
-                            # Left side - back button
-                            html.Button(
-                                "← Пред.",
-                                id="prev-apartment-button",
-                                className="details-nav-button details-nav-button--prev",
-                                n_clicks=0,
-                            ),
-                            # Center - title
-                            html.H3(
-                                "Информация о квартире", className="details-panel-title"
-                            ),
-                            # Right side - next button and close button
-                            html.Div(
-                                className="details-header-right",
-                                children=[
-                                    html.Button(
-                                        "След. →",
-                                        id="next-apartment-button",
-                                        className="details-nav-button details-nav-button--next",
-                                        n_clicks=0,
-                                    ),
-                                    html.Button(
-                                        "×",
-                                        id="close-details-button",
-                                        className="details-close-x",
-                                        n_clicks=0,
-                                    ),
-                                ],
-                            ),
-                        ],
-                    ),
-                    # Scrollable content area - start with empty div to prevent errors
-                    html.Div(
-                        id="apartment-details-card",
-                        className="details-panel-content",
-                        children=[],  # Start with empty array
-                    ),
-                ],
-            ),
-        ],
-        id="details-panel-container",  # Add container ID for easier targeting
-    )
-
-
-def create_app_layout(app):
-    """Create the improved application layout structure with inline button labels and buttons."""
-    # Create stores for application state
+def create_app_layout(
+    app,
+    initial_records: list = None,
+    initial_update_time: str = "",
+):
+    """
+    Build the main dashboard layout with improved organization.
+    """
+    # ─── Data stores and interval ────────────────────────────────────────────
     apartment_data_store = dcc.Store(
-        id="apartment-data-store", storage_type="memory", data=[]
+        id="apartment-data-store",
+        storage_type="memory",
+        data=initial_records or [],
     )
-    selected_apartment_store = dcc.Store(
-        id="selected-apartment-store", data=None, storage_type="memory"
-    )
-    expanded_row_store = dcc.Store(id="expanded-row-store", data=None)
 
-    # Initialize filter store with default values
+    # Data check interval next to its associated store (semantically grouped)
+    data_check_interval = dcc.Interval(
+        id="data-check-interval",
+        interval=1000,  # Check every second
+        max_intervals=20,  # Reduced to 20 seconds maximum
+        n_intervals=0,
+        disabled=False,
+    )
+
+    # Other stores
+    selected_apartment_store = dcc.Store(
+        id="selected-apartment-store", storage_type="memory", data=None
+    )
+    expanded_row_store = dcc.Store(
+        id="expanded-row-store", storage_type="memory", data=None
+    )
     filter_store = dcc.Store(
         id="filter-store",
+        storage_type="memory",
         data={
             "nearest": False,
             "below_estimate": False,
@@ -106,88 +63,85 @@ def create_app_layout(app):
             "active_sort_btn": "btn-sort-time",
         },
     )
+    preload_status_store = dcc.Store(
+        id="preload-status-store", storage_type="memory", data={"status": "not_started"}
+    )
+    image_preload_trigger = dcc.Store(
+        id="image-preload-trigger",
+        storage_type="memory",
+        data={"status": "not_started", "preloading_started": False},
+    )
 
-    # Create header components with improved styling
+    # ─── Header with timestamp ──────────────────────────────────
     header = html.Div(
         [
-            html.H2("", className="dashboard-header"),
+            html.H2("Cian Apartment Dashboard", className="dashboard-header"),
             html.Div(
-                html.Span(id="last-update-time", className="update-time"),
+                html.Span(
+                    initial_update_time,
+                    id="last-update-time",
+                    className="update-info-text",
+                ),
                 className="update-info",
             ),
         ],
         className="header-container",
     )
 
-    dummy_input = html.Div(id="dummy-load", children="init", style={"display": "none"})
-
-    # Reorganize controls to have two button groups per row with responsive behavior
-    controls_container = html.Div(
+    # ─── Controls ───────────────────────────────────────────────
+    controls = html.Div(
         [
-            # 1st line: price
             html.Div(price_buttons, className="controls-row"),
-            # 2nd line: distance
             html.Div(distance_buttons, className="controls-row"),
-            # 3rd line: filters
-            html.Div(filter_buttons,   className="controls-row"),
-            # 4th line: sorting
-            html.Div(sort_buttons,     className="controls-row"),
+            html.Div(filter_buttons, className="controls-row"),
+            html.Div(sort_buttons, className="controls-row"),
         ],
         className="controls-container",
     )
 
+    # ─── Table + Details Panel with better loading ─────────────────────
+    table = TableFactory.create_data_table()
 
-    # Detail panel for apartment information with improved design
-    apartment_details_panel = create_apartment_details_panel()
-    preload_status_store = dcc.Store(id="preload-status-store", data={"status": "not_started"})
+    # Create details panel
+    details = create_apartment_details_panel()
 
-    
-    # Initialize empty data table to ensure it exists in the layout
-    empty_data_table = TableFactory.create_data_table()
-    
+    # Use Dash's built-in loading component instead of custom CSS
+    table_view = html.Div(
+        id="table-view-container",
+        className="content-container",
+        children=[
+            # Table with proper Dash loading
+            dcc.Loading(
+                id="loading-table",
+                type="circle",
+                children=html.Div(
+                    id="table-container", className="table-responsive", children=[table]
+                ),
+            ),
+            # Separate loading for details panel
+            details,
+        ],
+    )
 
-    # Main layout structure
     return html.Div(
         [
-            # Header section
             header,
             filter_store,
-            dummy_input,
-            preload_status_store,
+            controls,
+            table_view,
             html.Div(
-                "Loading apartment data...", 
-                id="preload-indicator", 
-                className="preload-indicator--hidden"
-            ),
-            dcc.Store(id="image-preload-trigger", data={}),
-            
-            # Controls section with improved styling
-            controls_container,
-            # Table view container
-            html.Div(
-                id="table-view-container",
-                children=[
-                    dcc.Loading(
-                        id="loading-main",
-                        children=[
-                            html.Div(
-                                id="table-container",
-                                className="table-responsive",
-                                children=[
-                                    empty_data_table
-                                ],  # Include empty table in initial layout
-                            ),
-                            apartment_details_panel,
-                        ],
-                        type="circle",
-                    )
+                [
+                    # Data store with its interval grouped together
+                    apartment_data_store,
+                    data_check_interval,
+                    # Other stores
+                    selected_apartment_store,
+                    expanded_row_store,
+                    preload_status_store,
+                    image_preload_trigger,
                 ],
-                className="content-container",
+                style={"display": "none"},  # Hide div containing stores
             ),
-            # Data stores
-            selected_apartment_store,
-            expanded_row_store,
-            apartment_data_store,
         ],
         className="main-container",
     )

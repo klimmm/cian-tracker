@@ -1,125 +1,193 @@
-# app/cian_dashboard.py
+# app/cian_dashboard.py - Improved version
 import os
-import dash
-import logging
+import threading
 from pathlib import Path
 from typing import Optional, Union
+
+import dash
+from dash import html
+from flask_caching import Cache
+import logging
+from dash import Input, Output
+
 from app.layout import create_app_layout
 from app.dashboard_callbacks import register_all_callbacks
 from app.app_config import AppConfig
+from app.data_manager import DataManager
 
-# Configure logging
+# ─── Logging ────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] - %(message)s",
-    datefmt="%H:%M:%S",
+    format="%(H:%M:%S [%(levelname)s)] - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
 
 def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
-    """Initialize the Dash application with improved setup."""
+    """Initialize the Dash app with improved asynchronous data loading."""
     try:
-        # Initialize configuration
+        # 1) AppConfig
         AppConfig.initialize(data_dir)
         logger.info(f"Using data directory: {AppConfig.get_data_dir()}")
 
-        # Prepare assets directory
+        # 2) Prepare assets folder
         assets_path = _prepare_assets_directory()
 
-        # Create Dash app with proper configuration
+        # 3) Create Dash app
         app = dash.Dash(
             __name__,
             title="Cian Apartment Dashboard",
+            suppress_callback_exceptions=True,
             meta_tags=[
                 {"name": "viewport", "content": "width=device-width, initial-scale=1"}
             ],
-            suppress_callback_exceptions=True,
             assets_folder=assets_path,
         )
 
-        # Setup image directory for assets
+        # 4) Simple in‑process cache with 5-minute TTL
+        cache = Cache(
+            app.server,
+            config={
+                "CACHE_TYPE": "simple",
+                "CACHE_DEFAULT_TIMEOUT": 300,
+            },
+        )
+
+        @cache.memoize()
+        def _get_main_df_and_time():
+            """Use DataManager — runs at most once per TTL."""
+            df, update_time = DataManager.load_and_process_data()
+            logger.info(
+                f"→ DataManager returned {len(df)} rows, updated at {update_time}"
+            )
+            return df, update_time
+
+        # 5) Layout function - returns shell immediately
+        def serve_layout():
+            try:
+                return create_app_layout(
+                    app,
+                    initial_records=[],  # Empty initially
+                    initial_update_time="Загрузка данных...",
+                )
+            except Exception as e:
+                logger.error(f"Error in serve_layout: {e}", exc_info=True)
+                return html.Div(
+                    [
+                        html.H2("Error building layout", style={"color": "red"}),
+                        html.Pre(
+                            str(e), style={"whiteSpace": "pre-wrap", "padding": "1em"}
+                        ),
+                    ]
+                )
+
+        app.layout = serve_layout
+
+        # 6) Assets & callbacks
         _setup_image_directory(assets_path)
-
-        # Set up app layout
-        app.layout = create_app_layout(app)
-
-        # Register callbacks
         register_all_callbacks(app)
-        # inject_responsive_scripts(app)
+
+        # 7) Background data loading using clientside approach
+        def prime_cache_in_background():
+            try:
+                logger.info("Background thread: Priming DataManager cache...")
+                df, update_time = _get_main_df_and_time()
+
+                logger.info(
+                    f"Background thread: DataManager cache primed with {len(df)} rows."
+                )
+
+                # Also start preloading detail files after main data is loaded
+                DataManager.preload_detail_files()
+            except Exception as e:
+                logger.error(
+                    f"Background thread: Failed to prime cache: {e}", exc_info=True
+                )
+
+        # Start background thread for asynchronous cache priming
+        threading.Thread(target=prime_cache_in_background, daemon=True).start()
+        logger.info("Started background cache priming thread")
+
+        # 8) Add callback for updating data store when cache is ready
+        @app.callback(
+            [
+                Output("apartment-data-store", "data"),
+                Output("last-update-time", "children"),
+                Output("data-check-interval", "disabled"),
+            ],
+            [Input("data-check-interval", "n_intervals")],
+            prevent_initial_call=False,
+        )
+        def update_data_when_ready(n_intervals):
+            """Check if data is available in cache without using globals."""
+            if n_intervals is None:
+                # First load, no data yet
+                return [], "Загрузка данных...", False
+
+            try:
+                # Try to get data from cache - this will be fast if cache is primed
+                # and slow only on first attempt
+                df, update_time = _get_main_df_and_time()
+
+                if df.empty:
+                    # Still loading
+                    return [], "Загрузка данных...", False
+
+                # Data is available, prepare and return it
+                if "details" not in df.columns:
+                    df["details"] = "🔍"
+
+                records = df.to_dict("records")
+                logger.info(f"Data loaded to UI: {len(records)} records")
+
+                # Stop checking interval once data is loaded
+                return records, f"Обновлено: {update_time}", True
+
+            except Exception as e:
+                logger.error(f"Error loading data: {e}")
+                # On error, stop checking and show error message
+                return [], f"Ошибка загрузки данных: {e}", True
+
         logger.info("Application initialized successfully")
         return app
 
     except Exception as e:
-        logger.error(f"Error initializing application: {e}")
-        # Create a minimal app that displays the error
-        app = dash.Dash(__name__, title="Cian Dashboard - Error")
-        app.layout = dash.html.Div(
+        logger.error(f"Error initializing application: {e}", exc_info=True)
+        fallback = dash.Dash(__name__, title="Error")
+        fallback.layout = html.Div(
             [
-                dash.html.H2("Error Initializing Application", style={"color": "red"}),
-                dash.html.Pre(
-                    str(e), style={"backgroundColor": "#f8f8f8", "padding": "10px"}
-                ),
+                html.H2("Error Initializing Application", style={"color": "red"}),
+                html.Pre(str(e), style={"whiteSpace": "pre-wrap", "padding": "1em"}),
             ]
         )
-        return app
+        return fallback
 
 
 def _prepare_assets_directory() -> str:
-    """Prepare assets directory for the application."""
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    assets_path = os.path.join(current_dir, "assets")
-
-    # Ensure assets directory exists
-    if not os.path.exists(assets_path):
-        os.makedirs(assets_path)
-        logger.info(f"Created assets directory: {assets_path}")
-
-    return assets_path
+    here = os.path.dirname(os.path.abspath(__file__))
+    assets = os.path.join(here, "assets")
+    os.makedirs(assets, exist_ok=True)
+    logger.info(f"Using assets directory: {assets}")
+    return assets
 
 
 def _setup_image_directory(assets_path: str) -> None:
-    """Set up image directory with proper linking with fallback mechanisms."""
-    # Link images directory to assets
+    from app.app_config import AppConfig
+
     images_dir = AppConfig.get_images_path()
-    assets_images_dir = os.path.join(assets_path, "images")
-
-    # Skip if target directory already exists
-    if os.path.exists(assets_images_dir):
-        logger.info(f"Assets images directory already exists: {assets_images_dir}")
+    target = os.path.join(assets_path, "images")
+    if os.path.exists(target):
         return
-
-    # Only attempt to create link if source exists
-    if os.path.exists(images_dir):
-        try:
-            if os.name == "nt":  # Windows
-                import subprocess
-
-                subprocess.run(
-                    ["mklink", "/J", str(assets_images_dir), str(images_dir)],
-                    shell=True,
-                    check=False,
-                )
-            else:  # Unix-like
-                os.symlink(str(images_dir), assets_images_dir)
-            logger.info(f"Created link from {images_dir} to {assets_images_dir}")
-            return
-        except Exception as e:
-            logger.warning(f"Could not create directory link: {e}")
-
-    # Create directory as fallback
     try:
-        os.makedirs(assets_images_dir, exist_ok=True)
-        logger.info(f"Created images directory: {assets_images_dir}")
-    except Exception as e:
-        logger.warning(f"Failed to create images directory: {e}")
+        os.symlink(images_dir, target)
+        logger.info(f"Symlinked images: {images_dir} → {target}")
+    except Exception:
+        os.makedirs(target, exist_ok=True)
+        logger.info(f"Created images directory: {target}")
 
 
 if __name__ == "__main__":
-    # Get port from environment or use default
     port = int(os.environ.get("PORT", 8050))
-
-    # Initialize and run the app
     app = initialize_app()
     logger.info(f"Starting server on port {port}")
-    app.run_server(debug=True, host="0.0.0.0", port=port)
+    app.run_server(debug=True, use_reloader=False, host="0.0.0.0", port=port)

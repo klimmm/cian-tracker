@@ -1,4 +1,4 @@
-# app/app_config.py - Optimized
+# app/app_config.py - Simplified
 import os
 import logging
 from pathlib import Path
@@ -9,24 +9,28 @@ logger = logging.getLogger(__name__)
 
 
 class AppConfig:
-    """Centralized application configuration with improved path handling."""
+    """Centralized application configuration with simplified strategy."""
 
     # Application data directory
     _DATA_DIR: Optional[Path] = None
 
-    # Data source configuration
-    DATA_SOURCE: Dict[str, Any] = {
-        "type": "hybrid",
-        "main_data": {
-            "type": "github",
-            "files": ["cian_apartments.csv", "cian_apartments.meta.json"],
-        },
-        "apartment_details": {"type": "hybrid"},
-        "images": {"type": "hybrid"},
-        "github": {
-            "base_url": "https://raw.githubusercontent.com/klimmm/cian-tracker/refs/heads/main/"
-        },
-    }
+    # Primary data source - set to 'github' or 'local'
+    PRIMARY_SOURCE = "github"
+    
+    # GitHub repository information
+    GITHUB_BASE_URL = "https://raw.githubusercontent.com/klimmm/cian-tracker/main/"
+    # Files that must always be loaded from GitHub (even in local mode)
+    GITHUB_ONLY_FILES = ["cian_apartments.csv", "cian_apartments.meta.json"]
+    
+    # Files that require fallback to the alternate source if primary fails
+    FALLBACK_ENABLED_FILES = [
+        "price_history.csv",
+        "stats.csv", 
+        "features.csv", 
+        "rental_terms.csv", 
+        "apartment_details.csv", 
+        "building_details.csv"
+    ]
 
     # Default subdirectories
     SUBDIRS = ["cian_data", "images", "assets"]
@@ -42,7 +46,7 @@ class AppConfig:
         )
 
         # Create directories if needed and we're not using GitHub exclusively
-        if cls.DATA_SOURCE.get("type") != "github":
+        if cls.PRIMARY_SOURCE != "github":
             for dir_name in cls.SUBDIRS:
                 dir_path = cls._DATA_DIR / dir_name
                 if not dir_path.exists():
@@ -50,6 +54,7 @@ class AppConfig:
                     logger.info(f"Created directory: {dir_path}")
 
         logger.info(f"Initialized AppConfig with data directory: {cls._DATA_DIR}")
+        logger.info(f"Using primary data source: {cls.PRIMARY_SOURCE}")
         return cls
 
     @classmethod
@@ -80,30 +85,22 @@ class AppConfig:
         return cls.get_path("assets", *parts)
 
     @classmethod
-    def always_use_github_for(cls, filename: str) -> bool:
-        """Check if file should always use GitHub regardless of mode."""
-        return filename in cls.DATA_SOURCE.get("main_data", {}).get("files", [])
-
-    @classmethod
-    def should_use_hybrid_for_apartment_details(cls) -> bool:
-        """Check if hybrid mode is enabled for apartment details."""
-        return cls.DATA_SOURCE.get("apartment_details", {}).get("type") == "hybrid"
-
-    @classmethod
-    def should_use_hybrid_for_images(cls) -> bool:
-        """Check if hybrid mode is enabled for images."""
-        return cls.DATA_SOURCE.get("images", {}).get("type") == "hybrid"
-
-    @classmethod
     def get_github_url(cls, *parts: str) -> str:
         """Construct GitHub URL from path components."""
-        base_url = cls.DATA_SOURCE.get("github", {}).get(
-            "base_url",
-            "https://raw.githubusercontent.com/klimmm/cian-tracker/refs/heads/main/",
-        )
-        return f"{base_url}{'/'.join(parts)}"
-
+        return f"{cls.GITHUB_BASE_URL}{'/'.join(parts)}"
+        
     @classmethod
-    def is_using_github(cls) -> bool:
-        """Check if using GitHub as primary data source."""
-        return cls.DATA_SOURCE.get("type") == "github"
+    def should_use_github_for(cls, filename: str) -> bool:
+        """Determine if GitHub should be used as the source for this file."""
+        # Always use GitHub for specified files regardless of primary source
+        if filename in cls.GITHUB_ONLY_FILES:
+            return True
+            
+        # Use GitHub as primary if configured
+        return cls.PRIMARY_SOURCE == "github"
+        
+    @classmethod
+    def should_use_fallback(cls, filename: str) -> bool:
+        """Determine if fallback to alternate source is allowed for this file."""
+        # Only allow fallback for specified files
+        return filename in cls.FALLBACK_ENABLED_FILES

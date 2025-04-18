@@ -1,0 +1,123 @@
+/* Improved loading indicator CSS - add to your assets/custom.css */
+
+.table-responsive {
+  position: relative; /* Parent container needs relative position */
+  min-height: 200px; /* Ensure container has height even when empty */
+}
+
+.loading-container {
+  position: absolute; /* Position over the table */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10; /* Above the table */
+  background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  transition: opacity 0.3s ease-out;
+}
+
+/* Make sure dash-table-container is visible */
+.dash-table-container {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Hide only loading indicator */
+.loading-container[style*="display: none"] {
+  display: none !important;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.loading-message {
+  font-size: 18px;
+  color: #555;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+
+/* Spinner animation */
+.spinner {
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(0, 123, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #007bff;
+  animation: spin 1s ease-in-out infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Make update info more readable during loading */
+.update-info {
+  background-color: #f8f9fa;
+  padding: 5px 10px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.update-info-text {
+  font-weight: 500;
+}
+
+/* Animated loading text effect */
+.update-info-text:contains("Загрузка данных") {
+  position: relative;
+}
+
+.update-info-text:contains("Загрузка данных"):after {
+  content: "";
+  animation: loadingDots 1.5s infinite;
+}
+
+@keyframes loadingDots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+}
+
+/* Add this to your CSS file (assets/custom.css) */
+
+/* Fix loading indicator alignment */
+.loading-container {
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  text-align: center;
+  margin: 0 auto;
+}
+
+/* Ensure table remains visible */
+.dash-table-container {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Make loading indicator appear above table */
+#loading-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background: rgba(255,255,255,0.9);
+}
+
+/* Hide loading indicator properly */
+#loading-indicator[style*="display: none"] {
+  display: none !important;
+}

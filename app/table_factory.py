@@ -1,5 +1,5 @@
-import dash_table
 import dash
+from dash import dash_table
 import logging
 
 logger = logging.getLogger(__name__)

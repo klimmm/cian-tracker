@@ -1,15 +1,10 @@
 # app/dashboard_callbacks.py
 from dash import callback_context as ctx
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output, State, MATCH
 import dash
 import logging
-import pandas as pd
-from app.data_manager import DataManager
-from app.data_filter import DataFilterSorter
-
-
+from dash import ClientsideFunction
 from app.button_factory import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS
-from app.config import CONFIG
 from app.apartment_card_callbacks import register_apartment_card_callbacks
 from app.table_callbacks import register_table_callbacks, register_data_callbacks
 
@@ -22,12 +17,28 @@ def register_all_callbacks(app):
     register_button_callbacks(app)
     register_apartment_card_callbacks(app)
     register_table_callbacks(app)
+    register_slideshow_callbacks(app)
 
 
-# Update the register_table_buttons function to use allow_duplicate
+def register_slideshow_callbacks(app):
+    app.clientside_callback(
+        ClientsideFunction(namespace='slideshow', function_name='nav'),
+        [
+            Output({'type': 'slideshow-data', 'offer_id': MATCH}, 'data'),
+            Output({'type': 'slideshow-img', 'offer_id': MATCH}, 'src'),
+            Output({'type': 'counter', 'offer_id': MATCH}, 'children'),
+        ],
+        [
+            Input({'type': 'prev-btn', 'offer_id': MATCH}, 'n_clicks'),
+            Input({'type': 'next-btn', 'offer_id': MATCH}, 'n_clicks'),
+        ],
+        [State({'type': 'slideshow-data', 'offer_id': MATCH}, 'data')],
+        prevent_initial_call=True,
+    )
+
+
 def register_button_callbacks(app):
     """Register optional button-based callbacks (only used if table clicks don't work)."""
-
 
     @app.callback(
         [*[Output(f"{btn['id']}-text", "children") for btn in SORT_BUTTONS]],
@@ -50,8 +61,6 @@ def register_button_callbacks(app):
             )
             for btn in SORT_BUTTONS
         ]
-
-    """Register filter and sorting callbacks."""
 
     @app.callback(
         [Output("filter-store", "data")],
@@ -76,7 +85,6 @@ def register_button_callbacks(app):
         trigger_id = ctx_msg["prop_id"].split(".")[0]
         current_filters = args[-1] or {}
 
-        # Handle price button clicks
         if trigger_id in [btn["id"] for btn in PRICE_BUTTONS]:
             current_filters["active_price_btn"] = trigger_id
             current_filters["price_value"] = next(
@@ -84,7 +92,6 @@ def register_button_callbacks(app):
                 current_filters.get("price_value", 80000),
             )
 
-        # Handle distance button clicks
         elif trigger_id in [btn["id"] for btn in DISTANCE_BUTTONS]:
             current_filters["active_dist_btn"] = trigger_id
             current_filters["distance_value"] = next(
@@ -92,7 +99,6 @@ def register_button_callbacks(app):
                 current_filters.get("distance_value", 3.0),
             )
 
-        # Handle toggle filters
         elif trigger_id in [
             "btn-nearest",
             "btn-below-estimate",
@@ -107,13 +113,11 @@ def register_button_callbacks(app):
             }[trigger_id]
             current_filters[filter_key] = not current_filters.get(filter_key, False)
 
-        # Handle sort buttons
         elif trigger_id in [btn["id"] for btn in SORT_BUTTONS]:
             button = next(
                 (btn for btn in SORT_BUTTONS if btn["id"] == trigger_id), None
             )
             if button:
-                # Toggle direction if same button clicked again
                 if current_filters.get("active_sort_btn") == trigger_id:
                     current_filters["sort_direction"] = (
                         "desc"
@@ -128,8 +132,6 @@ def register_button_callbacks(app):
                     )
 
         return [current_filters]
-
-    """Register styling callbacks for UI elements."""
 
     @app.callback(
         [
@@ -150,14 +152,12 @@ def register_button_callbacks(app):
 
         classes = []
 
-        # Helper function for creating button classes
         def get_button_class(button_type, is_active=False):
             base_class = f"btn btn--{button_type}"
             if is_active:
                 base_class += " btn--active"
             return base_class
 
-        # Price buttons
         for btn in PRICE_BUTTONS:
             classes.append(
                 get_button_class(
@@ -166,7 +166,6 @@ def register_button_callbacks(app):
                 )
             )
 
-        # Distance buttons
         for btn in DISTANCE_BUTTONS:
             classes.append(
                 get_button_class(
@@ -175,7 +174,6 @@ def register_button_callbacks(app):
                 )
             )
 
-        # Filter toggle buttons
         filter_button_mapping = [
             ("btn-nearest", "default", "nearest"),
             ("btn-below-estimate", "default", "below_estimate"),
@@ -201,4 +199,3 @@ def register_button_callbacks(app):
             )
 
         return classes
-

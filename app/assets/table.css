@@ -524,7 +524,11 @@ input, select, textarea {
   .pill {
       font-size: 0.5rem !important;     /* мелкий шрифт */
   }
-  
+  .pill {
+    padding: 2px 6px;
+  }
+
+    
   .pill--activity {
       font-size: 0.45rem !important;     /* мелкий шрифт */
       padding: 2px 4px !important;       /* меньшие внутренние отступы */
@@ -852,3 +856,30 @@ input, select, textarea {
 }
 }
 
+/* Custom button in details cell */
+.dash-cell-value.details-cell {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  height: 100% !important;
+}
+
+/* ===== Pills ===== */
+.pill-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: 16px;
+  font-size: var(--font-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
