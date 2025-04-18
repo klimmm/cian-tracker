@@ -14,6 +14,7 @@ PANEL_VISIBLE = "details-panel details-panel--visible"
 OVERLAY_HIDDEN = "details-overlay details-panel--hidden"
 OVERLAY_VISIBLE = "details-overlay details-panel--visible"
 
+
 def _nav_button(label, btn_id, extra_classes=""):
     return html.Button(
         label,
@@ -21,6 +22,7 @@ def _nav_button(label, btn_id, extra_classes=""):
         className=f"details-nav-button {extra_classes}".strip(),
         n_clicks=0,
     )
+
 
 @lru_cache(maxsize=1)
 def create_apartment_details_panel():
@@ -34,18 +36,32 @@ def create_apartment_details_panel():
                     html.Div(
                         className="details-panel-header",
                         children=[
-                            _nav_button("← Пред.", "prev-apartment-button", "details-nav-button--prev"),
-                            html.H3("Информация о квартире", className="details-panel-title"),
+                            _nav_button(
+                                "← Пред.",
+                                "prev-apartment-button",
+                                "details-nav-button--prev",
+                            ),
+                            html.H3(
+                                "Информация о квартире", className="details-panel-title"
+                            ),
                             html.Div(
                                 className="details-header-right",
                                 children=[
-                                    _nav_button("След. →", "next-apartment-button", "details-nav-button--next"),
-                                    _nav_button("×",      "close-details-button",   "details-close-x"),
-                                ]
+                                    _nav_button(
+                                        "След. →",
+                                        "next-apartment-button",
+                                        "details-nav-button--next",
+                                    ),
+                                    _nav_button(
+                                        "×", "close-details-button", "details-close-x"
+                                    ),
+                                ],
                             ),
                         ],
                     ),
-                    html.Div(id="apartment-details-card", className="details-panel-content"),
+                    html.Div(
+                        id="apartment-details-card", className="details-panel-content"
+                    ),
                 ],
             ),
         ],
@@ -57,11 +73,15 @@ def register_apartment_card_callbacks(app):
     """Register separate callbacks for toggling panel and updating details."""
 
     @app.callback(
-        [Output("apartment-details-panel", "className"),
-         Output("details-overlay", "className")],
-        [Input("apartment-table", "active_cell"),
-         Input("close-details-button", "n_clicks")],
-        prevent_initial_call=True
+        [
+            Output("apartment-details-panel", "className"),
+            Output("details-overlay", "className"),
+        ],
+        [
+            Input("apartment-table", "active_cell"),
+            Input("close-details-button", "n_clicks"),
+        ],
+        prevent_initial_call=True,
     )
     def toggle_panel(active_cell, close_clicks):
         trigger = ctx.triggered_id
@@ -72,14 +92,17 @@ def register_apartment_card_callbacks(app):
         return PANEL_HIDDEN, OVERLAY_HIDDEN
 
     @app.callback(
-        [Output("apartment-details-card", "children"),
-         Output("selected-apartment-store", "data")],
-        [Input("apartment-table", "active_cell"),
-         Input("prev-apartment-button", "n_clicks"),
-         Input("next-apartment-button", "n_clicks")],
-        [State("apartment-table", "data"),
-         State("selected-apartment-store", "data")],
-        prevent_initial_call=True
+        [
+            Output("apartment-details-card", "children"),
+            Output("selected-apartment-store", "data"),
+        ],
+        [
+            Input("apartment-table", "active_cell"),
+            Input("prev-apartment-button", "n_clicks"),
+            Input("next-apartment-button", "n_clicks"),
+        ],
+        [State("apartment-table", "data"), State("selected-apartment-store", "data")],
+        prevent_initial_call=True,
     )
     def update_details(active_cell, prev_clicks, next_clicks, table_data, selected):
         trigger = ctx.triggered_id
@@ -120,7 +143,9 @@ def register_apartment_card_callbacks(app):
 
         # Preload neighbor images on initial open
         if trigger == "apartment-table":
-            neighbor_indices = list(range(max(0, idx - 5), min(len(table_data), idx + 6)))
+            neighbor_indices = list(
+                range(max(0, idx - 5), min(len(table_data), idx + 6))
+            )
             neighbor_indices = [i for i in neighbor_indices if i != idx]
             neighbor_ids = [
                 table_data[i].get("offer_id")

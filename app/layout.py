@@ -29,23 +29,21 @@ def create_app_layout(
         storage_type="memory",
         data=initial_records or [],
     )
-
+    
     # Data check interval next to its associated store (semantically grouped)
     data_check_interval = dcc.Interval(
         id="data-check-interval",
         interval=1000,  # Check every second
         max_intervals=20,  # Reduced to 20 seconds maximum
         n_intervals=0,
-        disabled=False,
+        disabled=False
     )
-
+    
     # Other stores
     selected_apartment_store = dcc.Store(
         id="selected-apartment-store", storage_type="memory", data=None
     )
-    expanded_row_store = dcc.Store(
-        id="expanded-row-store", storage_type="memory", data=None
-    )
+    expanded_row_store = dcc.Store(id="expanded-row-store", storage_type="memory", data=None)
     filter_store = dcc.Store(
         id="filter-store",
         storage_type="memory",
@@ -67,9 +65,9 @@ def create_app_layout(
         id="preload-status-store", storage_type="memory", data={"status": "not_started"}
     )
     image_preload_trigger = dcc.Store(
-        id="image-preload-trigger",
-        storage_type="memory",
-        data={"status": "not_started", "preloading_started": False},
+        id="image-preload-trigger", 
+        storage_type="memory", 
+        data={"status": "not_started", "preloading_started": False}
     )
 
     # ─── Header with timestamp ──────────────────────────────────
@@ -77,11 +75,7 @@ def create_app_layout(
         [
             html.H2("Cian Apartment Dashboard", className="dashboard-header"),
             html.Div(
-                html.Span(
-                    initial_update_time,
-                    id="last-update-time",
-                    className="update-info-text",
-                ),
+                html.Span(initial_update_time, id="last-update-time", className="update-info-text"),
                 className="update-info",
             ),
         ],
@@ -100,11 +94,17 @@ def create_app_layout(
     )
 
     # ─── Table + Details Panel with better loading ─────────────────────
-    table = TableFactory.create_data_table()
-
+    # Create empty table shell with just headers for fast initial render
+    table = TableFactory.create_data_table(data=[], columns=[
+        {"name": "Обновлено", "id": "update_title"},
+        {"name": "Характеристики", "id": "property_tags"},
+        {"name": "Адрес", "id": "address_title"},
+        {"name": "Цена", "id": "price_text"}
+    ])
+    
     # Create details panel
     details = create_apartment_details_panel()
-
+    
     # Use Dash's built-in loading component instead of custom CSS
     table_view = html.Div(
         id="table-view-container",
@@ -115,8 +115,10 @@ def create_app_layout(
                 id="loading-table",
                 type="circle",
                 children=html.Div(
-                    id="table-container", className="table-responsive", children=[table]
-                ),
+                    id="table-container",
+                    className="table-responsive",
+                    children=[table]
+                )
             ),
             # Separate loading for details panel
             details,
@@ -129,6 +131,7 @@ def create_app_layout(
             filter_store,
             controls,
             table_view,
+            # Stores grouped at the end
             html.Div(
                 [
                     # Data store with its interval grouped together
@@ -140,8 +143,8 @@ def create_app_layout(
                     preload_status_store,
                     image_preload_trigger,
                 ],
-                style={"display": "none"},  # Hide div containing stores
-            ),
+                style={"display": "none"}, # Hide div containing stores
+            )
         ],
         className="main-container",
     )
