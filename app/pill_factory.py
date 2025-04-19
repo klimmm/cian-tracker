@@ -69,7 +69,7 @@ class PillFactory:
             "max_minutes": 12,
         },
         "close": {
-            "variant": "neutral",
+            "variant": "success",
             "custom_class": "pill--distance",
             "max_minutes": 22,
         },
