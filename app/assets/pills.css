@@ -55,7 +55,8 @@
 
 /* Preserve gold border for good deals */
 .pill--good-deal {
-  border: 1px solid gold !important;
+    border: none !important;
+    color: var(--color-primary) !important;
 }
 .pill--good-deal::before {
   content: none !important;
