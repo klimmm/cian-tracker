@@ -28,12 +28,12 @@ class TableFactory:
         **kwargs,
     ):
         # Add these debug logs
-        logger.info(f"===== TableFactory.create_data_table called =====")
-        logger.info(f"Table ID: {id}")
-        logger.info(f"Data length: {len(data) if data else 0}")
-        logger.info(f"Columns count: {len(columns) if columns else 0}")
+        logger.debug(f"===== TableFactory.create_data_table called =====")
+        logger.debug(f"Table ID: {id}")
+        logger.debug(f"Data length: {len(data) if data else 0}")
+        logger.debug(f"Columns count: {len(columns) if columns else 0}")
         if columns:
-            logger.info(f"Column IDs: {[col.get('id') for col in columns]}")
+            logger.debug(f"Column IDs: {[col.get('id') for col in columns]}")
         # Defaults
         if data is None:
             data = []
@@ -159,15 +159,15 @@ class TableFactory:
         logger.debug("Creating table with properties: %s", table_props)
 
         # Before returning, log the complete table configuration
-        logger.info(f"Final table configuration:")
-        logger.info(f"- data length: {len(table_props['data'])}")
-        logger.info(f"- columns length: {len(table_props['columns'])}")
-        logger.info(f"- CSS rules: {table_props.get('css')}")
+        logger.debug(f"Final table configuration:")
+        logger.debug(f"- data length: {len(table_props['data'])}")
+        logger.debug(f"- columns length: {len(table_props['columns'])}")
+        logger.debug(f"- CSS rules: {table_props.get('css')}")
         
         # Log specific column IDs that will be visible
         visible_column_ids = [col['id'] for col in table_props['columns'] 
                              if col['id'] not in (hidden_columns or [])]
-        logger.info(f"Visible column IDs after hiding: {visible_column_ids}")
+        logger.debug(f"Visible column IDs after hiding: {visible_column_ids}")
         
         # Return DataTable
         return dash_table.DataTable(

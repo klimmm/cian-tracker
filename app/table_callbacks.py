@@ -2,10 +2,9 @@
 
 import logging
 import pandas as pd
-from dash import Input, Output, State
+from dash import Input, Output
 import dash
 from app.data_filter import DataFilterSorter
-from app.data_manager import ImageLoader
 from app.config import CONFIG
 from time import perf_counter
 
@@ -26,88 +25,6 @@ def register_data_callbacks(app):
             return {"status": "waiting_for_data"}
 
         return {"status": "loading_started"}
-
-    @app.callback(
-        Output("image-preload-trigger", "data"),
-        [
-            Input("apartment-table", "data"),
-            Input("apartment-table", "page_current"),
-            Input("apartment-table", "page_size"),
-        ],
-        [State("image-preload-trigger", "data")],
-        prevent_initial_call=False,
-    )
-    def start_image_preloading(table_data, page_current, page_size, current_status):
-        """Begin preloading images for apartments that are actually visible in the table, with pagination support."""
-        # Skip if no data
-        if not table_data or len(table_data) == 0:
-            return current_status or {"status": "no_data", "preloading_started": False}
-
-        # Check if we've already started preloading from current status
-        # This keeps state in the store itself rather than using nonlocal variables
-        if current_status and current_status.get("preloading_started"):
-            return current_status
-
-        # Calculate visible page if pagination is active
-        start_idx = 0
-        end_idx = 10  # Default to first 10 if pagination not set
-
-        if page_current is not None and page_size is not None:
-            start_idx = page_current * page_size
-            end_idx = start_idx + page_size
-
-        # Ensure end_idx is within bounds
-        end_idx = min(end_idx, len(table_data))
-
-        # Start a background thread to preload images
-        import threading
-
-        def background_image_loader():
-            try:
-                # Extract offer_ids from the visible apartments
-                visible_apartments = table_data[start_idx:end_idx]
-                offer_ids = [
-                    row.get("offer_id")
-                    for row in visible_apartments
-                    if row.get("offer_id")
-                ]
-
-                if offer_ids:
-                    logger.info(
-                        f"🚀 IMAGE PRELOAD: Starting preload of {min(3, len(offer_ids))} visible apartments: {offer_ids[:3]}"
-                    )
-                    # Start with just the first 3 for immediate response
-                    first_batch = offer_ids[:3]
-                    ImageLoader.preload_images_for_apartments(first_batch, limit=3)
-
-                    # After a brief delay, load the rest
-                    import time
-
-                    time.sleep(1)
-
-                    # Load the next batch
-                    next_batch = offer_ids[3:]
-                    if next_batch:
-                        logger.info(
-                            f"🚀 IMAGE PRELOAD: Starting second batch of {len(next_batch)} more visible apartments"
-                        )
-                        ImageLoader.preload_images_for_apartments(
-                            next_batch, limit=len(next_batch)
-                        )
-            except Exception as e:
-                logger.error(f"❌ IMAGE PRELOAD: Error in background preloader: {e}")
-
-        # Start background thread
-        logger.info(
-            f"🚀 IMAGE PRELOAD: Initializing preloader for page {page_current}, size {page_size}"
-        )
-        thread = threading.Thread(target=background_image_loader)
-        thread.daemon = True
-        thread.start()
-
-        return {"status": "preloading_started", "preloading_started": True}
-
-def register_table_callbacks(app):
 
     @app.callback(
         [
@@ -143,18 +60,18 @@ def register_table_callbacks(app):
             df = pd.DataFrame(data)
             
             # Add debug logging
-            logger.info(f"DataFrame has {len(df)} rows and {len(df.columns)} columns")
-            logger.info(f"First 10 column names: {list(df.columns)[:10]}")
+            logger.debug(f"DataFrame has {len(df)} rows and {len(df.columns)} columns")
+            logger.debug(f"First 10 column names: {list(df.columns)[:10]}")
     
             # Log which input triggered the callback
             trigger = (
                 ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else None
             )
-            logger.info(f"Table update triggered by: {trigger} with sort_by: {sort_by}")
+            logger.debug(f"Table update triggered by: {trigger} with sort_by: {sort_by}")
     
             # Apply filtering and sorting
             df = DataFilterSorter.filter_and_sort_data(df, filters or {}, sort_by)
-            logger.info(f"After filtering: {len(df)} rows")
+            logger.debug(f"After filtering: {len(df)} rows")
     
             # Define which columns to display
             visible_columns = [
@@ -166,7 +83,7 @@ def register_table_callbacks(app):
             
             # Check if these columns exist in the DataFrame
             for col in visible_columns:
-                logger.info(f"Column '{col}' exists in DataFrame: {col in df.columns}")
+                logger.debug(f"Column '{col}' exists in DataFrame: {col in df.columns}")
             
             numeric_columns = {
                 "distance",
@@ -202,8 +119,8 @@ def register_table_callbacks(app):
             ]
             
             # Log final column configuration
-            logger.info(f"Final column configuration: {columns}")
-            logger.info(f"Column count after filtering: {len(columns)}")
+            logger.debug(f"Final column configuration: {columns}")
+            logger.debug(f"Column count after filtering: {len(columns)}")
     
             elapsed = perf_counter() - t0
             logger.info(f"[TIMER] update_table_content → {elapsed:.3f}s")

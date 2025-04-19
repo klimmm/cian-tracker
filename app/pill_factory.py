@@ -152,30 +152,30 @@ class PillFactory:
 
     @classmethod
     def create_property_feature_pill(
-        cls, label, value, feature_type="apartment", status="active"
+        cls, label, value, feature_type="apartment", status="active", custom_class=None
     ):
         """Create a property feature pill with the correct styling based on type"""
         config = cls.PROPERTY_PILL_CONFIG.get(
             feature_type, cls.PROPERTY_PILL_CONFIG["apartment"]
         )
         text = f"{label}: {value}"
-        return cls.create_pill(text, variant=config["variant"], status=status)
+        return cls.create_pill(text, variant=config["variant"], status=status, custom_class=custom_class)
 
     @classmethod
-    def create_amenity_pill(cls, amenity_name, status="active"):
+    def create_amenity_pill(cls, amenity_name, status="active", custom_class=None):
         """Create an amenity feature pill"""
         config = cls.PROPERTY_PILL_CONFIG["amenity"]
-        return cls.create_pill(amenity_name, variant=config["variant"], status=status)
+        return cls.create_pill(amenity_name, variant=config["variant"], status=status, custom_class=custom_class)
 
     @classmethod
-    def create_rental_term_pill(cls, label, value, status="active"):
+    def create_rental_term_pill(cls, label, value, status="active", custom_class=None):
         """Create a rental term pill"""
         config = cls.RENTAL_TERM_PILL_CONFIG
         text = f"{label}: {value}"
-        return cls.create_pill(text, variant=config["variant"], status=status)
+        return cls.create_pill(text, variant=config["variant"], status=status, custom_class=custom_class)
 
     @classmethod
-    def create_price_pill(cls, price_value, is_good_price=False, status="active"):
+    def create_price_pill(cls, price_value, is_good_price=False, status="active", custom_class=None):
         """Create a price pill with centralized styling logic based on price tiers."""
         # Extract the numeric value for tier determination
         numeric_value = cls._extract_numeric_value(price_value)
@@ -192,26 +192,104 @@ class PillFactory:
                     break
 
         # Start with the base custom class
-        custom_class = config["custom_class"]
+        base_custom_class = config["custom_class"]
+        
+        # Combine with the passed custom_class if any
+        combined_class = base_custom_class
+        if custom_class:
+            combined_class = f"{base_custom_class} {custom_class}"
 
         # If it's a good deal, just add the good-deal class
         if is_good_price:
-            custom_class += " pill--good-deal"
+            combined_class += " pill--good-deal"
 
         # Use the same variant based on price tier
         return cls.create_pill(
             price_value,
             variant=config["variant"],
-            custom_class=custom_class,
+            custom_class=combined_class,
             status=status,
         )
 
     @classmethod
-    def create_price_history_pill(cls, date, price, status="active"):
+    def create_price_history_pill(cls, date, price, status="active", custom_class=None):
         """Create a price history pill"""
         config = cls.PRICE_HISTORY_PILL_CONFIG
         text = f"{date}: {price}"
-        return cls.create_pill(text, variant=config["variant"], status=status)
+        return cls.create_pill(text, variant=config["variant"], status=status, custom_class=custom_class)
+
+    @classmethod
+    def create_cian_estimate_pill(cls, estimate, status="active", custom_class=None):
+        """Create a CIAN estimate pill with centralized styling."""
+        config = cls.CIAN_ESTIMATE_CONFIG
+        text = config["text_format"].format(estimate)
+        
+        # Combine custom classes if any
+        combined_class = config["custom_class"]
+        if custom_class:
+            combined_class = f"{combined_class} {custom_class}"
+            
+        return cls.create_pill(
+            text,
+            variant=config["variant"],
+            custom_class=combined_class,
+            status=status,
+        )
+
+    @classmethod
+    def create_metro_pill(cls, metro_station, status="active", custom_class=None):
+        """Create metro station pill with line color."""
+        if (
+            not metro_station
+            or not isinstance(metro_station, str)
+            or not metro_station.strip()
+        ):
+            return None
+
+        # Clean station name
+        clean_station = re.sub(r"\s*\([^)]*\)", "", metro_station).strip()
+
+        # Find matching line
+        line_number = None
+        for station, line in METRO_TO_LINE.items():
+            if station in clean_station or clean_station in station:
+                line_number = line
+                break
+
+        # Get line color and create pill
+        bg_color = LINE_COLORS.get(line_number, "#dadce0")
+
+        # Dynamic styling based on line (only color is dynamic)
+        custom_styles = {
+            "backgroundColor": bg_color,
+        }
+
+        # Add text color for line 14
+        if line_number == 14:
+            custom_styles["color"] = "#000000"
+            custom_styles["border"] = "1px solid #EF161E"
+
+        # Add metro class and any additional custom class
+        combined_class = "pill--metro"
+        if custom_class:
+            combined_class = f"{combined_class} {custom_class}"
+            
+        return cls.create_pill(clean_station, "metro", custom_styles, combined_class, status)
+
+    @classmethod
+    def create_distance_pill(cls, distance_text, status="active", custom_class=None):
+        """Create a distance pill"""
+        config = cls.DISTANCE_PILL_CONFIG
+        
+        # Combine the distance pill class with any custom class
+        combined_class = "pill--distance"
+        if custom_class:
+            combined_class = f"{combined_class} {custom_class}"
+            
+        return cls.create_pill(distance_text, variant=config["variant"], custom_class=combined_class, status=status)
+
+
+
 
     @staticmethod
     def _extract_numeric_value(price_string):
@@ -228,17 +306,7 @@ class PillFactory:
         except (ValueError, TypeError):
             return None
 
-    @classmethod
-    def create_cian_estimate_pill(cls, estimate, status="active"):
-        """Create a CIAN estimate pill with centralized styling."""
-        config = cls.CIAN_ESTIMATE_CONFIG
-        text = config["text_format"].format(estimate)
-        return cls.create_pill(
-            text,
-            variant=config["variant"],
-            custom_class=config["custom_class"],
-            status=status,
-        )
+
 
     @classmethod
     def create_room_pill(cls, room_count, status="active"):
@@ -347,11 +415,7 @@ class PillFactory:
             status=status,
         )
 
-    @classmethod
-    def create_distance_pill(cls, distance_text, status="active"):
-        """Create a distance pill"""
-        config = cls.DISTANCE_PILL_CONFIG
-        return cls.create_pill(distance_text, variant=config["variant"], status=status)
+
 
     @classmethod
     def create_walking_time_pill(cls, distance_value, status="active"):
@@ -488,40 +552,7 @@ class PillFactory:
             status=status,
         )
 
-    @classmethod
-    def create_metro_pill(cls, metro_station, status="active"):
-        """Create metro station pill with line color."""
-        if (
-            not metro_station
-            or not isinstance(metro_station, str)
-            or not metro_station.strip()
-        ):
-            return None
 
-        # Clean station name
-        clean_station = re.sub(r"\s*\([^)]*\)", "", metro_station).strip()
-
-        # Find matching line
-        line_number = None
-        for station, line in METRO_TO_LINE.items():
-            if station in clean_station or clean_station in station:
-                line_number = line
-                break
-
-        # Get line color and create pill
-        bg_color = LINE_COLORS.get(line_number, "#dadce0")
-
-        # Dynamic styling based on line (only color is dynamic)
-        custom_styles = {
-            "backgroundColor": bg_color,
-        }
-
-        # Add text color for line 14
-        if line_number == 14:
-            custom_styles["color"] = "#000000"
-            custom_styles["border"] = "1px solid #EF161E"
-
-        return cls.create_pill(clean_station, "metro", custom_styles, status=status)
 
     @classmethod
     def create_pill(

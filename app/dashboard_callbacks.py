@@ -6,8 +6,8 @@ import logging
 from dash import ClientsideFunction
 from app.button_factory import PRICE_BUTTONS, DISTANCE_BUTTONS, SORT_BUTTONS
 from app.apartment_card_callbacks import register_apartment_card_callbacks
-from app.table_callbacks import register_table_callbacks, register_data_callbacks
-
+from app.table_callbacks import register_data_callbacks
+from app.images_preload_callbacks import images_preload_callbacks
 logger = logging.getLogger(__name__)
 
 
@@ -16,8 +16,8 @@ def register_all_callbacks(app):
     register_data_callbacks(app)
     register_button_callbacks(app)
     register_apartment_card_callbacks(app)
-    register_table_callbacks(app)
     register_slideshow_callbacks(app)
+    images_preload_callbacks(app)
 
 
 def register_slideshow_callbacks(app):

@@ -4,14 +4,13 @@ from pathlib import Path
 from typing import Optional, Union
 
 import dash
-from dash import html, dcc
 from flask_caching import Cache
 import logging
 
 from app.layout import create_app_layout
 from app.dashboard_callbacks import register_all_callbacks
 from app.app_config import AppConfig
-from app.data_manager import DataManager
+from app.data_manager import data_manager
 
 # ─── Logging configuration ─────────────────────────────────────────────────
 logging.basicConfig(
@@ -19,7 +18,6 @@ logging.basicConfig(
     format="%(H:%M:%S [%(levelname)s)] - %(message)s",
 )
 logger = logging.getLogger(__name__)
-
 
 def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
     """Initialize the Dash app with cached, TTL‑backed data loading."""
@@ -51,7 +49,7 @@ def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
     @cache.memoize()
     def get_df_and_time():
         """Load and memoize DataFrame + timestamp."""
-        df, ts = DataManager.load_and_process_data()
+        df, ts = data_manager.load_and_process_data()
         logger.info(f"Fetched {len(df)} rows at {ts}")
         return df, ts
 
@@ -71,7 +69,7 @@ def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
     register_all_callbacks(app)
 
     # 7) Preload detail files in background (optional)
-    threading.Thread(target=DataManager.preload_detail_files, daemon=True).start()
+    threading.Thread(target=data_manager.preload_detail_files, daemon=True).start()
 
     logger.info("Application initialized successfully")
     return app

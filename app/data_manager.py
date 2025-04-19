@@ -1,289 +1,227 @@
-# app/data_manager.py
-from collections import deque
-import threading
-import concurrent.futures
-
-import logging
-import base64
-import requests
 import os
-import time
+import io
+import threading
+import logging
+import requests
+import pandas as pd
+
+from typing import Dict, Any, Tuple
+from concurrent.futures import ThreadPoolExecutor
+from cachetools import TTLCache
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
+
 from app.app_config import AppConfig
-from app.data_loader import DataLoader
 from app.data_processor import DataProcessor
+from app.config import MOSCOW_TZ
 
 logger = logging.getLogger(__name__)
 
+# ─── CACHES ──────────────────────────────────────────────────────────────
+_success_cache = TTLCache(maxsize=50, ttl=300)  # 5 min for good loads
+_failure_cache = TTLCache(maxsize=50, ttl=30)  # 30 s for failures
+_cache_lock = threading.RLock()
 
-class ImageLoader:
-    """Efficient apartment image processing with enhanced FIFO caching."""
-    _image_cache = {}
-    # ─── Use deque for FIFO ordering ───────────────────────────────────────
-    _preloading_queue = deque()
-    _currently_preloading = False
+_detail_cache = TTLCache(maxsize=100, ttl=300)
+_detail_cache_lock = threading.RLock()
 
-    @classmethod
-    def preload_images_for_apartments(cls, apartment_ids, limit=10):
-        """Preload images for multiple apartments in parallel, in FIFO order."""
-        if not apartment_ids:
-            return
+_metadata_cache = TTLCache(maxsize=10, ttl=600)
+_metadata_cache_lock = threading.RLock()
 
-        # Enqueue up to `limit` IDs in the order received
-        for aid in apartment_ids[:limit]:
-            if aid not in cls._preloading_queue:
-                cls._preloading_queue.append(aid)
 
-        # If already preloading, just return (new IDs remain in the deque)
-        if cls._currently_preloading:
-            logger.debug(f"Already preloading; queue length now {len(cls._preloading_queue)}")
-            return
+class CSVLoader:
+    """Loads CSVs with local↔GitHub fallback and per‑outcome caching."""
 
-        cls._currently_preloading = True
+    def load(self, filename: str, subdir: str = "cian_data") -> pd.DataFrame:
+        key = f"{subdir}/{filename}"
+        # 1) fast‐path caches
+        with _cache_lock:
+            if key in _success_cache:
+                return _success_cache[key]
+            if key in _failure_cache:
+                return _failure_cache[key]
 
-        def preload_worker():
-            start_time = time.time()
-            total_loaded = 0
-            apartments_processed = 0
+        # 2) actual load
+        try:
+            df = self._load_primary_then_fallback(filename, subdir)
+            # success → cache long‑TTL
+            with _cache_lock:
+                _success_cache[key] = df
+            return df
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                while cls._preloading_queue:
-                    try:
-                        # Pop up to 3 oldest IDs for this batch
-                        batch = []
-                        for _ in range(3):
-                            if not cls._preloading_queue:
-                                break
-                            offer_id = cls._preloading_queue.popleft()
-                            if offer_id in cls._image_cache:
-                                continue
-                            batch.append(offer_id)
+        except Exception as e:
+            logger.warning(f"Failed to load {filename}: {e}")
+            # build appropriate empty DataFrame
+            if filename == "cian_apartments.csv":
+                df = pd.DataFrame(
+                    columns=["offer_id", "title", "price", "location", "url"]
+                )
+            else:
+                df = pd.DataFrame()
+            # failure → cache short‑TTL
+            with _cache_lock:
+                _failure_cache[key] = df
+            return df
 
-                        if not batch:
-                            continue
-
-                        futures = {
-                            executor.submit(cls._preload_apartment_images, oid): oid
-                            for oid in batch
-                        }
-                        for future in concurrent.futures.as_completed(futures):
-                            oid = futures[future]
-                            try:
-                                result = future.result()
-                                apartments_processed += 1
-                                total_loaded += len(result)
-                            except Exception as e:
-                                logger.error(f"Error preloading images for {oid}: {e}")
-                    except Exception as e:
-                        logger.error(f"Error in preload worker: {e}")
-
-            cls._currently_preloading = False
-            elapsed = time.time() - start_time
-            logger.info(f"Image preloading done in {elapsed:.2f}s: "
-                        f"{apartments_processed} apartments, {total_loaded} images")
-
-        thread = threading.Thread(target=preload_worker, daemon=True)
-        thread.start()
-
-    
-    @classmethod
-    def _preload_apartment_images(cls, offer_id):
-        """
-        Preload images for a single apartment, checking local assets first,
-        then falling back to GitHub if none are found locally.
-        """
-        # 1) Try local assets directory first
-        images = cls._get_images_from_local(offer_id)
-        if images:
-            cls._image_cache[offer_id] = images
-            return images
-
-        # 2) Fallback to GitHub if local assets are missing
-        images = cls._get_images_from_github(offer_id)
-        if images:
-            cls._image_cache[offer_id] = images
-            return images
-
-        # 3) No images found anywhere
-        return []
-    
-    @staticmethod
-    def _get_images_from_local(offer_id):
-        """Get images from local filesystem efficiently."""
-        image_dir = AppConfig.get_images_path(str(offer_id))
-        if not os.path.exists(image_dir):
-            return []
-
-        # Find and encode jpg files
-        image_paths = []
-        jpg_files = sorted(
-            f for f in os.listdir(image_dir) if f.lower().endswith(".jpg")
-        )
-
-        for file in jpg_files:
+    def _load_primary_then_fallback(self, filename: str, subdir: str) -> pd.DataFrame:
+        use_github = AppConfig.should_use_github_for(filename)
+        if use_github:
             try:
-                file_path = os.path.join(image_dir, file)
-                # Only read if file exists and is not empty
-                if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-                    with open(file_path, "rb") as image_file:
-                        encoded = base64.b64encode(image_file.read()).decode()
-                        image_paths.append(f"data:image/jpeg;base64,{encoded}")
-            except Exception as e:
-                logger.error(f"Error encoding image {file}: {e}")
-
-        return image_paths
-
-    @staticmethod
-    def _get_images_from_github(offer_id):
-        """Get images from GitHub repository with optimized requests."""
-        image_paths = []
-
-        # Use efficient parallel loading
-        def fetch_image(idx):
-            try:
-                image_url = AppConfig.get_github_url("images", str(offer_id), f"{idx}.jpg")
-                response = requests.get(image_url, timeout=5)
-                if response.status_code == 200:
-                    encoded = base64.b64encode(response.content).decode()
-                    return f"data:image/jpeg;base64,{encoded}"
-                return None
+                return self._load_from_github(filename, subdir)
             except Exception:
-                return None
+                return self._load_from_local(filename, subdir)
+        else:
+            try:
+                return self._load_from_local(filename, subdir)
+            except Exception:
+                return self._load_from_github(filename, subdir)
 
-        # Check first image to see if any exist
-        first_image = fetch_image(1)
-        if not first_image:
-            return []
-            
-        # Add first image
-        image_paths.append(first_image)
-        
-        # Load remaining images in parallel
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {executor.submit(fetch_image, i): i for i in range(2, 11)}
-            for future in concurrent.futures.as_completed(futures):
-                result = future.result()
-                if result:
-                    image_paths.append(result)
+    def _load_from_local(self, filename: str, subdir: str) -> pd.DataFrame:
+        path = AppConfig.get_path(subdir, filename)
+        if not os.path.exists(path):
+            raise FileNotFoundError(path)
+        if os.path.getsize(path) == 0 or not os.access(path, os.R_OK):
+            raise ValueError(f"Bad local file: {path}")
+        df = pd.read_csv(path, encoding="utf-8")
+        if df.empty:
+            raise ValueError(f"No rows in {path}")
+        logger.info(f"Loaded {filename} locally ({len(df)} rows)")
+        return df
 
-        return image_paths
-    
-    @classmethod
-    def get_apartment_images(cls, offer_id):
-        """Get images for an apartment with efficient caching."""
-        # Check cache first
-        if offer_id in cls._image_cache:
-            return cls._image_cache[offer_id]
-            
-        # Load images
-        images = cls._preload_apartment_images(offer_id)
-        return images
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type((requests.RequestException, IOError)),
+    )
+    def _load_from_github(self, filename: str, subdir: str) -> pd.DataFrame:
+        url = AppConfig.get_github_url(subdir, filename)
+        resp = requests.get(url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        resp.raise_for_status()
+        df = pd.read_csv(io.StringIO(resp.text), encoding="utf-8")
+        if df.empty:
+            raise ValueError(f"No rows in GitHub file {filename}")
+        logger.info(f"Loaded {filename} from GitHub ({len(df)} rows)")
+        return df
+
+    def clear_cache(self):
+        with _cache_lock:
+            _success_cache.clear()
+            _failure_cache.clear()
+        logger.debug("Cleared CSV caches")
+
+
+class DetailAssembler:
+    DETAIL_FILES = {
+        "price_history": ("price_history.csv", True),
+        "stats": ("stats.csv", False),
+        "features": ("features.csv", False),
+        "terms": ("rental_terms.csv", False),
+        "apartment": ("apartment_details.csv", False),
+        "building": ("building_details.csv", False),
+    }
+
+    def __init__(self, csv_loader: CSVLoader, main_fields: Dict[str, Dict] = None):
+        self.csv_loader = csv_loader
+        self.main_fields = main_fields or {}
+
+    def assemble(self, offer_id: str) -> Dict[str, Any]:
+        key = f"detail_{offer_id}"
+        with _detail_cache_lock:
+            if key in _detail_cache:
+                return _detail_cache[key]
+
+        data = {"offer_id": offer_id}
+        if offer_id in self.main_fields:
+            data.update(self.main_fields[offer_id])
+
+        for group, (fname, is_list) in self.DETAIL_FILES.items():
+            try:
+                df = self.csv_loader.load(fname, "cian_data")
+                if "offer_id" in df:
+                    df = df[df["offer_id"].astype(str) == offer_id]
+                    if not df.empty:
+                        data[group] = (
+                            df.to_dict("records") if is_list else df.iloc[0].to_dict()
+                        )
+            except Exception as e:
+                logger.warning(f"{group} load error for {offer_id}: {e}")
+
+        with _detail_cache_lock:
+            _detail_cache[key] = data
+        return data
+
+    def preload_all(self):
+        files = [fname for fname, _ in self.DETAIL_FILES.values()]
+        with ThreadPoolExecutor(max_workers=4) as exec:
+            for fname in files:
+                exec.submit(self.csv_loader.load, fname, "cian_data")
+        logger.info("Preloaded all detail files")
 
 
 class DataManager:
-    """Main interface for data operations with centralized processing."""
-    
-    # Cache of detail data
-    _detail_cache = {}
-    _main_data_fields = {}
-    _preload_status = {"status": "not_started", "files_loaded": 0, "total_files": 6}
-    
-    @classmethod
-    def load_and_process_data(cls):
-        """Load, process, and prepare data for display."""
-        # Load the data using centralized DataLoader
-        df, update_time = DataLoader.load_main_apartment_data()
-        
+    def __init__(self):
+        self.csv_loader = CSVLoader()
+        self.processor = DataProcessor()
+        self.main_fields = {}
+        self.detail_assembler = None
+
+    def load_and_process_data(self) -> Tuple[pd.DataFrame, str]:
+        df = self.csv_loader.load("cian_apartments.csv", "cian_data")
         if df.empty:
-            return df, update_time
-            
-        # Process the data
-        processed_df = DataProcessor.process_data(df)
-        
-        # Cache important fields for quick access
-        if not processed_df.empty and "offer_id" in processed_df.columns:
-            # Convert offer_id to string for consistent matching
-            processed_df["offer_id"] = processed_df["offer_id"].astype(str)
-            
-            # Important fields to cache
-            important_fields = [
-                "offer_id", 
-                "cian_estimation_value_formatted", 
-                "price_value_formatted",
-                "title", 
-                "description", 
-                "address_title",
-                "metro_station",
-                "distance"
-            ]
-            
-            # Keep only available important fields
-            available_fields = [f for f in important_fields if f in processed_df.columns]
-            if available_fields:
-                fields_df = processed_df[available_fields].copy()
-                
-                # Create a dictionary keyed by offer_id for fast lookup
-                cls._main_data_fields = fields_df.set_index("offer_id").to_dict("index")
-                
-                logger.info(f"Cached main data fields for {len(cls._main_data_fields)} apartments")
-        
-        return processed_df, update_time
-    
-    @classmethod
-    def get_apartment_images(cls, offer_id):
-        """Get images for a specific apartment."""
-        return ImageLoader.get_apartment_images(offer_id)
-    
-    @classmethod
-    def get_apartment_details(cls, offer_id):
-        """Get details for a specific apartment with caching."""
-        # Check cache first
-        str_offer_id = str(offer_id)
-        if str_offer_id in cls._detail_cache:
-            logger.debug(f"Using cached details for apartment {offer_id}")
-            return cls._detail_cache[str_offer_id]
-        
-        # Create base data with offer ID
-        apartment_data = {"offer_id": offer_id}
-        
-        # Add main data fields first if available
-        if str_offer_id in cls._main_data_fields:
-            # Add all preloaded main data fields
-            apartment_data.update(cls._main_data_fields[str_offer_id])
-            logger.debug(f"Added main data fields for apartment {offer_id}")
-        
-        # Load detailed data from centralized loader
-        detailed_data = DataLoader.load_apartment_details(offer_id)
-        
-        # Merge the data
-        apartment_data.update(detailed_data)
-        
-        # Cache for future use
-        cls._detail_cache[str_offer_id] = apartment_data
-        
-        return apartment_data
-    
-    @classmethod
-    def preload_detail_files(cls):
-        """Preload all apartment detail files in background."""
-        logger.info("Starting background preload of apartment detail files...")
-        
-        # Use thread to avoid blocking
-        def background_loader():
-            try:
-                status = DataLoader.preload_detail_files()
-                cls._preload_status = status
-            except Exception as e:
-                logger.error(f"Background loading error: {e}")
-                cls._preload_status["status"] = "error"
-                
-        # Start background loading thread
-        thread = threading.Thread(target=background_loader)
-        thread.daemon = True
-        thread.start()
-        
-        return {"status": "loading_started"}
-    
-    @classmethod
-    def get_preload_status(cls):
-        """Get current preload status."""
-        return cls._preload_status
+            return df, "Data file not found"
+
+        processed = self.processor.process_data(df)
+        if "offer_id" in processed:
+            processed["offer_id"] = processed["offer_id"].astype(str)
+            self.main_fields = processed.set_index("offer_id").to_dict("index")
+            self.detail_assembler = DetailAssembler(self.csv_loader, self.main_fields)
+        else:
+            self.detail_assembler = DetailAssembler(self.csv_loader)
+
+        return processed, self.get_update_time()
+
+    def get_update_time(self) -> str:
+        with _metadata_cache_lock:
+            if "update_time" in _metadata_cache:
+                return _metadata_cache["update_time"]
+
+        try:
+            url = AppConfig.get_github_url("cian_data", "cian_apartments.meta.json")
+            resp = requests.get(url, timeout=10)
+            resp.raise_for_status()
+            raw = resp.json().get("last_updated", "")
+            dt = pd.to_datetime(raw).tz_localize(MOSCOW_TZ)
+            val = dt.strftime("%d.%m.%Y %H:%M:%S") + " (МСК)"
+        except Exception as e:
+            logger.error(f"Metadata load error: {e}")
+            val = "Unknown"
+
+        with _metadata_cache_lock:
+            _metadata_cache["update_time"] = val
+        return val
+
+    def get_apartment_details(self, offer_id: str) -> Dict[str, Any]:
+        logger.info(f"self.main_fields {self.main_fields}")
+        if not self.detail_assembler:
+            self.detail_assembler = DetailAssembler(self.csv_loader, self.main_fields)
+        return self.detail_assembler.assemble(str(offer_id))
+
+    def preload_detail_files(self):
+        if not self.detail_assembler:
+            self.detail_assembler = DetailAssembler(self.csv_loader, self.main_fields)
+        threading.Thread(target=self.detail_assembler.preload_all, daemon=True).start()
+
+    def clear_cache(self):
+        self.csv_loader.clear_cache()
+        with _detail_cache_lock:
+            _detail_cache.clear()
+        with _metadata_cache_lock:
+            _metadata_cache.clear()
+        logger.debug("Cleared all caches")
+
+
+data_manager = DataManager()

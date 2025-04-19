@@ -1,73 +1,19 @@
 from dash import callback_context as ctx, html
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
-from app.data_manager import DataManager, ImageLoader
-from app.apartment_card import create_apartment_details_card
+from app.data_manager import data_manager  # this is the same one you initialized in cian_dashboard
+from app.image_loader import ImageLoader
+from app.apartment_card import create_apartment_details_card, create_apartment_details_panel
 import logging
 from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-# CSS class constants
+
 PANEL_HIDDEN = "details-panel details-panel--hidden"
 PANEL_VISIBLE = "details-panel details-panel--visible"
 OVERLAY_HIDDEN = "details-overlay details-panel--hidden"
 OVERLAY_VISIBLE = "details-overlay details-panel--visible"
-
-
-def _nav_button(label, btn_id, extra_classes=""):
-    return html.Button(
-        label,
-        id=btn_id,
-        className=f"details-nav-button {extra_classes}".strip(),
-        n_clicks=0,
-    )
-
-
-@lru_cache(maxsize=1)
-def create_apartment_details_panel():
-    return html.Div(
-        [
-            html.Div(id="details-overlay", className=OVERLAY_HIDDEN),
-            html.Div(
-                id="apartment-details-panel",
-                className=PANEL_HIDDEN,
-                children=[
-                    html.Div(
-                        className="details-panel-header",
-                        children=[
-                            _nav_button(
-                                "← Пред.",
-                                "prev-apartment-button",
-                                "details-nav-button--prev",
-                            ),
-                            html.H3(
-                                "Информация о квартире", className="details-panel-title"
-                            ),
-                            html.Div(
-                                className="details-header-right",
-                                children=[
-                                    _nav_button(
-                                        "След. →",
-                                        "next-apartment-button",
-                                        "details-nav-button--next",
-                                    ),
-                                    _nav_button(
-                                        "×", "close-details-button", "details-close-x"
-                                    ),
-                                ],
-                            ),
-                        ],
-                    ),
-                    html.Div(
-                        id="apartment-details-card", className="details-panel-content"
-                    ),
-                ],
-            ),
-        ],
-        id="details-panel-container",
-    )
-
 
 def register_apartment_card_callbacks(app):
     """Register separate callbacks for toggling panel and updating details."""
@@ -95,6 +41,8 @@ def register_apartment_card_callbacks(app):
         [
             Output("apartment-details-card", "children"),
             Output("selected-apartment-store", "data"),
+            Output("cian-link-header", "href"),
+
         ],
         [
             Input("apartment-table", "active_cell"),
@@ -157,17 +105,19 @@ def register_apartment_card_callbacks(app):
                 ImageLoader.preload_images_for_apartments(neighbor_ids)
 
         try:
-            apartment_data = DataManager.get_apartment_details(offer_id)
-            card = create_apartment_details_card(
-                apartment_data, row_data, idx, len(table_data)
-            )
+            data = data_manager.get_apartment_details(offer_id)
+            logger.info("Apartment data keys: %s", list(data.keys()))
+
+            
+            card = create_apartment_details_card(data)
+
             selected_data = {"row_idx": idx, "offer_id": offer_id}
             logger.info(f"Selected apartment idx={idx}, offer_id={offer_id}")
-            return card, selected_data
+            return card, selected_data, f"https://www.cian.ru/rent/flat/{offer_id}/"
         except Exception as e:
             logger.error(f"Error loading details for offer {offer_id}: {e}")
             card = html.Div(
                 f"Ошибка загрузки: {e}",
                 className="apartment-no-data error",
             )
-            return card, None
+            return card, None, f"https://www.cian.ru/rent/flat/{offer_id}/"
