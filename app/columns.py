@@ -376,6 +376,13 @@ class ColumnFormatter:
                 "На улицу": {"text": "🌇 Окна на улицу", "variant": "error"},
                 "На улицу и двор": {"text": "🏘️ Окна на улицу и двор", "variant": "warning"}
             },
+            "renovation": {
+                "Косметический": {"text": "🎨 Косметический ремонт", "variant": "warning"},
+                "Евроремонт": {"text": "🛠️ Евроремонт", "variant": "success"},
+                "Дизайнерский": {"text": "🖼️ Дизайнерский ремонт", "variant": "primary"},
+                "Без ремонта": {"text": "🚧 Без ремонта", "variant": "error"}
+            },
+
             "ceiling_height": {
                 "ranges": [
                     {"max": 2.5, "variant": "error"},
@@ -429,6 +436,22 @@ class ColumnFormatter:
                         break
             except (ValueError, TypeError):
                 pass
+
+        renovation = row.get("renovation")
+        if pd.notnull(renovation) and renovation in pill_configs["renovation"]:
+            config = pill_configs["renovation"][renovation]
+            pills.append(
+                PillFactory.create_pill(
+                    config["text"],
+                    variant=config["variant"],
+                    custom_class="pill--condition",
+                    status=status
+                )
+            )
+
+
+
+
         
         if not pills:
             return ""
