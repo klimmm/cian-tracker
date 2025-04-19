@@ -73,7 +73,7 @@ def create_app_layout(
     # ─── Header with timestamp ──────────────────────────────────
     header = html.Div(
         [
-            html.H2("Cian Apartment Dashboard", className="dashboard-header"),
+            #html.H2("Cian Apartment Dashboard", className="dashboard-header"),
             html.Div(
                 html.Span(initial_update_time, id="last-update-time", className="update-info-text"),
                 className="update-info",
