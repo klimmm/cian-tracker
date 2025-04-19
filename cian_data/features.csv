@@ -1112,3 +1112,12 @@ offer_id,has_refrigerator,has_dishwasher,has_washing_machine,has_air_conditioner
 316414607,True,False,True,False,False,True,True,True,False,True
 316412463,True,False,True,False,False,False,True,True,True,False
 316412120,True,True,True,True,True,True,True,True,True,False
+316408108,True,False,True,True,True,True,True,True,True,False
+316388679,True,False,True,False,False,True,True,True,True,False
+316387264,True,False,True,False,True,False,True,True,True,False
+316379955,True,False,True,False,False,False,True,True,False,False
+316378011,True,True,True,True,False,True,True,True,True,False
+316375457,True,False,True,True,False,False,True,True,True,False
+316367103,True,True,True,True,True,True,True,True,True,True
+316358915,True,False,True,True,True,True,True,True,True,False
+316343232,True,False,True,False,True,True,True,True,True,False

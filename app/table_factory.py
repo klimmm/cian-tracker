@@ -149,7 +149,7 @@ class TableFactory:
             'style_table': {
                 'overflowX': 'auto',
                 'width': '100%',
-                'maxWidth': '608px',
+                'maxWidth': '618px',
                 'width': 'fit-content'    # shrink to content
             },
             'style_data_conditional': conditional_styles,
