@@ -271,14 +271,7 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
   align-items: center;
   flex-wrap: nowrap;
 }
-.table-container {
-    max-width: 1000px !important;
-    
-}
-.table-view-container {
-    max-width: 1000px !important;
-    
-}
+
 
 .dash-label {
   font-size: 0.7rem; /* Explicitly smaller */
@@ -377,10 +370,7 @@ input, select, textarea {
     padding: 3px 6px;
   }
   
-  /* Table-specific styles */
-  #apartment-table .dash-spreadsheet-container {
-    table-layout: auto !important;
-  }
+
   
   #apartment-table .dash-spreadsheet-container th,
   #apartment-table .dash-spreadsheet-container td {
@@ -590,4 +580,17 @@ input, select, textarea {
   font-size: 0.65rem !important;
   margin-right: 6px !important;
   white-space: nowrap;
+}
+  font-size: var(--pill-font);
+  font-weight: 600;          /* or whatever weight you prefer */
+  color: var(--color-text-primary);
+  padding: 0;                /* remove extra padding if desired */
+  margin: 0;                 /* remove extra margin if desired */
+}
+
+/* 4) Style the change‐indicator pill */
+.dash-cell[data-dash-column="price_text"] .pill--price-change {
+  font-size: 0.55rem !important;
+  padding-left: calc(var(--pill-space-x) + var(--pill-space-x));
+  margin: 0;
 }

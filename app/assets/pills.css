@@ -1,355 +1,271 @@
+/* ===== Root Variables ===== */
+:root {
+  /* Spacing */
+  --pill-space-y: 2px;    /* vertical padding */
+  --pill-space-x: 4px;    /* horizontal padding */
+  --pill-margin: 2px;     /* margin around pills */
+  /* Font sizes */
+  --pill-font: 0.75rem;
+  --pill-font-small: 0.65rem;
+  /* Icon size */
+  --pill-emoji-size: 12px;
+  /* Border radius */
+  --pill-border-radius: 16px;
+  /* Price change specific */
+  --pill-price-arrow-space: 10px; /* Space for the arrow */
+}
+
 /* ===== Pill Component Styles ===== */
 .pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.65rem;
+  padding: var(--pill-space-y) var(--pill-space-x);
+  margin: var(--pill-margin);
+  border-radius: var(--pill-border-radius);
+  font-size: var(--pill-font);
   line-height: 1.2;
-  padding: 2px 6px;
-  margin: 1px;
-  border-radius: 3px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: all 0.2s;
+  max-width: 100%;
 }
 
-/* Fix vertical alignment for icons and content */
 .pill::before {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Base pill variants */
-.pill--default {
-  background-color: var(--color-bg-light);
-  color: var(--color-text-secondary);
+/* Container */
+.pill-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pill-margin);
+  margin-bottom: var(--pill-margin);
 }
 
-.pill--primary {
-  background-color: var(--color-primary-light);
-  color: var(--color-primary);
+/* Address pills & links */
+.address-pill {
+  background-color: transparent !important;
+  padding: var(--pill-space-y) var(--pill-space-x) !important;
+  font-size: var(--pill-font) !important;
+  margin: var(--pill-margin) !important;
 }
 
-.pill--success {
-  background-color: var(--color-success-light);
-  color: var(--color-success);
+.address-link {
+  background-color: transparent !important;
+  font-size: var(--pill-font) !important;
 }
 
-.pill--warning {
-  background-color: var(--color-warning-light);
-  color: var(--color-warning);
-}
+/* Base variants */
+.pill--default   { background: var(--color-bg-light);    color: var(--color-text-secondary); }
+.pill--primary   { background: var(--color-primary-light);color: var(--color-primary); }
+.pill--success   { background: var(--color-success-light);color: var(--color-success); }
+.pill--warning   { background: var(--color-warning-light);color: var(--color-warning); }
+.pill--error     { background: var(--color-error-light);  color: var(--color-error); }
+.pill--neutral   { background: var(--color-neutral-light);color: var(--color-neutral); }
 
-.pill--error {
-  background-color: var(--color-error-light);
-  color: var(--color-error);
-}
-
-.pill--neutral {
-  background-color: var(--color-neutral-light);
-  color: var(--color-neutral);
-}
-
-/* Metro pill - custom styling with line colors */
+/* Metro pill */
 .pill--metro {
-  color: white;
+  color: #fff;
   font-weight: 500;
-  text-shadow: 0 0 1px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 0 1px rgba(0,0,0,0.3);
 }
 
-/* ===== Walking Distance Indicator ===== */
+/* Distance pill */
 .pill--distance {
   position: relative;
-  padding-left: calc(var(--space-sm) + 12px);
+  padding-left: calc(var(--pill-emoji-size) + var(--pill-space-x));
 }
 
 .pill--distance::before {
-  content: "🚶"; /* Walking person emoji as requested */
+  content: "🚶";
   position: absolute;
-  left: 4px;
-  font-size: 10px;
+  left: var(--pill-margin);
+  font-size: var(--pill-emoji-size);
   line-height: 1;
   top: 50%;
   transform: translateY(-50%);
 }
 
-/* ===== Price Change Indicators ===== */
-.pill--price-change {
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  position: relative;
-  padding-left: calc(var(--space-xs) + 12px); /* Reduced padding */
-  font-size: 0.55rem !important;
+/* Time pill */
+.pill--time {
+  background-color: transparent;
+  color: #000;
 }
 
-/* Hide any inline arrow spans */
+/* Regular price */
+.pill--price {
+  padding: var(--pill-space-y) var(--pill-space-x);
+}
+
+/* Activity pill - smaller than standard */
+.pill--activity {
+  font-size: calc(var(--pill-font) * 0.85);
+  padding: calc(var(--pill-space-y) * 0.8) calc(var(--pill-space-x) * 0.8);
+  border-radius: calc(var(--pill-border-radius) * 0.9);
+}
+
+/* Price‑change indicators */
+.pill--price-change {
+  position: relative;
+  padding-left: var(--pill-price-arrow-space);
+  font-size: calc(var(--pill-font) * 0.73) !important;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  background-color: transparent;
+  border: none;
+}
+
 .pill--price-change .arrow,
 .pill--price-change span.arrow {
   display: none !important;
 }
 
-/* Base styling for price change indicators */
 .pill--price-change::before {
-  content: "↓"; /* Default down arrow (for price decrease) */
+  content: "↓";
   position: absolute;
-  left: 4px; /* Reduced distance from text */
+  left: var(--pill-margin);
   top: 50%;
   transform: translateY(-50%);
   font-size: inherit;
   line-height: 1;
 }
 
-/* Price increase - up arrow */
+/* Up‑arrow on error modifier */
 .pill--price-change.pill--error::before {
-  content: "↑"; /* Up arrow for price increase */
+  content: "↑";
 }
 
-/* ===== Fix Good Deal Pill ===== */
+.pill--price-change.pill--error {
+  color: var(--color-error);
+}
+
+.pill--price-change.price-decrease {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+/* Good‑deal pill */
 .pill--good-deal {
   border: none !important;
   background-color: var(--color-success-light) !important;
   color: var(--color-success) !important;
 }
 
-/* Completely remove the ::before pseudo-element */
 .pill--good-deal::before {
   content: none !important;
   display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  background: none !important;
-  position: static !important;
 }
 
-/* 1) Ensure regular price pills stay neutral */
-.pill.pill--price {
-  border: 1px solid var(--color-border);
-  font-size: 0.75rem !important;
-}
-
-/* 2) Base for price‑change pills (reset any inherited bg/color) */
-.pill.pill--price-change {
-  background-color: transparent;
-  border: none;
-}
-
-/* 3) Price increase (red) */
-.pill.pill--price-change.price-increase {
-  background-color: var(--color-error-light);
-  color: var(--color-error);
-}
-
-/* 4) Price decrease (green) */
-.pill.pill--price-change.price-decrease {
-  background-color: var(--color-success-light);
-  color: var(--color-success);
-}
-
-.pill--time{
-  background-color: transparent;
-  color: black;
-}
-
-/* ===== Pills ===== */
-.pill-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-sm);
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: 16px;
-  font-size: var(--font-xs);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-/* ===== Responsive Media Queries ===== */
-/* Extra small devices (small phones) */
-@media screen and (max-width: 390px) {
+/* ===== Responsive - Larger Screens ===== */
+@media screen and (min-width: 768px) {
   :root {
-    --font-xs: 0.5625rem;
-    --font-sm: 0.6875rem;
-    --font-md: 0.8125rem;
-    --font-lg: 0.9375rem;
-    --font-xl: 1.0625rem;
-    --font-xxl: 1.125rem;
+    /* Slightly larger than base for tablets/small desktops */
+    --pill-space-y: 2.1px;
+    --pill-space-x: 4.2px;
+    --pill-margin: 2.1px;
+    --pill-font: 0.78rem;
+    --pill-font-small: 0.68rem;
+    --pill-emoji-size: 12.6px;
+    --pill-border-radius: 16.8px;
+    --pill-price-arrow-space: 10.5px;
   }
-
-
-  .pill {
-    font-size: 0.5rem !important;
-    padding: 2px 6px;
-  }
-  
-  .pill--activity {
-    font-size: 0.45rem !important;
-    padding: 2px 4px !important;
-    margin: 0 !important;
-  }
-  
-  .pill--price {
-    font-size: 0.6rem !important;
-  }
-  
-  .address-link {
-    font-size: 0.55rem !important;
-  }
-  
-  .pill--price-change {
-    font-size: 0.5rem !important;
-  }
-
 }
 
-/* Smaller devices (small phones) */
-@media screen and (max-width: 520px) {
+@media screen and (min-width: 992px) {
   :root {
-    --font-xs: 0.5725rem;
-    --font-sm: 0.6975rem;
-    --font-md: 0.8225rem;
-    --font-lg: 0.9475rem;
-    --font-xl: 1.0625rem;
-    --font-xxl: 1.125rem;
+    /* Regular desktop sizes */
+    --pill-space-y: 2.2px;
+    --pill-space-x: 4.3px;
+    --pill-margin: 2.2px;
+    --pill-font: 0.8rem;
+    --pill-font-small: 0.7rem;
+    --pill-emoji-size: 13px;
+    --pill-border-radius: 17px;
+    --pill-price-arrow-space: 10.7px;
   }
-  
-  .pill {
-    font-size: 0.5rem !important;
+}
+
+@media screen and (min-width: 1200px) {
+  :root {
+    /* Large desktops */
+    --pill-space-y: 2.3px;
+    --pill-space-x: 4.5px;
+    --pill-margin: 2.3px;
+    --pill-font: 0.83rem;
+    --pill-font-small: 0.72rem;
+    --pill-emoji-size: 13.4px;
+    --pill-border-radius: 17.6px;
+    --pill-price-arrow-space: 11px;
   }
-  
+}
+
+@media screen and (min-width: 1400px) {
+  :root {
+    /* Extra large desktops */
+    --pill-space-y: 2.4px;
+    --pill-space-x: 4.8px;
+    --pill-margin: 2.4px;
+    --pill-font: 0.87rem;
+    --pill-font-small: 0.75rem;
+    --pill-emoji-size: 14px;
+    --pill-border-radius: 18px;
+    --pill-price-arrow-space: 11.6px;
+  }
+}
+
+/* ===== Responsive - Smaller Screens ===== */
+@media screen and (max-width: 580px) {
+  :root {
+    /* Reduce all sizes by ~15% */
+    --pill-space-y: 1.7px;
+    --pill-space-x: 3.4px;
+    --pill-margin: 1.7px;
+    --pill-font: 0.65rem;
+    --pill-font-small: 0.56rem;
+    --pill-emoji-size: 10px;
+    --pill-border-radius: 14px;
+    --pill-price-arrow-space: 8.5px;
+  }
+}
+
+@media screen and (max-width: 485px) {
+  :root {
+    /* Significantly reduced sizes for very small screens */
+    --pill-space-y: 1.4px;
+    --pill-space-x: 2.9px;
+    --pill-margin: 1.4px;
+    --pill-font: 0.55rem;
+    --pill-font-small: 0.48rem;
+    --pill-emoji-size: 11px;
+    --pill-border-radius: 12px;
+    --pill-price-arrow-space: 7.5px;
+  }
+
+@media screen and (max-width: 3900px) {
+  :root {
+    /* Significantly reduced sizes for very small screens */
+    --pill-space-y: 1.2px;
+    --pill-space-x: 2.4px;
+    --pill-margin: 1.2px;
+    --pill-font: 0.45rem;
+    --pill-font-small: 0.4rem;
+    --pill-emoji-size: 7px;
+    --pill-border-radius: 10px;
+    --pill-price-arrow-space: 6px;
+  }
+    
+  /* Make activity pills even smaller on tiny screens */
   .pill--activity {
-    font-size: 0.45rem !important;
-    padding: 2px 4px !important;
-    margin: 0 !important;
+    font-size: calc(var(--pill-font) * 0.8);
+    padding: calc(var(--pill-space-y) * 0.7) calc(var(--pill-space-x) * 0.7);
   }
   
-  .pill--price {
-    font-size: 0.6rem !important;
+  /* Adjust distance pill for very small sizes */
+  .pill--distance {
+    padding-left: calc(var(--pill-emoji-size) + var(--pill-space-x) * 1.5);
   }
-  
-  .address-link {
-    font-size: 0.55rem !important;
-  }
-  
-  .pill--price-change {
-    font-size: 0.5rem !important;
-  }
-  #apartment-table .dash-cell,
-  .pill {
-    min-width: 0 !important;
-  }
-
-    
-}
-
-/* ===== Card Pills - Larger variant for apartment cards ===== */
-.apartment-description,
-.title-bar-link,
-.card-pill {
-  /* Override the table pill size with larger text and padding */
-  font-size: 0.8rem !important;
-  padding: 4px 4px !important;
-  margin: 2px !important;
-  border-radius: 4px !important;
-  line-height: 1.2 !important;
-}
-
-
-/* Special styling for price pill in card */
-.card-pill.card-pill--price {
-  font-size: 1.1rem !important;
-  font-weight: 600 !important;
-  padding: 6px 12px !important;
-}
-
-/* Add more height to pill containers in cards */
-.card-row .pill-container,
-.card-specs .pill-container,
-.card-hero__overlay .pill-container {
-  margin-bottom: var(--space-xs);
-  gap: var(--space-xs);
-}
-
-/* Special styling for metro badge in hero */
-.card-hero__overlay .card-pill {
-  font-size: 0.65rem !important;
-  font-weight: 500 !important;
-  padding: 4px 10px !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7) !important;
-}
-
-/* Adjust distance pill for better readability */
-.card-pill.pill--distance {
-  padding-left: calc(var(--space-sm) + 16px) !important;
-}
-
-.card-pill.pill--distance::before {
-  font-size: 12px !important;
-}
-
-/* Responsive adjustments */
-@media screen and (max-width: 768px) {
-  .apartment-description,
-  .title-bar-link,
-  .card-pill {
-    font-size: 0.75rem !important;
-    padding: 4px 4px !important;
-  }
-
-  .card-pill.card-pill--distance,
-  .card-pill.card-pill--metro,
-  .card-pill.card-pill--price {
-    font-size: 0.85rem !important;
-    padding: 5px 10px !important;
-  }
-
-    
-}
-
-@media screen and (max-width: 576px) {
-  .title-bar-link,
-  .card-pill {
-    font-size: 0.65rem !important;
-    padding: 3px 4px !important;
-  }
-
-  .apartment-description {
-    font-size: 0.75rem !important;
-    padding: 3px 4px !important;
-  }
-    
-    
-  .card-pill.card-pill--price {
-    font-size: 0.65rem !important;
-    padding: 4px 8px !important;
-  }
-  
-  .card-hero__overlay .card-pill {
-    font-size: 0.65rem !important;
-    padding: 3px 8px !important;
-  }
-}
-
-/* More dramatic size reduction on very small screens */
-@media screen and (max-width: 390px) {
-  .title-bar-link,
-  .card-pill {
-    font-size: 0.65rem !important;
-    padding: 2px 6px !important;
-  }
-  .card-pill.card-pill--distance,
-  .card-pill.card-pill--metro,
-  .card-pill.card-pill--price {
-    font-size: 0.65rem !important;
-  }
-
 }

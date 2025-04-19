@@ -2,6 +2,14 @@
 // Add this to your assets folder (e.g., assets/js/apartment-swipe.js)
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Declare all variables at the top of the scope
+    let startX = null;
+    let startY = null;
+    let startTime = null;
+    let isDragging = false;
+    let leftIndicator = null;
+    let rightIndicator = null;
+    console.log('Apartment swipe script loaded');
     console.log('Initializing improved basic apartment card swipe navigation');
     
     // Add simple indicators
@@ -50,9 +58,6 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         document.head.appendChild(styleEl);
     }
-    
-    // Create swipe indicators outside the initialization function to avoid recreating them
-    let leftIndicator, rightIndicator;
     
     // Function to reset any ongoing swipe effects
     function resetSwipeEffects() {
@@ -103,7 +108,6 @@ document.addEventListener('DOMContentLoaded', function() {
             detailsPanel.appendChild(rightIndicator);
         }
         
-        let startX, startY, startTime;
         const minSwipeDistance = 80;   // Slightly reduced minimum distance
         const maxSwipeTime = 600;      // Slightly increased maximum time
         const maxVerticalDeviation = 100;
@@ -129,6 +133,8 @@ document.addEventListener('DOMContentLoaded', function() {
             startY = e.touches[0].clientY;
             startTime = new Date().getTime();
             
+            console.log('Touch start:', { x: startX, y: startY, time: startTime });
+            
             // Reset indicators
             resetSwipeEffects();
         }, { passive: true });
@@ -146,6 +152,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Calculate distances
             const distanceX = currentX - startX;
             const distanceY = Math.abs(currentY - startY);
+            
+            console.log('Touch move:', { 
+                distX: distanceX, 
+                distY: distanceY, 
+                threshold: maxVerticalDeviation 
+            });
             
             // Show indicators during swipe to provide visual feedback
             if (Math.abs(distanceX) > 30 && distanceY < maxVerticalDeviation) {
@@ -246,8 +258,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, { passive: true });
         
         // For desktop testing - using Shift+Mouse for simulation
-        let isDragging = false;
-        
         detailsPanel.addEventListener('mousedown', function(e) {
             // Skip if in slideshow to avoid conflict
             if (e.target.closest('.slideshow-container') || e.target.closest('[data-touch-initialized="true"]')) {

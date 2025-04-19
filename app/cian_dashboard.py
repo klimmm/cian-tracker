@@ -43,7 +43,7 @@ def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
     cache = Cache(server, config={
         "CACHE_TYPE": "filesystem",
         "CACHE_DIR":  "/tmp/flask_cache",
-        "CACHE_DEFAULT_TIMEOUT": 300,  # seconds
+        "CACHE_DEFAULT_TIMEOUT": 1,  # seconds
     })
 
     @cache.memoize()
@@ -51,13 +51,16 @@ def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
         """Load and memoize DataFrame + timestamp."""
         df, ts = data_manager.load_and_process_data()
         logger.info(f"Fetched {len(df)} rows at {ts}")
+        #data_manager.debug_offer_id('316502880')
+
         return df, ts
 
     # 5) Layout callable: runs on every browser refresh
     def serve_layout():
         df, ts = get_df_and_time()
-        # Explicitly update main_fields from the cached DataFrame
-        data_manager.update_main_fields_from_df(df)
+        # Remove this redundant line:
+        # data_manager.update_main_fields_from_df(df)
+        
         return create_app_layout(
             app,
             initial_records=df.to_dict("records"),
@@ -71,7 +74,6 @@ def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
     register_all_callbacks(app)
 
     # 7) Preload detail files in background (optional)
-    threading.Thread(target=data_manager.preload_detail_files, daemon=True).start()
 
     logger.info("Application initialized successfully")
     return app

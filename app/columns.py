@@ -43,7 +43,15 @@ class ColumnFormatter:
 
         
         return PillFactory.create_pill_container(
-            pills, wrap=True, return_as_html=True, status=status
+            pills,
+            wrap=False,  # disable flex-wrap so it stays columnar
+            align="flex-start",
+            custom_style={
+                "flexDirection": "column",
+                "gap": "4px",         # adjust vertical spacing as you like
+            },
+            return_as_html=True,
+            status=status,
         )
 
     @staticmethod
@@ -84,32 +92,40 @@ class ColumnFormatter:
             )
 
         return PillFactory.create_pill_container(
-            pills, wrap=True, return_as_html=True, status=status
+            pills,
+            wrap=False,  # disable flex-wrap so it stays columnar
+            align="flex-start",
+            custom_style={
+                "flexDirection": "column",
+                "gap": "4px",         # adjust vertical spacing as you like
+            },
+            return_as_html=True,
+            status=status,
         )
+        
+
 
     @staticmethod
     def format_property_tags(row):
         """Format property pills column consistently."""
         pills = []
-
-        # Get status from row
         status = row.get("status", "active")
 
-        # Room count pill
+        # room count
         room_count = row.get("room_count")
         if pd.notnull(room_count):
             pill = PillFactory.create_room_pill(room_count, status=status)
             if pill:
                 pills.append(pill)
 
-        # Area pill
+        # area
         area = row.get("area")
         if pd.notnull(area):
             pill = PillFactory.create_area_pill(area, status=status)
             if pill:
                 pills.append(pill)
 
-        # Floor pill
+        # floor
         floor = row.get("floor")
         total_floors = row.get("total_floors")
         if pd.notnull(floor) and pd.notnull(total_floors):
@@ -121,56 +137,95 @@ class ColumnFormatter:
             pills, wrap=True, return_as_html=True, status=status
         )
 
-    @staticmethod
     def format_address_title(row, base_url):
-        """Format address with distance, neighborhood, and metro station information."""
-        # First create all pills EXCEPT address as normal pills
-        pills = []
-
-        # Get status from row
+        """Format address with distance, neighborhood, metro, property and extra info pills."""
         status = row.get("status", "active")
 
-        # Distance value pill
+        # --- existing address‐related pills ---
+        address_related = []
         distance_value = row.get("distance_sort")
-        if distance_value is not None and pd.notnull(distance_value):
-            pills.append(
+        if pd.notnull(distance_value):
+            address_related.append(
                 PillFactory.create_walking_time_pill(distance_value, status=status)
             )
 
-        # Neighborhood pill
         neighborhood = str(row.get("neighborhood", ""))
-        if neighborhood and neighborhood != "nan" and neighborhood != "None":
-            pills.append(
+        if neighborhood and neighborhood.lower() not in ("nan", "none"):
+            address_related.append(
                 PillFactory.create_neighborhood_pill(neighborhood, status=status)
             )
 
-        # Create the pill container with proper spacing
-        pills_html = (
+        address_pills_html = (
             PillFactory.create_pill_container(
-                pills, wrap=True, return_as_html=True, status=status
+                address_related, wrap=True, return_as_html=True, status=status
             )
-            if pills
+            if address_related
             else ""
         )
 
-        # Create the address link separately to maintain clickability
+        # --- existing property pills (rooms, area, floor, etc.) ---
+        property_pills_html = ColumnFormatter.format_property_tags(row)
+
+        # --- NEW: apartment specifics & amenities pills ---
+        info_pills = []
+
+        # Ceiling height
+        '''ceiling = row.get("ceiling_height")
+        if pd.notnull(ceiling) and ceiling not in ("nan", ""):
+            info_pills.append(
+                PillFactory.create_pill(f"Потолки: {ceiling}", status=status)
+            )
+
+        # View
+        view = row.get("view")
+        if pd.notnull(view) and view not in ("nan", ""):
+            info_pills.append(
+                PillFactory.create_pill(f"Вид: {view}", status=status)
+            )
+
+        # Amenities: only if explicitly True
+        if row.get("features_has_air_conditioner") is True:
+            info_pills.append(
+                PillFactory.create_amenity_pill("Кондиционер", status=status)
+            )
+        if row.get("features_has_bathtub") is True:
+            info_pills.append(
+                PillFactory.create_amenity_pill("Ванна", status=status)
+            )
+        if row.get("features_has_shower_cabin") is True:
+            info_pills.append(
+                PillFactory.create_amenity_pill("Душевая кабина", status=status)
+            )'''
+
+        info_pills_html = (
+            PillFactory.create_pill_container(
+                info_pills, wrap=True, return_as_html=True, status=status
+            )
+            if info_pills
+            else ""
+        )
+
+        # --- build the address link ---
         address = row.get("address", "")
         offer_id = row.get("offer_id", "")
+        address_html = (
+            f'<div class="pill pill--default address-pill">'
+            f'<a href="{base_url}{offer_id}/" class="address-link">{address}</a>'
+            f'</div>'
+        )
 
-        # Apply inactive styling to the address pill if status is non active
-        address_class = "pill pill--default address-pill"
-        address_style = ""
-        if status == "non active":
-            address_class += " pill--inactive"
-            address_style = 'style="background-color: #e0e0e0; color: #757575; border-color: #bdbdbd"'
+        # --- stitch all parts together ---
+        # Order: link → property pills → info pills → address‐related pills
+        parts = [
+            address_html,
+            property_pills_html,
+            info_pills_html,
+            address_pills_html,
+        ]
+        # Filter out empty strings and join
+        return " ".join(p for p in parts if p)
 
-        address_html = f'<div class="{address_class}" {address_style}><a href="{base_url}{offer_id}/" class="address-link">{address}</a></div>'
 
-        # Combine all elements
-        if pills_html:
-            return f"{address_html} {pills_html}"
-        else:
-            return address_html
     
     @staticmethod
     def format_distance(distance_value):
@@ -191,9 +246,95 @@ class ColumnFormatter:
         # Default case
         return "--"
         
+    
+    @staticmethod
+    def format_condition_text_column(row):
+        status = row.get("status", "active")
+        pills = []
+        
+        # Define pill configurations as data structures
+        pill_configs = {
+            "features": {
+                "features_has_air_conditioner": {"text": "❄️ Кондиционер", "variant": "success"},
+                "features_has_bathtub": {"text": "🛁 Ванна", "variant": "success"},
+                "features_has_shower_cabin": {"text": "🚿 Душевая кабина", "variant": "error"}
+            },
+            "view": {
+                "Во двор": {"text": "🔭 Окна во двор", "variant": "success"},
+                "На улицу": {"text": "🔭 Окна на улицу", "variant": "error"},
+                "На улицу и во двор": {"text": "🔭 Окна на улицу и во двор", "variant": "neutral"}
+            },
+            "ceiling_height": {
+                "ranges": [
+                    {"max": 2.5, "variant": "error"},
+                    {"max": 2.7, "variant": "neutral"},
+                    {"max": float('inf'), "variant": "success"}
+                ]
+            }
+        }
+        
+        # 1) Process boolean features
+        for feature, config in pill_configs["features"].items():
+            if row.get(feature) is True:
+                pills.append(
+                    PillFactory.create_pill(
+                        config["text"],
+                        variant=config["variant"],
+                        custom_class="pill--condition",
+                        status=status
+                    )
+                )
+        
+        # 2) Process view
+        view = row.get("view")
+        if pd.notnull(view) and view in pill_configs["view"]:
+            config = pill_configs["view"][view]
+            pills.append(
+                PillFactory.create_pill(
+                    config["text"],
+                    variant=config["variant"],
+                    custom_class="pill--condition",
+                    status=status
+                )
+            )
+        
+        # 3) Process ceiling height
+        ch = row.get("ceiling_height")
+        if pd.notnull(ch):
+            try:
+                num = float(ch.replace("м", "").replace(",", ".").strip())
+                for range_config in pill_configs["ceiling_height"]["ranges"]:
+                    if num <= range_config["max"]:
+                        pills.append(
+                            PillFactory.create_pill(
+                                f"📏 Потолки: {ch}",
+                                variant=range_config["variant"],
+                                custom_class="pill--condition",
+                                status=status
+                            )
+                        )
+                        break
+            except (ValueError, TypeError):
+                pass
+        
+        if not pills:
+            return ""
+            
+        return PillFactory.create_pill_container(
+            pills,
+            wrap=True,
+            return_as_html=True,
+            status=status
+        )
+
     @staticmethod
     def apply_display_formatting(df, base_url):
         """Apply display formatting to dataframe columns."""
+
+        # AFTER everything else, add our new column:
+
+
+
         # Format address_title column
         df["address_title"] = df.apply(
             lambda r: ColumnFormatter.format_address_title(r, base_url), axis=1
@@ -211,5 +352,9 @@ class ColumnFormatter:
             df["price_change"] = df["price_change_formatted"]
 
         df["update_title"] = df.apply(ColumnFormatter.format_update_title, axis=1)
+        df["condition_summary"] = df.apply(
+            ColumnFormatter.format_condition_text_column, axis=1
+        )   
+        logger.info(f"DataFrame columns: {df.columns.tolist()}")
         
         return df

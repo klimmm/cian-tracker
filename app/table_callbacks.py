@@ -78,6 +78,7 @@ def register_data_callbacks(app):
                 "update_title",
                 "property_tags",
                 "address_title",
+                'condition_summary',            
                 "price_text",
             ]
             
@@ -104,6 +105,7 @@ def register_data_callbacks(app):
                 "price_text",
                 "days_active",
                 "activity_date",
+                'condition_summary',
             }
     
             # Build the column definitions

@@ -46,6 +46,7 @@ class TableFactory:
             hidden_columns = [
                 "price_value",
                 "distance_sort",
+                'property_tags',
                 "updated_time_sort",
                 "cian_estimation_value",
                 "price_difference_value",
@@ -66,6 +67,7 @@ class TableFactory:
             style_cell = {
                 "textAlign": "left",
                 "padding": "8px",
+                'verticalAlign': 'top',
                 "fontFamily": "var(--font-family)",
                 "fontSize": "var(--font-sm)",
                 "minWidth": "0",          # allow shrinking
@@ -85,13 +87,16 @@ class TableFactory:
                 {"if": {"column_id": "price_change_formatted"}, "textAlign": "center"},
                 {"if": {"column_id": "updated_time"}, "fontWeight": "bold", "textAlign": "center"},
                 {"if": {"column_id": "price_value_formatted"}, "fontWeight": "bold", "textAlign": "center"},
+                {"if": {"column_id": "price_text"}, "fontWeight": "bold", "textAlign": "center", 'verticalAlign': 'top'},
+                
             ]
 
         # Fixed-width columns (percentages)
         fixed_columns = {
-            "update_title": 5,
-            "property_tags": 25,
-            "address_title": 45,
+            "update_title": 30,
+            #"property_tags": 25,
+            "address_title": 25,
+            "condition_summary": 20,
             "price_text": 25,
         }
         column_alignments = {"price_text": "center"}
@@ -144,8 +149,8 @@ class TableFactory:
             'style_table': {
                 'overflowX': 'auto',
                 'width': '100%',
-                'maxWidth': '900px',
-                'tableLayout': 'fixed',   # fixed layout
+                'maxWidth': '600px',
+                'width': 'fit-content'    # shrink to content
             },
             'style_data_conditional': conditional_styles,
             'cell_selectable': cell_selectable,
