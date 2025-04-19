@@ -56,6 +56,8 @@ def initialize_app(data_dir: Optional[Union[str, Path]] = None) -> dash.Dash:
     # 5) Layout callable: runs on every browser refresh
     def serve_layout():
         df, ts = get_df_and_time()
+        # Explicitly update main_fields from the cached DataFrame
+        data_manager.update_main_fields_from_df(df)
         return create_app_layout(
             app,
             initial_records=df.to_dict("records"),
