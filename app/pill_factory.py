@@ -29,8 +29,8 @@ class PillFactory:
     ROOM_CONFIG = {
         0: {"variant": "warning", "custom_class": "pill--room", "text": "студия"},
         1: {"variant": "neutral", "custom_class": "pill--room", "text": "1-комн."},
-        2: {"variant": "success", "custom_class": "pill--room", "text": "2-комн."},
-        3: {"variant": "success", "custom_class": "pill--room", "text": "3-комн."},
+        2: {"variant": "primary", "custom_class": "pill--room", "text": "2-комн."},
+        3: {"variant": "primary", "custom_class": "pill--room", "text": "3-комн."},
         "default": {
             "variant": "error",
             "custom_class": "pill--room",
@@ -43,13 +43,13 @@ class PillFactory:
         "very_small": {"variant": "warning", "custom_class": "pill--area", "max": 21},
         "small": {"variant": "neutral", "custom_class": "pill--area", "max": 34},
         "medium_small": {"variant": "neutral", "custom_class": "pill--area", "max": 50},
-        "medium": {"variant": "success", "custom_class": "pill--area", "max": 70},
+        "medium": {"variant": "primary", "custom_class": "pill--area", "max": 70},
         "medium_large": {
             "variant": "warning",
             "custom_class": "pill--area",
             "max": 100,
         },
-        "large": {"variant": "error", "custom_class": "pill--area"},
+        "large": {"variant": "primary", "custom_class": "pill--area"},
     }
 
     FLOOR_CONFIG = {
@@ -64,7 +64,7 @@ class PillFactory:
 
     WALKING_TIME_CONFIG = {
         "very_close": {
-            "variant": "success",
+            "variant": "primary",
             "custom_class": "pill--distance",
             "max_minutes": 12,
         },
@@ -99,7 +99,7 @@ class PillFactory:
 
     NEIGHBORHOOD_CONFIG = {
         "special": {
-            "р-н Хамовники": {"variant": "success", "custom_class": "pill--location"},
+            "р-н Хамовники": {"variant": "primary", "custom_class": "pill--location"},
             "р-н Арбат": {"variant": "primary", "custom_class": "pill--location"},
         },
         "default": {"variant": "neutral", "custom_class": "pill--location"},

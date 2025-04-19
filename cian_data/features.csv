@@ -1097,3 +1097,7 @@ offer_id,has_refrigerator,has_dishwasher,has_washing_machine,has_air_conditioner
 316353745,True,True,True,False,False,True,True,True,False,True
 316341699,True,False,True,False,True,True,True,True,False,True
 316133891,True,False,True,True,True,True,True,True,True,False
+315591337,True,False,True,True,True,True,True,True,True,False
+315399988,True,True,True,True,True,True,True,True,False,True
+314327617,True,False,True,False,False,True,True,True,False,True
+285626067,True,False,True,True,True,True,False,False,True,False
