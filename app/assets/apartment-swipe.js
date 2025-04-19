@@ -118,8 +118,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Touch events for mobile devices
         detailsPanel.addEventListener('touchstart', function(e) {
-            if (e.target.closest('.slideshow-container') || e.target.closest('button')) {
-                // Skip if touch started in slideshow or on a button to avoid conflict
+            // Skip if touch started in slideshow to avoid conflict
+            if (e.target.closest('.slideshow-container') || e.target.closest('button') || 
+                e.target.closest('[data-touch-initialized="true"]')) {
+                console.log('Touch start in slideshow or button, ignoring for card swipe');
                 return;
             }
             
@@ -132,7 +134,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }, { passive: true });
         
         detailsPanel.addEventListener('touchmove', function(e) {
-            if (!startX || !startTime || e.target.closest('.slideshow-container')) {
+            // Skip if touch started in slideshow to avoid conflict
+            if (!startX || !startTime || e.target.closest('.slideshow-container') || 
+                e.target.closest('[data-touch-initialized="true"]')) {
                 return;
             }
             
@@ -161,7 +165,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }, { passive: true });
         
         detailsPanel.addEventListener('touchend', function(e) {
-            if (!startX || !startTime || e.target.closest('.slideshow-container')) {
+            // Skip if touch started in slideshow to avoid conflict
+            if (!startX || !startTime || e.target.closest('.slideshow-container') || 
+                e.target.closest('[data-touch-initialized="true"]')) {
                 return;
             }
             
@@ -243,7 +249,12 @@ document.addEventListener('DOMContentLoaded', function() {
         let isDragging = false;
         
         detailsPanel.addEventListener('mousedown', function(e) {
-            if (e.shiftKey && !e.target.closest('.slideshow-container') && !e.target.closest('button')) {
+            // Skip if in slideshow to avoid conflict
+            if (e.target.closest('.slideshow-container') || e.target.closest('[data-touch-initialized="true"]')) {
+                return; 
+            }
+            
+            if (e.shiftKey && !e.target.closest('button')) {
                 isDragging = true;
                 startX = e.clientX;
                 startY = e.clientY;

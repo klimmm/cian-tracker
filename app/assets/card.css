@@ -1,4 +1,10 @@
-/* ===== Global Custom Properties ===== */
+.hero-address {
+  font-size: var(--font-md);
+  margin: 0 0 var(--space-xs) 0;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  line-height: 1.2;
+}/* ===== Global Custom Properties ===== */
 :root {
   --nav-btn-size: 40px;
   --nav-btn-size-sm: 32px;
@@ -52,7 +58,7 @@
   width: 100%;
   height: 100vh;
   margin: 0 auto;
-  max-width: 800px; /* Limit panel max width */
+  max-width: 450px; /* Much narrower panel width */
   z-index: 1000;
   padding: 0;
   overflow: hidden;
@@ -70,99 +76,131 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-sm) var(--space-md);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(to right, var(--color-primary-dark), var(--color-primary));
-  color: white;
-  height: 56px;
-  box-shadow: var(--shadow-sm);
+  padding: 0;
+  border-bottom: 1px solid var(--color-border);
+  background-color: #f3f4f6;
+  color: var(--color-text);
+  height: 34px; /* Reduced from 40px initially to just 22px */
+  box-shadow: none;
 }
 
 .details-panel-title {
   margin: 0;
-  flex: 1;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: var(--font-md);
+  font-size: var(--font-xs);
   font-weight: 500;
-  letter-spacing: 0.5px;
+  color: var(--color-primary);
+  padding: 0;
+  width: 60px; /* Fixed width instead of flexible */
+  flex: 0 0 auto; /* Prevents flex growth */
 }
 
 .cian-link-header {
   color: white;
-  text-decoration: none;
+  text-decoration: underline;
   padding: var(--space-xs) var(--space-sm);
   border-radius: var(--radius-sm);
   transition: background-color var(--transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: var(--font-sm);
 }
 
 .cian-link-header:hover {
   background-color: rgba(255, 255, 255, 0.15);
-  text-decoration: none;
+  text-decoration: underline;
 }
 
 .details-header-right {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 0;
+  height: 22px; /* Match header height */
 }
 
 .details-nav-button {
-  padding: var(--space-xs) var(--space-sm);
-  background-color: rgba(255, 255, 255, 0.15);
-  color: white;
+  padding: 0;
+  background-color: transparent;
+  color: var(--color-text-secondary);
   border: none;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-sm);
-  font-weight: 500;
+  border-radius: 0;
+  font-size: 20px; /* Increased from smaller size */
+  font-weight: 400;
   white-space: nowrap;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  height: 32px;
+  transition: color var(--transition-fast);
+  height: 32px; /* Matches header height */
+  width: 52px; 
+  min-width: 52px; 
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0;
+  flex: 0 0 auto;
 }
 
 .details-nav-button:hover {
-  background-color: rgba(255, 255, 255, 0.25);
-  transform: translateY(-1px);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .details-nav-button:active {
-  background-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(0);
+  background-color: rgba(255, 255, 255, 0.2);
 }
-
 .details-close-x {
   background: transparent;
-  color: white;
+  color: var(--color-text-secondary);
   border: none;
-  font-size: 24px;
-  width: 32px;
-  height: 32px;
+  font-size: 22px; /* Enlarged from 16px */
+  width: 36px; /* Widened from 20px to 36px */
+  height: 22px; /* Match header height */
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  margin-left: var(--space-xs);
+  transition: color var(--transition-fast);
+  margin: 0;
   padding: 0;
+  flex: 0 0 auto;
 }
-
 .details-close-x:hover {
-  background-color: rgba(255, 255, 255, 0.25);
-  transform: scale(1.1);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .details-close-x:active {
-  transform: scale(1);
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.details-panel-header {
+  /* Same properties as before but with original background */
+  background-color: var(--color-primary);
+  color: white; /* Text color should be white on blue background */
+}
+
+/* And update these for white text on blue background */
+.details-panel-title {
+  color: white;
+}
+
+.cian-link-header {
+  color: white;
+  border-bottom: 1px dotted white;
+}
+
+.details-nav-button, .details-close-x {
+  color: white;
+}
+/* ===== Content Area ===== */
+.details-panel-content,
+#apartment-details-card {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0; /* Remove all padding from the content container */
+  scrollbar-width: thin;
 }
 
 /* ===== Content Area ===== */
@@ -171,7 +209,7 @@
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: var(--space-sm);
+  padding: 0; /* Remove all padding from the content container */
   scrollbar-width: thin;
 }
 
@@ -180,19 +218,21 @@
 .apartment-card-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm); /* Reduced from --space-md to reduce spacing */
+  gap: 0; /* No gap between sections */
 }
 
 /* ===== Section styles ===== */
 .section {
   margin-top: 0;
   margin-bottom: 0; /* Remove bottom margin to reduce spacing */
+  padding-top: var(--space-xs);
+  padding-bottom: var(--space-xs);
 }
 
 .section--divider {
   border-bottom: 1px solid var(--color-border);
-  padding-bottom: var(--space-sm); /* Reduced padding */
-  margin-bottom: var(--space-sm); /* Reduced margin */
+  padding-bottom: var(--space-xs); /* Minimal padding */
+  margin-bottom: 0; /* No margin bottom */
 }
 
 .section-title {
@@ -214,9 +254,13 @@
 
 .apartment-title {
   font-size: var(--font-md);
-  color: var(--color-text-secondary);
+  color: rgba(255, 255, 255, 0.9); /* Lighter color for better visibility on dark backgrounds */
   margin-top: 0;
+  margin-bottom: 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); /* Add shadow for better readability */
 }
+
+
 
 .apartment-id {
   font-size: var(--font-sm);
@@ -225,9 +269,11 @@
 
 .apartment-description {
   white-space: pre-line;
-  line-height: 1.5;
+  line-height: 1.4;
   color: var(--color-text);
-  font-size: var(--font-md);
+  font-size: var(--font-sm);
+  margin: 0;
+  padding: 0;
 }
 
 /* ===== Hero Section ===== */
@@ -235,15 +281,17 @@
   position: relative;
   width: 100%;
   overflow: hidden;
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: var(--space-sm);
+  border-radius: 0; /* Remove border radius */
+  box-shadow: none; /* Remove shadow */
+  margin-bottom: 0; /* Remove margin */
 }
 
 .card-hero__slideshow {
   position: relative;
   width: 100%;
   aspect-ratio: 4/3;
+  margin: 0;
+  padding: 0;
 }
 
 .card-hero__slideshow::before {
@@ -251,6 +299,15 @@
   content: "";
   display: block;
   padding-top: 75%;
+  margin: 0;
+}
+
+@media screen and (max-width: 390px) {
+  .card-hero,
+  .card-hero__slideshow {
+    margin: 0;
+    padding: 0;
+  }
 }
 
 .card-hero__slideshow .slideshow-img {
@@ -259,8 +316,12 @@
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: contain; /* This ensures images maintain their proportions */
   object-position: center;
+  margin: 0;
+  padding: 0;
+  display: block;
+  background-color: #f5f5f5; /* Light background to show image boundaries */
 }
 
 .card-hero__overlay {
@@ -268,17 +329,41 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.5) 50%, transparent 100%);
-  padding: var(--space-md) var(--space-md) var(--space-sm);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 70%, transparent 100%);
+  padding: var(--space-sm) var(--space-sm) var(--space-xs);
   color: white;
   z-index: 1;
+  /* Ensure overlay stays on top of image and doesn't break to new line */
+  display: block;
+  box-sizing: border-box;
 }
 
-.hero-address {
-  font-size: var(--font-lg);
-  margin: 0;
-  font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+/* Phones, up to 390px */
+@media screen and (max-width: 390px) {
+  .card-hero__overlay {
+    /* Ensure proper positioning on small screens */
+    position: absolute;
+    padding: var(--space-xs);
+  }
+  
+  .hero-address {
+    font-size: var(--font-sm);
+    margin-bottom: 2px;
+  }
+  
+  .apartment-title {
+    font-size: var(--font-xs);
+    margin-bottom: 2px;
+  }
+  
+  .card-hero__overlay .pill {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+  
+  .card-hero__overlay .pill-container {
+    gap: 2px;
+  }
 }
 
 .card-hero--empty {
@@ -343,10 +428,25 @@
   transform: translateX(-50%);
   background-color: rgba(0, 0, 0, 0.6);
   color: white;
-  padding: 4px 8px;
+  padding: 2px 6px;
   border-radius: var(--radius-sm);
   font-size: var(--font-xs);
   z-index: 5;
+}
+
+/* Make slideshow counter responsive */
+@media screen and (max-width: 390px) {
+  .slideshow-counter {
+    padding: 1px 4px;
+    font-size: 10px;
+  }
+}
+
+@media screen and (min-width: 391px) and (max-width: 578px) {
+  .slideshow-counter {
+    font-size: 11px;
+    padding: 2px 5px;
+  }
 }
 
 /* ===== Header Section ===== */
@@ -385,10 +485,10 @@
 
 /* ===== Specs Grid ===== */
 .card-specs {
-  padding: var(--space-sm);
+  padding: var(--space-xs);
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm); /* Reduced from --space-md */
+  gap: var(--space-xs); /* Even smaller gap */
 }
 
 /* For pill-based specs */
@@ -406,9 +506,35 @@
   color: #6f42c1;
 }
 
+/* Fix for price pill styling */
+.card-pill--price {
+  background-color: #f0f2f7;
+  color: #333;
+  font-weight: 600;
+  font-size: var(--font-sm);
+}
+
+/* Price-specific pills */
+.pill--price {
+  background-color: #f0f2f7;
+  color: #333;
+  font-weight: 600;
+}
+
+.pill--cian-estimate {
+  background-color: rgba(3, 102, 214, 0.05);
+  color: var(--color-primary);
+}
+
+.pill--price-history {
+  background-color: rgba(118, 118, 118, 0.05);
+  color: var(--color-text-secondary);
+  font-size: calc(var(--font-xs) - 1px);
+}
+
 /* ===== Description Section ===== */
 .card-description {
-  padding: var(--space-sm);
+  padding: var(--space-xs);
 }
 
 /* For collapsible description */
@@ -469,6 +595,7 @@ details[open] .description-summary::after {
   flex-wrap: wrap;
   gap: var(--space-xs);
   margin-bottom: 0;
+  padding: var(--space-xs); /* Add minimal padding */
 }
 
 .pill-container[data-align="center"] {
@@ -478,17 +605,18 @@ details[open] .description-summary::after {
 .pill {
   display: inline-flex;
   align-items: center;
-  padding: var(--space-xs) var(--space-sm);
+  padding: 2px 6px; /* Smaller padding */
   border-radius: var(--radius-sm);
-  font-size: var(--font-sm);
-  font-weight: 500;
+  font-size: var(--font-xs); /* Smaller font size */
+  font-weight: 400; /* Lighter font weight */
   white-space: nowrap;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition: none; /* Remove transitions */
 }
 
 .pill:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+  /* Remove hover effects */
+  transform: none;
+  box-shadow: none;
 }
 
 /* ===== Hidden/Visible States ===== */
@@ -596,31 +724,34 @@ details[open] .description-summary::after {
 @media screen and (min-width: 391px) and (max-width: 578px) {
   .details-panel-content,
   #apartment-details-card {
-    padding: var(--space-sm);
+    padding: 0;
   }
 
   .card-hero__slideshow {
     aspect-ratio: 3/2;
   }
   
-  .card-grid--specs {
-    grid-template-columns: repeat(2, 1fr);
+  .hero-address {
+    font-size: var(--font-md);
   }
   
-  .card-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .apartment-title {
+    font-size: var(--font-sm);
   }
   
-  .title-bar-left {
-    margin-bottom: 0;
+  .card-hero__overlay .pill {
+    font-size: var(--font-xs);
   }
 }
 
 /* Tablets, 579px–768px */
 @media screen and (min-width: 579px) and (max-width: 768px) {
-  .card-grid--specs {
-    grid-template-columns: repeat(3, 1fr);
+  .hero-address {
+    font-size: var(--font-md);
+  }
+  
+  .apartment-title {
+    font-size: var(--font-sm);
   }
 }
 
@@ -629,24 +760,24 @@ details[open] .description-summary::after {
   .details-panel {
     inset: 5vh 0;
     height: 90vh;
-    max-width: 500px;
-    border-radius: var(--radius-md);
+    max-width: 400px; /* Even narrower on desktop */
+    border-radius: var(--radius-sm);
     margin: 0 auto;
     border: 1px solid var(--color-border);
   }
 
   .details-panel-header {
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   }
 
   .details-panel-content,
   #apartment-details-card {
-    padding: var(--space-md);
+    padding: 0; /* Keep consistent with mobile */
   }
 
   .slideshow-nav-btn {
-    width: 48px;
-    height: 48px;
-    font-size: 28px;
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
   }
 }

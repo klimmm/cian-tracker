@@ -206,8 +206,8 @@ class DataManager:
 
     def get_apartment_details(self, offer_id: str) -> Dict[str, Any]:
         logger.info(f"self.main_fields {self.main_fields}")
-        if not self.detail_assembler:
-            self.detail_assembler = DetailAssembler(self.csv_loader, self.main_fields)
+        # Recreate the assembler with current main_fields each time
+        self.detail_assembler = DetailAssembler(self.csv_loader, self.main_fields)
         return self.detail_assembler.assemble(str(offer_id))
 
     def preload_detail_files(self):

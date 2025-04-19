@@ -231,9 +231,11 @@ class ContainerFactory:
         if divider:
             class_name += " section--divider"
         
-        # Apply compact styling
+        # Apply compact styling - ensure no margins
         style = custom_style or {}
-        style["marginBottom"] = "0"  # Remove bottom margin
+        style["marginBottom"] = "0"
+        style["marginTop"] = "0"
+        style["paddingBottom"] = "var(--space-xs)"
         
         return html.Div(elements, style=style, className=class_name)
 
@@ -258,12 +260,12 @@ def create_apartment_details_panel():
                         className="details-panel-header",
                         children=[
                             _nav_button(
-                                "← Пред.",
+                                "←",
                                 "prev-apartment-button",
                                 "details-nav-button--prev",
                             ),
                             html.A(
-                                "Открыть на Циан",
+                                "Циан",
                                 id="cian-link-header",
                                 href="#",  # This will be updated dynamically
                                 target="_blank",
@@ -273,7 +275,7 @@ def create_apartment_details_panel():
                                 className="details-header-right",
                                 children=[
                                     _nav_button(
-                                        "След. →",
+                                        "→",
                                         "next-apartment-button",
                                         "details-nav-button--next",
                                     ),
@@ -402,23 +404,19 @@ def PriceRow(apartment: Apartment) -> html.Div:
 
     if price_history:
         seen_entries = set()
-        history_elements = []
 
         for entry in sorted(price_history, key=lambda x: x.date_iso or ""):
             if entry.date and entry.price and str(entry.date).lower() not in ['nan', 'none', ''] and str(entry.price).lower() not in ['nan', 'none', '']:
                 entry_key = f"{entry.date.strip()}:{entry.price.strip()}"
                 if entry_key not in seen_entries:
                     seen_entries.add(entry_key)
-                    history_elements.append(
+                    price_elements.append(
                         PillFactory.create_price_history_pill(
                             entry.date, entry.price, custom_class="card-pill"
                         )
                     )
-
-        if history_elements:
-            price_elements.append(PillFactory.create_pill_container(history_elements, wrap=True))
     
-    pills_container = PillFactory.create_pill_container(price_elements, align="center")
+    pills_container = PillFactory.create_pill_container(price_elements, wrap=True)
 
     return html.Div(
         pills_container, 
@@ -548,5 +546,6 @@ def create_apartment_details_card(data: Dict[str, Any]):
     return html.Div(
         components,
         className="apartment-card apartment-card-content",
+        style={"gap": "0"}, # Remove gap between sections
         **{"data-offer-id": apt.offer_id},
     )

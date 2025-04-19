@@ -257,11 +257,12 @@
 .card-pill {
   /* Override the table pill size with larger text and padding */
   font-size: 0.8rem !important;
-  padding: 4px 8px !important;
+  padding: 4px 4px !important;
   margin: 2px !important;
   border-radius: 4px !important;
   line-height: 1.2 !important;
 }
+
 
 /* Special styling for price pill in card */
 .card-pill.card-pill--price {
@@ -280,7 +281,7 @@
 
 /* Special styling for metro badge in hero */
 .card-hero__overlay .card-pill {
-  font-size: 0.85rem !important;
+  font-size: 0.65rem !important;
   font-weight: 500 !important;
   padding: 4px 10px !important;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7) !important;
@@ -301,44 +302,54 @@
   .title-bar-link,
   .card-pill {
     font-size: 0.75rem !important;
-    padding: 3px 8px !important;
+    padding: 4px 4px !important;
   }
-  
-  .card-pill.card-pill--price {
-    font-size: 1rem !important;
-    padding: 5px 10px !important;
-  }
-}
 
-@media screen and (max-width: 576px) {
-  .apartment-description,
-  .title-bar-link,
-  .card-pill {
-    font-size: 0.7rem !important;
-    padding: 3px 6px !important;
+  .card-pill.card-pill--distance,
+  .card-pill.card-pill--metro,
+  .card-pill.card-pill--price {
+    font-size: 0.85rem !important;
+    padding: 5px 10px !important;
   }
 
     
+}
+
+@media screen and (max-width: 576px) {
+  .title-bar-link,
+  .card-pill {
+    font-size: 0.65rem !important;
+    padding: 3px 4px !important;
+  }
+
+  .apartment-description {
+    font-size: 0.75rem !important;
+    padding: 3px 4px !important;
+  }
+    
+    
   .card-pill.card-pill--price {
-    font-size: 0.9rem !important;
+    font-size: 0.65rem !important;
     padding: 4px 8px !important;
   }
   
   .card-hero__overlay .card-pill {
-    font-size: 0.75rem !important;
+    font-size: 0.65rem !important;
     padding: 3px 8px !important;
   }
 }
 
 /* More dramatic size reduction on very small screens */
-@media screen and (max-width: 360px) {
+@media screen and (max-width: 390px) {
   .title-bar-link,
   .card-pill {
     font-size: 0.65rem !important;
     padding: 2px 6px !important;
   }
-  
+  .card-pill.card-pill--distance,
+  .card-pill.card-pill--metro,
   .card-pill.card-pill--price {
-    font-size: 0.8rem !important;
+    font-size: 0.65rem !important;
   }
+
 }
