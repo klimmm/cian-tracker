@@ -73,14 +73,24 @@ def register_data_callbacks(app):
             df = DataFilterSorter.filter_and_sort_data(df, filters or {}, sort_by)
             logger.debug(f"After filtering: {len(df)} rows")
     
-            # Define which columns to display
+            # Add combined column for responsive design
+    
+            # Define which columns to display (including the new combined column)
             visible_columns = [
-                "update_title",
-                "property_tags",
+                "update_title",          # Will be shown only on desktop
+                "property_tags",          
                 "address_title",
                 'condition_summary',            
-                "price_text",
+                "price_text",            # Will be shown only on desktop
+                "price_update_combined", # Will be shown only on mobile
             ]
+            
+            # CSS classes for responsive behavior
+            column_classes = {
+                "update_title": "desktop-only-column",
+                "price_text": "desktop-only-column",
+                "price_update_combined": "mobile-only-column",
+            }
             
             # Check if these columns exist in the DataFrame
             for col in visible_columns:
@@ -106,9 +116,10 @@ def register_data_callbacks(app):
                 "days_active",
                 "activity_date",
                 'condition_summary',
+                'price_update_combined',  # Add new column to markdown columns
             }
     
-            # Build the column definitions
+            # Build the column definitions (without className which isn't supported)
             columns = [
                 {
                     "name": CONFIG["columns"]["headers"].get(c, c),

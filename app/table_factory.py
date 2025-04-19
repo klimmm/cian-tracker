@@ -88,18 +88,35 @@ class TableFactory:
                 {"if": {"column_id": "updated_time"}, "fontWeight": "bold", "textAlign": "center"},
                 {"if": {"column_id": "price_value_formatted"}, "fontWeight": "bold", "textAlign": "center"},
                 {"if": {"column_id": "price_text"}, "fontWeight": "bold", "textAlign": "center", 'verticalAlign': 'top'},
-                
+                # Add specific style for price_update_combined - remove margins
+                {"if": {"column_id": "price_update_combined"}, "padding": "0", "margin": "0"},
             ]
 
-        # Fixed-width columns (percentages)
-        fixed_columns = {
-            "update_title": 30,
-            #"property_tags": 25,
-            "address_title": 25,
-            "condition_summary": 20,
-            "price_text": 25,
-        }
-        column_alignments = {"price_text": "center"}
+        # Calculate visible columns first (for column count-based sizing)
+        visible_column_ids = [col['id'] for col in columns 
+                             if col['id'] not in (hidden_columns or [])]
+        column_count = len(visible_column_ids)
+        
+        # Fixed-width columns (percentages) based on column count
+        if column_count <= 3:
+            # When we have 3 or fewer columns, adjust the distribution
+            fixed_columns = {
+                "address_title": 60,        # More space for address
+                "condition_summary": 25,           # Standard price column
+                "price_update_combined": 5, # Bigger combined column
+            }
+        else:
+            # Standard distribution for 4+ columns
+            fixed_columns = {
+                "update_title": 30,
+                #"property_tags": 25,
+                "address_title": 60,
+                "condition_summary": 25,
+                "price_text": 25,
+                "price_update_combined": 5,  # Add width for combined column
+            }
+            
+        column_alignments = {"price_text": "center", "price_update_combined": "center"}
 
         # Build style_cell_conditional
         if style_cell_conditional is None:
@@ -132,6 +149,13 @@ class TableFactory:
                 'textAlign': align,
             })
 
+        # Add specific style for price_update_combined column to remove margins
+        style_cell_conditional.append({
+            'if': {'column_id': 'price_update_combined'},
+            'padding': '0',
+            'margin': '0',
+        })
+
         # Compose table props
         table_props = {
             'id': id,
@@ -149,7 +173,7 @@ class TableFactory:
             'style_table': {
                 'overflowX': 'auto',
                 'width': '100%',
-                'maxWidth': '618px',
+                'maxWidth': '718px',
                 'width': 'fit-content'    # shrink to content
             },
             'style_data_conditional': conditional_styles,
@@ -170,16 +194,21 @@ class TableFactory:
         logger.debug(f"- CSS rules: {table_props.get('css')}")
         
         # Log specific column IDs that will be visible
-        visible_column_ids = [col['id'] for col in table_props['columns'] 
-                             if col['id'] not in (hidden_columns or [])]
         logger.debug(f"Visible column IDs after hiding: {visible_column_ids}")
+        logger.debug(f"Column count: {column_count}")
         
         # Return DataTable
         return dash_table.DataTable(
             style_as_list_view=True,
-            css=[{
-                'selector': '.dash-header',
-                'rule': 'display: none;'  # HIGHLIGHT THIS - it hides headers!
-            }],
+            css=[
+                {
+                    'selector': '.dash-header',
+                    'rule': 'display: none;'  # Hides headers
+                },
+                {
+                    'selector': '[data-dash-column="price_update_combined"]',
+                    'rule': 'padding: 0 !important; margin: 0 !important;'
+                }
+            ],
             **table_props
         )

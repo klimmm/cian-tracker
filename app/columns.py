@@ -103,7 +103,119 @@ class ColumnFormatter:
             status=status,
         )
         
-
+    @staticmethod
+    def format_combined_price_update(row):
+        """Format combined price and update column for small displays.
+        Shows price on first line (using create_price_pill),
+        price change on second line, updated time on third line,
+        and activity date on fourth line.
+        """
+        status = row.get("status", "active")
+        
+        # Create container div with class for styling
+        html = f'<div class="combined-column-container {status}">'
+        
+        # Line 1: Price value with special styling
+        line1_parts = []
+        price_formatted = row.get("price_value_formatted", "--")
+        is_good_price = (
+            row.get("price_difference_value", 0) > 0 and status != "non active"
+        )
+        
+        if price_formatted and price_formatted != "--":
+            line1_parts.append(
+                PillFactory.create_price_pill(
+                    price_formatted, is_good_price=is_good_price, status=status
+                )
+            )
+        
+        if line1_parts:
+            # Create price container with a special data attribute we can target in CSS
+            line1_html = PillFactory.create_pill_container(
+                line1_parts,
+                wrap=False,
+                align="flex-start",
+                custom_style={"flexDirection": "row"},
+                return_as_html=True,
+                status=status,
+            )
+            # Add data attribute to help with CSS targeting
+            line1_html = line1_html.replace('<div class="pill-container', '<div data-price-line="true" class="pill-container')
+            html += line1_html
+        
+        # Line 2: Price change
+        line2_parts = []
+        price_change = row.get("price_change_value", 0)
+        if price_change:
+            line2_parts.append(
+                PillFactory.create_price_change_pill(price_change, status=status)
+            )
+        
+        if line2_parts:
+            line2_html = PillFactory.create_pill_container(
+                line2_parts,
+                wrap=False,
+                align="flex-start",
+                custom_style={"flexDirection": "row"},
+                return_as_html=True,
+                status=status,
+            )
+            html += line2_html
+        
+        # Line 3: Updated time
+        line3_parts = []
+        time_str = row.get("updated_time_display", "--")
+        if time_str and time_str != "--":
+            line3_parts.append(PillFactory.create_time_pill(time_str, status=status))
+        
+        if line3_parts:
+            line3_html = PillFactory.create_pill_container(
+                line3_parts,
+                wrap=False,
+                align="flex-start",
+                custom_style={"flexDirection": "row"},
+                return_as_html=True,
+                status=status,
+            )
+            html += line3_html
+        
+        # Line 4: Activity date
+        line4_parts = []
+        should_add_activity_date = "activity_date_display" in row and pd.notnull(
+            row["activity_date_display"]
+        )
+        
+        # Skip if same as updated time (using the same logic as in format_update_title)
+        if (
+            should_add_activity_date
+            and pd.notnull(row.get("updated_time_sort"))
+            and pd.notnull(row.get("activity_date_sort"))
+        ):
+            time_diff = abs(
+                (row["activity_date_sort"] - row["updated_time_sort"]).total_seconds()
+            )
+            if time_diff < 60:
+                should_add_activity_date = False
+        
+        if should_add_activity_date:
+            activity_date = row["activity_date_display"]
+            line4_parts.append(
+                PillFactory.create_activity_date_pill(activity_date, status=status)
+            )
+        
+        if line4_parts:
+            line4_html = PillFactory.create_pill_container(
+                line4_parts,
+                wrap=False,
+                align="flex-start",
+                custom_style={"flexDirection": "row"},
+                return_as_html=True,
+                status=status,
+            )
+            html += line4_html
+        
+        html += '</div>'
+        return html
 
     @staticmethod
     def format_property_tags(row):
@@ -355,7 +467,10 @@ class ColumnFormatter:
         df["update_title"] = df.apply(ColumnFormatter.format_update_title, axis=1)
         df["condition_summary"] = df.apply(
             ColumnFormatter.format_condition_text_column, axis=1
-        )   
+        )  
+
+        df['price_update_combined'] = df.apply(ColumnFormatter.format_combined_price_update, axis=1)
+
         logger.info(f"DataFrame columns: {df.columns.tolist()}")
         
         return df

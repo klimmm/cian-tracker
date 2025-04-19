@@ -13,6 +13,53 @@
   --pill-border-radius: 16px;
   /* Price change specific */
   --pill-price-arrow-space: 10px; /* Space for the arrow */
+  
+  /* Combined container gap */
+  --combined-container-gap: 0px; /* REMOVED ALL SPACE BETWEEN LINES */
+}
+
+/* ===== Combined Column Container ===== */
+.combined-column-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--combined-container-gap);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Remove any bottom margin from pill containers everywhere */
+.pill-container {
+  margin-bottom: 0;
+}
+
+/* Target the price pill container specifically */
+.combined-column-container [data-price-line="true"] {
+  margin-bottom: 0;
+}
+
+/* Make all price pills have no background, black font, and bold */
+.pill--price {
+  background-color: transparent !important;
+  color: var(--color-text-primary) !important;
+  font-weight: bold !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Non-active items have secondary text color */
+.non-active .pill--price {
+  color: var(--color-text-secondary) !important;
+}
+
+/* Preserve gold border for good deals */
+.pill--good-deal {
+  border: 1px solid gold !important;
+}
+.pill--good-deal::before {
+  content: none !important;
+  display: none !important;
 }
 
 /* ===== Pill Component Styles ===== */
@@ -148,18 +195,6 @@
   color: var(--color-success);
 }
 
-.pill--good-deal {
-  border: 1px solid gold !important; /* Add gold border */
-  /* Remove these lines that change color and background:
-  background-color: var(--color-success-light) !important;
-  color: var(--color-success) !important;
-  */
-}
-.pill--good-deal::before {
-  content: none !important;
-  display: none !important;
-}
-
 /* ===== Responsive - Larger Screens ===== */
 @media screen and (min-width: 768px) {
   :root {
@@ -217,55 +252,148 @@
   }
 }
 
-/* ===== Responsive - Smaller Screens ===== */
-@media screen and (max-width: 580px) {
+/* ===== Responsive - SIGNIFICANTLY REDUCED SIZES FOR SMALL SCREENS ===== */
+@media screen and (max-width: 576px) {
   :root {
-    /* Reduce all sizes by ~15% */
-    --pill-space-y: 1.7px;
-    --pill-space-x: 3.4px;
-    --pill-margin: 1.7px;
+    /* Small screens - SIGNIFICANTLY REDUCED */
+    --pill-space-y: 1.5px;
+    --pill-space-x: 3px;
+    --pill-margin: 1px;
     --pill-font: 0.65rem;
-    --pill-font-small: 0.56rem;
-    --pill-emoji-size: 10px;
-    --pill-border-radius: 14px;
-    --pill-price-arrow-space: 8.5px;
+    --pill-font-small: 0.55rem;
+    --pill-emoji-size: 9px;
+    --pill-border-radius: 12px;
+    --pill-price-arrow-space: 7px;
   }
+  
+  /* Reduce pill spacing */
+  .pill-container {
+    gap: 1px;
+  }
+  
+  /* Smaller pills for mobile */
+  .pill {
+    padding: 1px 3px;
+  }
+  
+  /* Activity pills even smaller on mobile */
+  .pill--activity {
+    font-size: calc(var(--pill-font) * 0.8);
+    padding: 1px 2px;
+  }
+  
+  /* Smaller price text */
+  .pill--price {
+    font-size: 0.8rem !important;
+   font-weight: normal !important;
+  }
+  .pill--good-deal {
+    border: none !important;
+    color: var(--color-primary) !important;
+ }    
+  
+  /* Price‑change indicators */
+  .pill--price-change {
+    padding-bottom: 0;
+    padding-top: 0;
+    padding-left: var(--pill-price-arrow-space);
+  }
+  .pill--time {
+    padding: 0 !important;
+  }
+  /* Adjust distance pill for very small sizes */
+  .pill--distance {
+    padding-left: calc(var(--pill-emoji-size) + var(--pill-space-x) * 1.5);
+  }   
+    
 }
 
-@media screen and (max-width: 485px) {
+@media screen and (max-width: 450px) {
   :root {
-    /* Significantly reduced sizes for very small screens */
-    --pill-space-y: 1.4px;
-    --pill-space-x: 2.9px;
-    --pill-margin: 1.4px;
-    --pill-font: 0.55rem;
-    --pill-font-small: 0.48rem;
-    --pill-emoji-size: 11px;
-    --pill-border-radius: 12px;
-    --pill-price-arrow-space: 7.5px;
-  }
-
-@media screen and (max-width: 3900px) {
-  :root {
-    /* Significantly reduced sizes for very small screens */
-    --pill-space-y: 1.2px;
-    --pill-space-x: 2.4px;
-    --pill-margin: 1.2px;
-    --pill-font: 0.45rem;
-    --pill-font-small: 0.4rem;
-    --pill-emoji-size: 7px;
+    /* Very small screens - EXTRA REDUCED */
+    --pill-space-y: 1px;
+    --pill-space-x: 2px;
+    --pill-margin: 0.5px;
+    --pill-font: 0.6rem;
+    --pill-font-small: 0.5rem;
+    --pill-emoji-size: 8px;
     --pill-border-radius: 10px;
     --pill-price-arrow-space: 6px;
   }
-    
-  /* Make activity pills even smaller on tiny screens */
-  .pill--activity {
-    font-size: calc(var(--pill-font) * 0.8);
-    padding: calc(var(--pill-space-y) * 0.7) calc(var(--pill-space-x) * 0.7);
+  .pill--good-deal {
+    border: none !important;
+    color: var(--color-primary) !important;
+ }    
+  
+  /* Smaller price text */
+  .pill--price {
+    font-size: 0.75rem !important;
+   font-weight: normal !important;
   }
   
+  /* Smaller pills for tiny devices */
+  .pill {
+    padding: 1px 2px;
+    margin: 0.5px;
+  }
+  /* Price‑change indicators */
+  .pill--price-change {
+    padding-bottom: 0;
+    padding-top: 0;
+    padding-left: var(--pill-price-arrow-space);
+  }
+  .pill--time {
+    padding: 0 !important;
+  }
   /* Adjust distance pill for very small sizes */
   .pill--distance {
     padding-left: calc(var(--pill-emoji-size) + var(--pill-space-x) * 1.5);
   }
+    
+}
+
+@media screen and (max-width: 390px) {
+  :root {
+    /* Extra small screens - EXTREMELY REDUCED */
+    --pill-space-y: 0.8px;
+    --pill-space-x: 1.5px;
+    --pill-margin: 0.5px;
+    --pill-font: 0.55rem;
+    --pill-font-small: 0.45rem;
+    --pill-emoji-size: 7px;
+    --pill-border-radius: 8px;
+    --pill-price-arrow-space: 5px;
+  }
+  /* Price‑change indicators */
+  .pill--price-change {
+    padding-bottom: 0;
+    padding-top: 0;
+    padding-left: var(--pill-price-arrow-space);
+  }
+  .pill--time {
+    padding: 0 !important;
+  }
+  .pill--good-deal {
+    border: none !important;
+    color: var(--color-primary) !important;
+      
+ }    
+    
+  /* Even smaller price text */
+  .pill--price {
+    font-size: 0.7rem !important;
+   font-weight: normal !important;
+      
+  }
+    
+  /* Adjust distance pill for very small sizes */
+  .pill--distance {
+    padding-left: calc(var(--pill-emoji-size) + var(--pill-space-x) * 1.5);
+  }
+
+  /* Price‑change indicators */
+  .pill--price-change {
+    padding-left: var(--pill-price-arrow-space);
+  }  
+    
 }

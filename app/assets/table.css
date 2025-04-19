@@ -102,8 +102,8 @@ p { font-size: var(--font-md); margin-bottom: var(--space-md); }
 .font-bold { font-weight: 700; }
 
 /* Update time */
-.update-time { 
-  font-size: var(--font-sm);
+.update-info-text { 
+  font-size: var(--font-xs);
   color: var(--color-text-secondary);
   margin-bottom: 5px !important;
 }
@@ -343,7 +343,7 @@ input, select, textarea {
 
 
 
-@media screen and (max-width: 390px) {
+@media screen and (max-width: 420px) {
 
   .controls-container {
     padding: var(--space-xs);
@@ -613,4 +613,75 @@ input, select, textarea {
   font-size: 0.55rem !important;
   padding-left: calc(var(--pill-space-x) + var(--pill-space-x));
   margin: 0;
+}
+
+/* Media queries for responsive table layout */
+@media screen and (max-width: 576px) {
+    /* Hide desktop columns on mobile */
+    #apartment-table .dash-cell[data-dash-column="update_title"],
+    #apartment-table .dash-cell[data-dash-column="price_text"] {
+        display: none !important;
+        width: 0% !important;
+    }
+    
+    #apartment-table .dash-cell[data-dash-column="property_tags"] {
+        width: 25% !important;
+    }
+    
+    #apartment-table .dash-cell[data-dash-column="address_title"] {
+        width: 50% !important; /* Increased from 35% */
+    }
+    #combined-column-container.active {
+        padding: 0 !important;
+    }
+
+
+    
+    #apartment-table .dash-cell[data-dash-column="price_update_combined"] {
+        width: 25% !important; /* Reduced from 40% */
+    }
+}
+
+
+
+
+
+
+
+
+
+/* Desktop layout adjustments */
+@media screen and (min-width: 577px) {
+    /* Hide combined column on desktop */
+    #apartment-table .dash-cell[data-dash-column="price_update_combined"] {
+        display: none !important;
+    }
+}
+
+/* Styling for the combined column container */
+.combined-column-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.combined-column-container .combined-price {
+    font-size: var(--font-sm);
+    margin-bottom: 2px;
+}
+
+.combined-column-container .combined-info {
+    font-size: var(--font-xs);
+    line-height: 1.2;
+}
+
+.combined-column-container .combined-activity {
+    font-size: var(--font-xs);
+    opacity: 0.8;
+}
+
+
+#apartment-table .dash-spreadsheet-container tr {
+  border-bottom: 2px solid #B0BEC5; /* blue-grey, or try #999, #333, etc. */
 }
