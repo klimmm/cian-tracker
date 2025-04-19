@@ -440,12 +440,12 @@ input, select, textarea {
 @media screen and (max-width: 768px) {
 
   .btn {
-    font-size: calc(var(--font-xs) * 1.15);
+    font-size: calc(var(--font-xs) * 1.4);
     padding: 3px 6px;
   }
     
   .dash-label {
-    font-size: 0.7rem !important;
+    font-size: 0.8rem !important;
     width: auto !important;
     margin-bottom: var(--space-xs) !important;
   }
