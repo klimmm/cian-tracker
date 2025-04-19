@@ -255,20 +255,21 @@ class ColumnFormatter:
         # Define pill configurations as data structures
         pill_configs = {
             "features": {
-                "features_has_air_conditioner": {"text": "❄️ Кондиционер", "variant": "success"},
-                "features_has_bathtub": {"text": "🛁 Ванна", "variant": "success"},
-                "features_has_shower_cabin": {"text": "🚿 Душевая кабина", "variant": "error"}
+                "features_has_air_conditioner": {"text": "❄️ Кондиционер", "variant": "primary"},
+                "features_has_bathtub": {"text": "🛁 Ванна", "variant": "primary"},
+                "features_has_shower_cabin": {"text": "🚿 Душевая кабина", "variant": "neutral"}
             },
             "view": {
-                "Во двор": {"text": "🔭 Окна во двор", "variant": "success"},
+                "Во двор": {"text": "🔭 Окна во двор", "variant": "primary"},
                 "На улицу": {"text": "🔭 Окна на улицу", "variant": "error"},
-                "На улицу и во двор": {"text": "🔭 Окна на улицу и во двор", "variant": "neutral"}
+                "На улицу и во двор": {"text": "🔭 Окна на улицу и во двор", "variant": "warning"}
             },
             "ceiling_height": {
                 "ranges": [
                     {"max": 2.5, "variant": "error"},
                     {"max": 2.7, "variant": "neutral"},
-                    {"max": float('inf'), "variant": "success"}
+                    {"max": 3.0, "variant": "success"},
+                    {"max": float('inf'), "variant": "primary"}
                 ]
             }
         }
